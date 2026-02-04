@@ -15,8 +15,7 @@ export const EditableHeading: React.FC<EditableHeadingProps> = ({
     onSave,
     variant,
     placeholder = "Untitled",
-    className,
-    autoFocus = false
+    className
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value);

@@ -33,7 +33,7 @@ export function CalendarGenerator({ isOpen, onClose }: CalendarGeneratorProps) {
     });
 
     const [isGenerating, setIsGenerating] = useState(false);
-    const { activePlanner, currentPageIndex, updatePages, takeSnapshot } = usePlannerStore();
+    const { activePlanner, currentPageIndex, updatePages, saveHistory } = usePlannerStore();
 
     const generateCalendar = async () => {
         if (!activePlanner) return;
@@ -59,7 +59,7 @@ export function CalendarGenerator({ isOpen, onClose }: CalendarGeneratorProps) {
                 }
             }
 
-            takeSnapshot();
+            saveHistory();
 
             const startIdx = currentPageIndex + 1;
             const fullPages = pagesData.map((p, i) => ({

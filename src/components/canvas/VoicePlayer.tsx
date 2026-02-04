@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Play, Pause, X, Volume2 } from 'lucide-react'
+import { Play, Pause, X } from 'lucide-react'
 
 interface VoicePlayerProps {
     src: string
@@ -13,7 +13,6 @@ export function VoicePlayer({ src, duration, x, y, onClose }: VoicePlayerProps) 
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
-    const [isLoaded, setIsLoaded] = useState(false)
 
     useEffect(() => {
         const audio = new Audio(src)
@@ -21,11 +20,9 @@ export function VoicePlayer({ src, duration, x, y, onClose }: VoicePlayerProps) 
 
         const updateTime = () => setCurrentTime(audio.currentTime)
         const handleEnded = () => setIsPlaying(false)
-        const handleCanPlay = () => setIsLoaded(true)
 
         audio.addEventListener('timeupdate', updateTime)
         audio.addEventListener('ended', handleEnded)
-        audio.addEventListener('canplaythrough', handleCanPlay)
 
         // Auto-play when opened? Maybe not, consistent with user intent "when playing... show controls"
         // Let's auto-play.
@@ -35,7 +32,6 @@ export function VoicePlayer({ src, duration, x, y, onClose }: VoicePlayerProps) 
             audio.pause()
             audio.removeEventListener('timeupdate', updateTime)
             audio.removeEventListener('ended', handleEnded)
-            audio.removeEventListener('canplaythrough', handleCanPlay)
         }
     }, [src])
 

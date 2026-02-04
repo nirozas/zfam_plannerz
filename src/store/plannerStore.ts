@@ -149,7 +149,7 @@ interface PlannerState {
     fetchLibraryAssets: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtag?: string) => Promise<void>;
     fetchMultipleLibraryAssets: (types: string[]) => Promise<void>;
     fetchLibraryCategories: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner') => Promise<void>;
-    uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[]) => Promise<string>;
+    uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], thumbnailUrl?: string) => Promise<string>;
     addAssetByUrl: (url: string, title: string, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[]) => Promise<string>;
     updateAssetMetadata: (id: string, data: { title?: string, category?: string, hashtags?: string[] }) => Promise<void>;
     saveEditedAsset: (id: string, blob: Blob) => Promise<void>;

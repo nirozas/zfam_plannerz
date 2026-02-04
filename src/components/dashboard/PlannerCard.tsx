@@ -13,7 +13,7 @@ interface PlannerCardProps {
 export function PlannerCard({ planner, index }: PlannerCardProps) {
     const [showMenu, setShowMenu] = useState(false)
     const navigate = useNavigate()
-    const { duplicatePlanner, deletePlanner, archivePlanner } = usePlannerStore()
+    const { duplicatePlanner, deletePlanner } = usePlannerStore()
 
     const handleDuplicate = async (e: React.MouseEvent) => {
         e.stopPropagation()

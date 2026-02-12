@@ -53,7 +53,7 @@ A high-performance, web-based digital planner that replicates the tactile, organ
 
 3. Set up the database:
    - Go to your [Supabase Dashboard](https://app.supabase.com)
-   - Run the SQL from `supabase_schema.sql` in the SQL Editor
+   - Run the SQL from `supabase/supabase_schema.sql` in the SQL Editor
 
 4. Start the development server:
    ```bash
@@ -65,14 +65,11 @@ A high-performance, web-based digital planner that replicates the tactile, organ
 ## Project Structure
 
 ```
+supabase/                # Database migrations, schema, and setup docs
 src/
-├── components/
-│   ├── canvas/          # Canvas workspace and drawing tools
-│   ├── dashboard/       # Home dashboard and planner cards
-│   ├── wizard/          # Planner creation wizard
-│   ├── library/         # Template and asset libraries
-│   └── ui/              # Reusable UI components
-├── lib/                 # Supabase client
+├── components/          # React components
+├── store/               # State management (Zustand)
+├── supabase/            # Supabase client (client.ts)
 ├── types/               # TypeScript definitions
 └── utils/               # Utility functions
 ```

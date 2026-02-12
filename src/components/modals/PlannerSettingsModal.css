@@ -1,0 +1,74 @@
+.planner-settings-modal {
+    /* Dimensions & Positioning */
+    position: fixed !important;
+    left: 5% !important;
+    right: 5% !important;
+    width: auto !important;
+    max-width: 1440px !important;
+    margin: 0 auto !important;
+
+    /* Z-Index Discipline */
+    /* Keeps it above canvas (0-10) but below overlays if needed, 
+       though prompt says keep it on top of canvas. 
+       Existing was z-[61]. PageFilmbar is z-30. */
+    z-index: 61 !important;
+
+    /* THE SANDWICH LOGIC */
+    /* top: below the top toolbar (approx 90-100px) */
+    top: 100px !important;
+
+    /* bottom: exactly at the start of the filmstrip plus 10px gap */
+    /* Filmstrip is h-28 (112px) on mobile, h-36 (144px) on lg screens */
+    bottom: calc(144px + 10px) !important;
+
+    /* THE DIMENSION CONSTRAINTS */
+    /* Formula: calc(100vh - [Filmstrip_Height]px - 40px) */
+    /* We use 144px for the filmstrip height */
+    max-height: calc(100vh - 144px - 40px) !important;
+
+    /* Centering logic within the top area */
+    margin-top: auto !important;
+    margin-bottom: auto !important;
+
+    /* Ensure only the body scrolls */
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Modal Body / Page Grid */
+.planner-settings-modal .modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 1.5rem !important;
+    background-color: rgba(249, 250, 251, 0.5) !important;
+    /* bg-gray-50/50 */
+}
+
+/* Sticky Header & Toolbar */
+.planner-settings-modal .modal-header,
+.planner-settings-modal .modal-toolbar {
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
+    background-color: white !important;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 1023px) {
+    .planner-settings-modal {
+        left: 10px !important;
+        right: 10px !important;
+        /* Filmbar is h-28 (112px) on mobile */
+        bottom: calc(112px + 10px) !important;
+        top: 10px !important;
+        max-height: calc(100vh - 112px - 20px) !important;
+    }
+}
+
+/* Desktop spacing */
+@media (min-width: 1280px) {
+    .planner-settings-modal {
+        left: 10% !important;
+        right: 10% !important;
+    }
+}

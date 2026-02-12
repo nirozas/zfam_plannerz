@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/client'
 import { usePlannerStore } from '@/store/plannerStore'
 import Dashboard from '@/components/dashboard/Dashboard'
 import { CanvasWorkspace } from '@/components/canvas/CanvasWorkspace'
@@ -58,3 +58,4 @@ function App() {
 }
 
 export default App
+

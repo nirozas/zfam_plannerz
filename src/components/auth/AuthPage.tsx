@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react';
 import './AuthPage.css';
@@ -116,3 +116,4 @@ const AuthPage: React.FC = () => {
 };
 
 export default AuthPage;
+

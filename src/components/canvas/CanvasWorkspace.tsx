@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { PlannerCanvas } from './PlannerCanvas'
 import { TemplateLibrary } from '../library/TemplateLibrary'
 import { Button } from '../ui/Button'
@@ -76,7 +76,7 @@ export function CanvasWorkspace() {
             // 1. No planner is active
             // 2. The active planner is NEITHER the one matching the slug NOR the ID in the URL
             if (!activePlanner || (currentSlug !== plannerName && currentId !== plannerName)) {
-                console.log(`[CanvasWorkspace] Ready to open planner: ${plannerName}`);
+                console.log(`[CanvasWorkspace] Ready to open planner: ${plannerName} `);
                 openPlanner(plannerName);
             }
         }
@@ -315,8 +315,6 @@ export function CanvasWorkspace() {
         <div className="h-screen flex flex-col bg-[#F8F9FA]">
             <TopToolbar
                 plannerName={activePlanner.name}
-                currentPage={displayCurrentPage}
-                totalPages={displayTotalPages}
                 onBack={() => navigate('/homepage')}
                 activeTool={activeTool}
                 onToolSelect={setActiveTool}
@@ -337,6 +335,14 @@ export function CanvasWorkspace() {
                 onRenamePage={(name) => {
                     const pageId = activePlanner?.pages?.[currentPageIndex]?.id;
                     if (pageId) usePlannerStore.getState().renamePage(pageId, name);
+                }}
+                pageYear={activePlanner?.pages?.[currentPageIndex]?.year}
+                pageMonth={activePlanner?.pages?.[currentPageIndex]?.month}
+                pageCategory={activePlanner?.pages?.[currentPageIndex]?.category}
+                pageSection={activePlanner?.pages?.[currentPageIndex]?.section}
+                onUpdateMetadata={(data) => {
+                    const pageId = activePlanner?.pages?.[currentPageIndex]?.id;
+                    if (pageId) usePlannerStore.getState().updatePageMetadata(pageId, data);
                 }}
                 onPrint={handlePrint}
                 onUndo={undo}
@@ -396,25 +402,6 @@ export function CanvasWorkspace() {
                         />
                     </div>
 
-                    {/* On-Canvas Navigation Arrows */}
-                    {!selectedElement && activeTool === 'select' && (
-                        <>
-                            <button
-                                onClick={prevPage}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 group z-20 border border-gray-100"
-                                title="Previous Page"
-                            >
-                                <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-indigo-600" />
-                            </button>
-                            <button
-                                onClick={nextPage}
-                                className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 group z-20 border border-gray-100"
-                                title="Next Page"
-                            >
-                                <ChevronRight className="w-6 h-6 text-gray-600 group-hover:text-indigo-600" />
-                            </button>
-                        </>
-                    )}
                 </main>
 
                 {/* AI Panel Right Sidebar Overlay */}
@@ -584,14 +571,14 @@ export function CanvasWorkspace() {
                     setTextIsBold(bold)
                     if (selectedElement?.type === 'text' && canvasRef.current) {
                         const italic = selectedElement.fontStyle?.includes('italic')
-                        canvasRef.current.updateElement(selectedElement.id, { fontStyle: `${bold ? 'bold' : ''} ${italic ? 'italic' : ''}`.trim() || 'normal' })
+                        canvasRef.current.updateElement(selectedElement.id, { fontStyle: `${bold ? 'bold' : ''} ${italic ? 'italic' : ''} `.trim() || 'normal' })
                     }
                 }}
                 onTextItalicChange={(italic) => {
                     setTextIsItalic(italic)
                     if (selectedElement?.type === 'text' && canvasRef.current) {
                         const bold = selectedElement.fontStyle?.includes('bold')
-                        canvasRef.current.updateElement(selectedElement.id, { fontStyle: `${bold ? 'bold' : ''} ${italic ? 'italic' : ''}`.trim() || 'normal' })
+                        canvasRef.current.updateElement(selectedElement.id, { fontStyle: `${bold ? 'bold' : ''} ${italic ? 'italic' : ''} `.trim() || 'normal' })
                     }
                 }}
                 onTextBackgroundColorChange={(color) => {

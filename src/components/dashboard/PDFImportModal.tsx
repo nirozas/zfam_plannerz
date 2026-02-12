@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePlannerStore, generateUUID } from '../../store/plannerStore';
 import { PAGE_PRESETS } from '../../types/planner';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../supabase/client';
 import { X, Upload, FileText, Loader2, CheckCircle, ChevronDown } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -169,6 +169,7 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
 
             setPages(analyzedPages);
             setStatusMessage('');
+            setProgress(0); // Reset progress after analysis
         } catch (error) {
             console.error('Error analyzing PDF:', error);
             alert('Failed to analyze PDF.');
@@ -235,7 +236,30 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-6 relative">
+                    {/* Analysis/Loading Overlay */}
+                    {statusMessage && step === 'preview' && pages.length === 0 && (
+                        <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4">
+                            <div className="relative">
+                                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-indigo-600">
+                                    {Math.round(progress)}%
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <h4 className="text-lg font-bold text-gray-900">{statusMessage}</h4>
+                                <p className="text-xs text-gray-500 font-medium">Please wait while we prepare your pages...</p>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {step === 'upload' && (
                         <div className="h-full flex flex-col items-center justify-center space-y-6 py-12">
                             <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center rotate-3">
@@ -331,9 +355,11 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
                     ) : (
                         <>
                             <div className="flex items-center gap-3">
-                                {step === 'creating' && <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />}
+                                {(step === 'creating' || (statusMessage && pages.length === 0)) && <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />}
                                 <span className="text-sm font-bold text-gray-600">
-                                    {step === 'creating' ? `${statusMessage} ${Math.round(progress)}%` : `${pages.filter(p => p.isSelected).length} pages selected`}
+                                    {step === 'creating' ? `${statusMessage} ${Math.round(progress)}%` :
+                                        (statusMessage && pages.length === 0) ? `${statusMessage} ${Math.round(progress)}%` :
+                                            `${pages.filter(p => p.isSelected).length} pages selected`}
                                 </span>
                             </div>
                             <div className="flex gap-3">
@@ -359,3 +385,4 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
         </div>
     );
 }
+

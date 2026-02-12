@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Planner, PlannerPage, PlannerElement, InkPath } from '../types/planner';
 import { PAGE_PRESETS } from '../types/planner';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabase/client';
 import { performOCR } from '../utils/ocr'; // Fixed Import
 
 // ... (keep helper functions same)
@@ -2900,3 +2900,4 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     },
 
 }));
+

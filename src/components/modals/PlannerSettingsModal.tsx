@@ -3,6 +3,7 @@ import { usePlannerStore } from '@/store/plannerStore';
 import { PlannerPage, PAGE_PRESETS } from '@/types/planner';
 import { X, Lock, Unlock, Search, Check, ChevronDown, ChevronUp, RotateCcw, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import './PlannerSettingsModal.css';
 
 interface PlannerSettingsModalProps {
     isOpen: boolean;
@@ -156,10 +157,10 @@ export function PlannerSettingsModal({ isOpen, onClose }: PlannerSettingsModalPr
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed inset-4 md:inset-8 lg:inset-y-12 lg:inset-x-[2%] xl:inset-y-16 xl:inset-x-[10%] bg-white rounded-2xl shadow-2xl z-[61] flex flex-col overflow-hidden max-w-[1440px] min-w-[320px] mx-auto left-0 right-0"
+                        className="planner-settings-modal min-w-[320px]"
                     >
                         {/* Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                        <div className="modal-header px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">Planner Settings</h2>
                                 <p className="text-sm text-gray-500">Manage {activePlanner.pages.length} pages</p>
@@ -170,7 +171,7 @@ export function PlannerSettingsModal({ isOpen, onClose }: PlannerSettingsModalPr
                         </div>
 
                         {/* Toolbar */}
-                        <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between shrink-0 gap-4">
+                        <div className="modal-toolbar px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-4">
                             <div className="relative flex-1 max-w-sm">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
@@ -210,7 +211,7 @@ export function PlannerSettingsModal({ isOpen, onClose }: PlannerSettingsModalPr
                         </div>
 
                         {/* Grid Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                        <div className="modal-body">
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredPages.map((page, index) => {
                                     const isExpanded = expandedPageId === page.id;

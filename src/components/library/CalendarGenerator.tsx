@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Calendar, ChevronRight, Check, Loader2, Info, Layout, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlannerStore, generateUUID } from '@/store/plannerStore';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/supabase/client';
 
 interface CalendarOptions {
     type: 'yearly' | 'monthly' | 'weekly' | 'daily';
@@ -372,3 +372,4 @@ function generateDailyPage(year: number, day: number) {
         ]
     };
 }
+

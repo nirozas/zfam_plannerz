@@ -1,0 +1,49 @@
+.page-filmbar-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+}
+
+.page-filmbar-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.page-filmbar-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.page-filmbar-container::-webkit-scrollbar-thumb {
+    background-color: rgba(99, 102, 241, 0.2);
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+.page-filmbar-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Long press / Grab highlight */
+.reorder-item-dragging {
+    z-index: 50;
+    scale: 1.1;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.can-reorder-hint {
+    animation: gentle-shake 0.5s ease-in-out infinite;
+}
+
+@keyframes gentle-shake {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(1deg);
+    }
+
+    75% {
+        transform: rotate(-1deg);
+    }
+}

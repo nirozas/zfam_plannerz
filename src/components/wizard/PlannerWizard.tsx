@@ -7,7 +7,7 @@ import { StepOne } from './steps/StepOne'
 import { StepTwo } from './steps/StepTwo'
 import { StepThree } from './steps/StepThree'
 import { PlannerType } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/client'
 import { generateUUID } from '@/store/plannerStore'
 
 interface PlannerWizardProps {
@@ -241,3 +241,4 @@ export function PlannerWizard({ isOpen, onClose, onComplete }: PlannerWizardProp
         </Modal>
     )
 }
+

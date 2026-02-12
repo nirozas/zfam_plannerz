@@ -3,7 +3,7 @@ import { X, Upload, FileText, Check, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as pdfjs from 'pdfjs-dist';
 import { generateUUID, usePlannerStore } from '@/store/plannerStore';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/supabase/client';
 
 // Point to the worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -395,4 +395,5 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
         </AnimatePresence>
     );
 }
+
 

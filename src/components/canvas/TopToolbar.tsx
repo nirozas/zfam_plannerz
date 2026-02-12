@@ -30,18 +30,25 @@ import {
     CalendarDays,
     Filter,
     XCircle,
-    Plus,
-    Tags,
     Scissors
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { PlannerSettingsModal } from '../modals/PlannerSettingsModal';
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+const CATEGORY_MAP: Record<string, string[]> = {
+    'Productivity': ['Daily Schedule', 'Weekly Schedule', 'Monthly Schedule', 'Daily To-Do List', 'Weekly To-Do List', 'Monthly To-Do List', 'Daily Routine', 'Weekly Routine', 'Monthly Routine', 'events'],
+    'Wellness': ['Habits tracking', 'Mood tracking', 'Health tracking'],
+    'Finance': ['Budgets', 'Expenses', 'Savings', 'Purchases'],
+    'Academic': ['Schedules', 'Grades', 'projects', 'Study logs'],
+    'Lifestyle': ['Travel', 'Reading', 'Hobbies', 'Home Organization', 'meal planning', 'Ideas'],
+    'General': ['Blank', 'Lined', 'dotted', 'diagrams', 'notes']
+};
+
 interface TopToolbarProps {
     plannerName: string;
-    currentPage: number;
-    totalPages: number;
     onBack: () => void;
     activeTool: string;
     onToolSelect: (tool: any) => void;
@@ -60,6 +67,11 @@ interface TopToolbarProps {
     onRenamePlanner?: (name: string) => void;
     pageTitle?: string;
     onRenamePage?: (name: string) => void;
+    pageYear?: number | null;
+    pageMonth?: string | null;
+    pageCategory?: string | null;
+    pageSection?: string | null;
+    onUpdateMetadata?: (data: { year?: number | null, month?: string | null, category?: string | null, section?: string | null }) => void;
     onPrint?: () => void;
     onUndo?: () => void;
     onRedo?: () => void;
@@ -70,13 +82,9 @@ interface TopToolbarProps {
 
 export function TopToolbar({
     plannerName,
-    currentPage,
-    totalPages,
     onBack,
     activeTool,
     onToolSelect,
-    onClear,
-    onDelete,
     onAI,
     onAssetHub,
     onTemplates,
@@ -95,7 +103,12 @@ export function TopToolbar({
     onRedo,
     canUndo,
     canRedo,
-    onSearch
+    onSearch,
+    pageYear,
+    pageMonth,
+    pageCategory,
+    pageSection,
+    onUpdateMetadata
 }: TopToolbarProps) {
     const [showMenu, setShowMenu] = React.useState(false);
     const [showPlannerSettings, setShowPlannerSettings] = React.useState(false);
@@ -110,9 +123,7 @@ export function TopToolbar({
         setSectionFilter,
         setCategoryFilter,
         libraryCategories,
-        fetchLibraryAssets,
-        updatePageMetadata,
-        currentPageIndex
+        fetchLibraryAssets
     } = usePlannerStore();
 
     React.useEffect(() => {
@@ -120,549 +131,275 @@ export function TopToolbar({
             fetchLibraryAssets('template');
         }
     }, [libraryCategories, fetchLibraryAssets]);
+
     const [activeFilter, setActiveFilter] = React.useState<'year' | 'month' | 'section' | 'category' | null>(null);
 
     return (
-        <div className="top-toolbar bg-white border-b border-gray-200 flex flex-col z-30 shadow-sm px-4 md:px-6 py-2">
-            {/* Top Row: Info & Actions */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3 lg:gap-6 overflow-hidden">
-                    <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg transition-colors" title="Back">
-                        <ArrowLeft className="h-5 w-5 text-gray-500" />
+        <div className="top-toolbar bg-white border-b border-gray-200 flex flex-col z-30 shadow-sm px-2 md:px-4 py-1.5 md:py-2">
+            {/* Row 1: Info & Global Actions */}
+            <div className="flex items-center justify-between gap-2 mb-1.5 md:mb-2">
+                <div className="flex items-center gap-1.5 md:gap-3 flex-1 overflow-hidden">
+                    <button onClick={onBack} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors shrink-0" title="Back">
+                        <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-gray-500" />
                     </button>
 
-                    {/* Editable Planner Name */}
-                    <div>
-                        <input
-                            type="text"
-                            value={plannerName}
-                            onChange={(e) => onRenamePlanner?.(e.target.value)}
-                            className="text-sm font-bold text-gray-900 leading-tight bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none transition-all w-40 truncate"
-                            title="Rename Planner"
-                        />
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                            <p className="text-[10px] text-gray-400 font-medium whitespace-nowrap shrink-0">Page {currentPage} of {totalPages}</p>
-                            <span className="text-[10px] text-gray-300">|</span>
-                            {/* Editable Page Title */}
+                    <div className="hidden sm:block w-px h-6 bg-gray-200 mx-0.5" />
+
+                    {/* Editable Titles & Metadata */}
+                    <div className="flex-1 min-w-0 max-w-[500px]">
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <input
+                                type="text"
+                                value={plannerName}
+                                onChange={(e) => onRenamePlanner?.(e.target.value)}
+                                className="text-[11px] md:text-[13px] font-bold text-gray-900 leading-tight bg-transparent border-none focus:ring-0 p-0 w-auto min-w-[50px] max-w-[150px] truncate"
+                                title="Rename Planner"
+                            />
+                            <div className="flex items-center gap-1 shrink-0 border-l border-gray-100 pl-2">
+                                <span className="text-[9px] font-bold text-gray-300">YR</span>
+                                <input
+                                    type="text"
+                                    value={pageYear || ''}
+                                    onChange={(e) => onUpdateMetadata?.({ year: parseInt(e.target.value) || null })}
+                                    className="text-[10px] md:text-[11px] font-black text-indigo-600 bg-transparent border-none focus:ring-0 p-0 w-[40px]"
+                                    placeholder="2025"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                             <input
                                 type="text"
                                 value={pageTitle || ''}
                                 onChange={(e) => onRenamePage?.(e.target.value)}
                                 placeholder="Untitled Page"
-                                className="text-[10px] text-gray-500 font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none transition-all w-24 truncate"
+                                className="text-[9px] md:text-[10px] text-gray-400 font-medium bg-transparent border-none focus:ring-0 p-0 w-auto min-w-[60px] max-w-[120px] truncate"
                                 title="Rename Page"
                             />
-                            <span className="text-[10px] text-gray-300">|</span>
 
-                            {/* Page Metadata Editors (Scrollable on mobile) */}
-                            <div className="flex items-center gap-1.5 shrink-0 pr-4">
-                                {/* Year Editor */}
-                                <input
-                                    type="number"
-                                    value={activePlanner?.pages?.[currentPageIndex]?.year || ''}
-                                    onChange={(e) => {
-                                        const val = e.target.value ? parseInt(e.target.value) : null;
-                                        updatePageMetadata(activePlanner?.pages?.[currentPageIndex]?.id || '', { year: val });
-                                    }}
-                                    placeholder="Year"
-                                    className="text-[10px] text-gray-400 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-indigo-400 outline-none w-10 text-center"
-                                    title="Edit Page Year"
-                                />
-
-                                {/* Month Editor Dropdown */}
+                            <div className="flex items-center gap-1.5 border-l border-gray-100 pl-2">
                                 <select
-                                    value={activePlanner?.pages?.[currentPageIndex]?.month || ''}
-                                    onChange={(e) => {
-                                        const val = e.target.value || null;
-                                        updatePageMetadata(activePlanner?.pages?.[currentPageIndex]?.id || '', { month: val });
-                                    }}
-                                    className="text-[10px] text-gray-400 bg-transparent border-none focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors uppercase font-bold"
-                                    title="Edit Page Month"
+                                    value={pageMonth || ''}
+                                    onChange={(e) => onUpdateMetadata?.({ month: e.target.value || null })}
+                                    className="text-[9px] md:text-[10px] font-bold text-indigo-500 bg-transparent border-none p-0 focus:ring-0 cursor-pointer uppercase"
                                 >
                                     <option value="">Month</option>
-                                    {['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'].map(m => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
+                                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
 
-                                {/* Section Editor (Text + Search-like) */}
-                                <input
-                                    type="text"
-                                    value={activePlanner?.pages?.[currentPageIndex]?.section || ''}
-                                    onChange={(e) => {
-                                        const val = e.target.value || null;
-                                        updatePageMetadata(activePlanner?.pages?.[currentPageIndex]?.id || '', { section: val });
-                                    }}
-                                    placeholder="Section"
-                                    className="text-[10px] text-gray-400 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-indigo-400 outline-none w-16 px-1"
-                                    title="Edit Page Section"
-                                />
-
-                                {/* Category Editor Dropdown */}
-                                <div className="flex items-center gap-0.5">
-                                    <Tags className="h-3 w-3 text-gray-300" />
+                                <div className="flex items-center gap-0.5 ml-1">
                                     <select
-                                        value={activePlanner?.pages?.[currentPageIndex]?.category || ''}
+                                        value={pageCategory || ''}
                                         onChange={(e) => {
-                                            const val = e.target.value || null;
-                                            updatePageMetadata(activePlanner?.pages?.[currentPageIndex]?.id || '', { category: val });
+                                            const newCat = e.target.value || null;
+                                            onUpdateMetadata?.({
+                                                category: newCat,
+                                                section: (newCat && CATEGORY_MAP[newCat]?.includes(pageSection || '')) ? pageSection : null
+                                            });
                                         }}
-                                        className="text-[10px] text-gray-400 bg-transparent border-none focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors uppercase font-bold max-w-[80px]"
-                                        title="Edit Page Category"
+                                        className="text-[9px] md:text-[10px] font-bold text-gray-500 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
                                     >
                                         <option value="">Category</option>
-                                        {Array.from(new Set([...libraryCategories, ...(activePlanner?.pages?.map(p => p.category).filter(Boolean) as string[] || [])])).map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
+                                        {Object.keys(CATEGORY_MAP).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                     </select>
-                                    <button
-                                        onClick={() => {
-                                            const newCat = prompt("Enter new category name:");
-                                            if (newCat) {
-                                                updatePageMetadata(activePlanner?.pages?.[currentPageIndex]?.id || '', { category: newCat.toUpperCase() });
-                                            }
-                                        }}
-                                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-indigo-600 transition-all"
-                                        title="Add New Category"
+                                    <span className="text-gray-300 font-bold">:</span>
+                                    <select
+                                        value={pageSection || ''}
+                                        onChange={(e) => onUpdateMetadata?.({ section: e.target.value || null })}
+                                        className="text-[9px] md:text-[10px] font-medium text-gray-400 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
+                                        disabled={!pageCategory}
                                     >
-                                        <Plus className="h-3 w-3" />
-                                    </button>
+                                        <option value="">Section</option>
+                                        {pageCategory && CATEGORY_MAP[pageCategory]?.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 lg:gap-4 ml-auto lg:ml-0 flex-wrap md:flex-nowrap py-1">
-                    {/* Sidebar Search Toggle */}
-                    <button
-                        onClick={onSearch}
-                        className="p-2 hover:bg-indigo-50 rounded-xl transition-all text-gray-500 hover:text-indigo-600"
-                        title="Search In Planner"
-                    >
-                        <Search className="h-5 w-5" />
+                {/* Right Side Actions */}
+                <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
+                    <button onClick={onSearch} className="p-1.5 md:p-2 hover:bg-indigo-50 rounded-lg text-gray-500 hover:text-indigo-600 transition-all" title="Search">
+                        <Search className="h-4 w-4 md:h-5 md:w-5" />
+                    </button>
+                    <button onClick={onAI} className="p-1.5 md:p-2 hover:bg-indigo-50 rounded-lg text-gray-500 hover:text-indigo-600 transition-all" title="AI Assistant">
+                        <Sparkles className="h-4 w-4 md:h-5 md:w-5" />
                     </button>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
-                            {saving ? (
-                                <div className="flex items-center gap-2 text-indigo-500">
-                                    <div className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                                    <span>Saving...</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-1.5 grayscale opacity-50">
-                                    <Cloud className="h-4 w-4" />
-                                    <span>Saved</span>
-                                </div>
-                            )}
-                        </div>
+                    <div className="hidden md:flex items-center gap-2 border-l border-gray-100 pl-2 ml-1">
+                        {saving ? (
+                            <div className="flex items-center gap-1.5 text-indigo-500">
+                                <div className="h-2 w-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[9px] font-bold">SAVING</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1 opacity-50">
+                                <Cloud className="h-3.5 w-3.5 text-gray-400" />
+                                <span className="text-[9px] font-bold text-gray-400">SAVED</span>
+                            </div>
+                        )}
                         {onSave && (
-                            <button
-                                onClick={onSave}
-                                disabled={saving}
-                                className={cn(
-                                    "p-2 rounded-xl transition-all",
-                                    saving
-                                        ? "opacity-50 cursor-not-allowed text-gray-400"
-                                        : "hover:bg-indigo-50 text-gray-500 hover:text-indigo-600"
-                                )}
-                                title="Save Now"
-                            >
-                                <Save className="h-5 w-5" />
+                            <button onClick={onSave} disabled={saving} className="p-1.5 hover:bg-indigo-50 rounded-lg text-gray-500 hover:text-indigo-600" title="Save">
+                                <Save className="h-4 w-4" />
                             </button>
                         )}
                     </div>
-                    <button onClick={onAI} className="p-2 hover:bg-indigo-50 rounded-xl transition-all text-gray-500 hover:text-indigo-600">
-                        <Sparkles className="h-5 w-5" />
+
+                    <button onClick={onPrint} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg text-gray-500" title="Print">
+                        <Printer className="h-4 w-4 md:h-5 md:w-5" />
                     </button>
-                    <button
-                        onClick={onPrint}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-500"
-                        title="Print Planner"
-                    >
-                        <Printer className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={() => {
-                            // Quick Share: Copy URL
-                            navigator.clipboard.writeText(window.location.href);
-                            alert("Planner Link copied to clipboard!");
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-500"
-                        title="Share Link"
-                    >
-                        <Share2 className="h-5 w-5" />
+
+                    <button onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        alert("Link copied!");
+                    }} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg text-gray-500" title="Share">
+                        <Share2 className="h-4 w-4 md:h-5 md:w-5" />
                     </button>
 
                     <div className="relative">
-                        <button
-                            onClick={() => setShowMenu(!showMenu)}
-                            className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-500"
-                        >
-                            <MoreHorizontal className="h-5 w-5" />
+                        <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg text-gray-500">
+                            <MoreHorizontal className="h-4 w-4 md:h-5 md:w-5" />
                         </button>
-
                         {showMenu && (
-                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-
-                                <button onClick={() => {
-                                    setShowMenu(false);
-                                    if (confirm('Duplicate this planner?')) {
-                                        usePlannerStore.getState().duplicatePlanner(usePlannerStore.getState().activePlanner?.id || '');
-                                    }
-                                }} className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">
-                                    Duplicate Planner
-                                </button>
-                                <button onClick={() => {
-                                    setShowMenu(false);
-                                    setShowPlannerSettings(true);
-                                }} className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">
-                                    Planner Settings
-                                </button>
-                                <button onClick={() => {
-                                    usePlannerStore.getState().archivePlanner(usePlannerStore.getState().activePlanner?.id || '');
-                                    setShowMenu(false);
-                                    alert("Planner Archived!");
-                                }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">
-                                    Archive Planner
-                                </button>
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-[100]">
+                                <button onClick={() => { setShowMenu(false); if (confirm('Duplicate?')) usePlannerStore.getState().duplicatePlanner(activePlanner?.id || ''); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">Duplicate Planner</button>
+                                <button onClick={() => { setShowMenu(false); setShowPlannerSettings(true); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">Settings</button>
+                                <button onClick={() => { usePlannerStore.getState().archivePlanner(activePlanner?.id || ''); setShowMenu(false); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">Archive</button>
                             </div>
                         )}
-                        <PlannerSettingsModal
-                            isOpen={showPlannerSettings}
-                            onClose={() => setShowPlannerSettings(false)}
-                        />
                     </div>
                 </div>
             </div>
 
-            {/* Main Bar: Tools */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
-                <div className="flex items-center gap-1 bg-gray-50/80 p-1 rounded-2xl border border-gray-100 flex-wrap lg:flex-nowrap max-w-full">
-                    <ToolButton
-                        icon={<MousePointer className="h-4 w-4" />}
-                        active={activeTool === 'select'}
-                        onClick={() => onToolSelect('select')}
-                    />
-                    <ToolButton
-                        icon={<Scissors className="h-4 w-4" />}
-                        active={activeTool === 'lasso'}
-                        onClick={() => onToolSelect('lasso')}
-                    />
-                    <ToolButton
-                        icon={<div className="relative">
-                            <Pen className="h-5 w-5" />
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white bg-orange-500" />
-                        </div>}
-                        active={activeTool === 'pen'}
-                        onClick={() => onToolSelect('pen')}
-                    />
-                    <ToolButton
-                        icon={<div className="relative">
-                            <Highlighter className="h-5 w-5" />
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white bg-yellow-400" />
-                        </div>}
-                        active={activeTool === 'highlighter'}
-                        onClick={() => onToolSelect('highlighter')}
-                    />
-                    <ToolButton
-                        icon={<Eraser className="h-5 w-5" />}
-                        active={activeTool === 'eraser'}
-                        onClick={() => onToolSelect('eraser')}
-                    />
-                    <ToolButton
-                        icon={<div className="flex flex-col items-center">
-                            <Square className="h-5 w-5" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-0.5" />
-                        </div>}
-                        active={activeTool === 'shape'}
-                        onClick={() => onToolSelect('shape')}
-                    />
-                    <div className="w-px h-8 bg-gray-200 mx-1" />
-                    <ToolButton icon={<Type className="h-5 w-5" />} active={activeTool === 'text'} onClick={() => onToolSelect('text')} />
-                    <ToolButton
-                        icon={<Sticker className="h-5 w-5" />}
-                        active={activeTool === 'sticker'}
-                        onClick={() => {
-                            onToolSelect('sticker');
-                            onAssetHub('sticker');
-                        }}
-                    />
-                    <ToolButton
-                        icon={<Link className="h-5 w-5" />}
-                        active={activeTool === 'link'}
-                        onClick={() => onToolSelect('link')}
-                    />
-                    <ToolButton
-                        icon={<ImageIcon className="h-5 w-5" />}
-                        active={activeTool === 'image'}
-                        onClick={() => {
-                            onToolSelect('image');
-                            onAssetHub('image');
-                        }}
-                    />
-                    <div className="w-px h-8 bg-gray-200 mx-1" />
-                    <ToolButton
-                        icon={<Layout className="h-5 w-5" />}
-                        active={activeTool === 'templates'}
-                        onClick={() => {
-                            onToolSelect('templates');
-                            onTemplates();
-                        }}
-                    />
-                    <ToolButton
-                        icon={<Mic className="h-5 w-5" />}
-                        active={activeTool === 'voice'}
-                        onClick={() => {
-                            onToolSelect('voice');
-                            onVoice();
-                        }}
-                    />
+            {/* Row 2: Tools, Filters & Zoom */}
+            <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+                <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 bg-gray-50 p-0.5 rounded-lg border border-gray-100">
+                        <ToolButton icon={<MousePointer size={16} />} active={activeTool === 'select'} onClick={() => onToolSelect('select')} />
+                        <ToolButton icon={<Scissors size={16} />} active={activeTool === 'lasso'} onClick={() => onToolSelect('lasso')} />
+                        <ToolButton icon={<Pen size={16} />} active={activeTool === 'pen'} onClick={() => onToolSelect('pen')} />
+                        <ToolButton icon={<Highlighter size={16} />} active={activeTool === 'highlighter'} onClick={() => onToolSelect('highlighter')} />
+                        <ToolButton icon={<Eraser size={16} />} active={activeTool === 'eraser'} onClick={() => onToolSelect('eraser')} />
+                        <ToolButton icon={<Square size={16} />} active={activeTool === 'shape'} onClick={() => onToolSelect('shape')} />
+                        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+                        <ToolButton icon={<Type size={16} />} active={activeTool === 'text'} onClick={() => onToolSelect('text')} />
+                        <ToolButton icon={<Sticker size={16} />} active={activeTool === 'sticker'} onClick={() => { onToolSelect('sticker'); onAssetHub('sticker'); }} />
+                        <ToolButton icon={<Link size={16} />} active={activeTool === 'link'} onClick={() => onToolSelect('link')} />
+                        <ToolButton icon={<ImageIcon size={16} />} active={activeTool === 'image'} onClick={() => { onToolSelect('image'); onAssetHub('image'); }} />
+                        <ToolButton icon={<Layout size={16} />} active={activeTool === 'templates'} onClick={() => { onToolSelect('templates'); onTemplates(); }} />
+                        <ToolButton icon={<Mic size={16} />} active={activeTool === 'voice'} onClick={() => { onToolSelect('voice'); onVoice(); }} />
+                    </div>
 
-                    <div className="w-px h-8 bg-gray-200 mx-1" />
+                    <div className="w-px h-6 bg-gray-200 mx-1" />
 
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 shrink-0">
-                        {/* Year Filter */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setActiveFilter(activeFilter === 'year' ? null : 'year')}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all flex items-center gap-1.5",
-                                    currentYear ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-500"
-                                )}
-                                title="Filter by Year"
-                            >
-                                <Calendar className="h-4 w-4" />
-                                <span className="text-[10px] font-bold uppercase">{currentYear || 'Year'}</span>
-                            </button>
-                            {activeFilter === 'year' && (
-                                <div className="absolute top-full left-0 mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-in fade-in slide-in-from-top-1">
-                                    <button onClick={() => { setYearFilter(null); setActiveFilter(null); }} className="w-full text-left px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-gray-50 rounded-lg">Clear Filter</button>
-                                    {Array.from(new Set(activePlanner?.pages?.map(p => p.year).filter(Boolean) || [])).sort().map(year => (
-                                        <button
-                                            key={year as number}
-                                            onClick={() => { setYearFilter(year as number); setActiveFilter(null); }}
-                                            className={cn("w-full text-left px-3 py-1.5 text-[10px] font-bold rounded-lg transition-colors", currentYear === year ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50")}
-                                        >
-                                            {year as number}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    {/* Quick Undo/Redo & Background */}
+                    <div className="flex items-center gap-0.5">
+                        <button onClick={onUndo} disabled={!canUndo} className={cn("p-1.5 rounded-lg transition-all", canUndo ? "hover:bg-gray-100 text-gray-600" : "text-gray-200 opacity-50")}>
+                            <Undo2 size={14} />
+                        </button>
+                        <button onClick={onRedo} disabled={!canRedo} className={cn("p-1.5 rounded-lg transition-all", canRedo ? "hover:bg-gray-100 text-gray-600" : "text-gray-200 opacity-50")}>
+                            <Redo2 size={14} />
+                        </button>
+                        <button onClick={() => onToolSelect('background')} className={cn("p-1.5 rounded-lg transition-all", activeTool === 'background' ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-100 text-gray-500")}>
+                            <Palette size={16} />
+                        </button>
+                    </div>
 
-                        {/* Month Filter (Adaptive) */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setActiveFilter(activeFilter === 'month' ? null : 'month')}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all flex items-center gap-1.5",
-                                    currentMonth ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-500"
-                                )}
-                                title="Filter by Month"
-                            >
-                                <CalendarDays className="h-4 w-4" />
-                                <span className="text-[10px] font-bold uppercase">{currentMonth || 'Month'}</span>
-                            </button>
-                            {activeFilter === 'month' && (
-                                <div className="absolute top-full left-0 mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-in fade-in slide-in-from-top-1">
-                                    <button onClick={() => { setMonthFilter(null); setActiveFilter(null); }} className="w-full text-left px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-gray-50 rounded-lg">Clear Filter</button>
-                                    {Array.from(new Set(
-                                        (activePlanner?.pages || [])
-                                            .filter(p => !currentYear || p.year === currentYear)
-                                            .map(p => p.month)
-                                            .filter(Boolean)
-                                    )).sort().map(month => (
-                                        <button
-                                            key={month as string}
-                                            onClick={() => { setMonthFilter(month as string); setActiveFilter(null); }}
-                                            className={cn("w-full text-left px-3 py-1.5 text-[10px] font-bold rounded-lg transition-colors", currentMonth === month ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50")}
-                                        >
-                                            {month as string}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    <div className="w-px h-6 bg-gray-200 mx-1" />
 
-                        {/* Section Filter */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setActiveFilter(activeFilter === 'section' ? null : 'section')}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all flex items-center gap-1.5",
-                                    currentSection ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-500"
-                                )}
-                                title="Filter by Section"
-                            >
-                                <Layout className="h-4 w-4" />
-                                <span className="text-[10px] font-bold uppercase">{currentSection || 'Section'}</span>
-                            </button>
-                            {activeFilter === 'section' && (
-                                <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-in fade-in slide-in-from-top-1">
-                                    <button onClick={() => { setSectionFilter(null); setActiveFilter(null); }} className="w-full text-left px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-gray-50 rounded-lg">Clear Filter</button>
-                                    {Array.from(new Set(
-                                        (activePlanner?.pages || [])
-                                            .filter(p => (!currentYear || p.year == currentYear) && (!currentMonth || p.month === currentMonth))
-                                            .map(p => p.section)
-                                            .filter(Boolean)
-                                    )).sort().map(sec => (
-                                        <button
-                                            key={sec as string}
-                                            onClick={() => { setSectionFilter(sec as string); setActiveFilter(null); }}
-                                            className={cn("w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg transition-colors", currentSection === sec ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50")}
-                                        >
-                                            {sec as string}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Category Filter */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setActiveFilter(activeFilter === 'category' ? null : 'category')}
-                                className={cn(
-                                    "p-2 rounded-lg transition-all flex items-center gap-1.5",
-                                    currentCategory ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-500"
-                                )}
-                                title="Filter by Category"
-                            >
-                                <Filter className="h-4 w-4" />
-                                <span className="text-[10px] font-bold uppercase">{currentCategory || 'Category'}</span>
-                            </button>
-                            {activeFilter === 'category' && (
-                                <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-in fade-in slide-in-from-top-1">
-                                    <button onClick={() => { setCategoryFilter(null); setActiveFilter(null); }} className="w-full text-left px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-gray-50 rounded-lg">Clear Filter</button>
-                                    {Array.from(new Set(
-                                        (activePlanner?.pages || [])
-                                            .filter(p => (!currentYear || p.year == currentYear) && (!currentMonth || p.month === currentMonth) && (!currentSection || p.section === currentSection))
-                                            .map(p => p.category)
-                                            .filter(Boolean)
-                                    )).sort().map(cat => (
-                                        <button
-                                            key={cat as string}
-                                            onClick={() => { setCategoryFilter(cat as string); setActiveFilter(null); }}
-                                            className={cn("w-full text-left px-3 py-2 text-[10px] font-bold rounded-lg transition-colors", currentCategory === cat ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50")}
-                                        >
-                                            {cat as string}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    {/* Filters - Compact */}
+                    <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg shadow-sm border border-gray-100">
+                        <FilterSelector label={currentYear?.toString() || 'YEAR'} active={activeFilter === 'year'} onClick={() => setActiveFilter(activeFilter === 'year' ? null : 'year')} icon={<Calendar size={12} />} />
+                        <FilterSelector label={currentMonth || 'MONTH'} active={activeFilter === 'month'} onClick={() => setActiveFilter(activeFilter === 'month' ? null : 'month')} icon={<CalendarDays size={12} />} />
+                        <FilterSelector label={currentSection || 'SECTION'} active={activeFilter === 'section'} onClick={() => setActiveFilter(activeFilter === 'section' ? null : 'section')} icon={<Layout size={12} />} />
+                        <FilterSelector label={currentCategory || 'CATEGORY'} active={activeFilter === 'category'} onClick={() => setActiveFilter(activeFilter === 'category' ? null : 'category')} icon={<Filter size={12} />} />
 
                         {(currentYear || currentMonth || currentSection || currentCategory) && (
-                            <button
-                                onClick={() => { setYearFilter(null); setMonthFilter(null); setSectionFilter(null); setCategoryFilter(null); }}
-                                className="p-2 text-gray-300 hover:text-red-500 transition-colors"
-                                title="Clear All Filters"
-                            >
-                                <XCircle className="h-4 w-4" />
+                            <button onClick={() => { setYearFilter(null); setMonthFilter(null); setSectionFilter(null); setCategoryFilter(null); }} className="p-1 text-gray-300 hover:text-red-500">
+                                <XCircle size={14} />
                             </button>
                         )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 lg:gap-6 overflow-x-auto no-scrollbar py-1">
-                    <div className="flex items-center gap-2 lg:gap-4 border-r border-gray-200 pr-3 lg:pr-6 lg:mr-1 shrink-0">
-                        <button
-                            onClick={onDelete}
-                            className="text-[10px] lg:text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors"
-                        >
-                            DELETE
-                        </button>
-                        <button
-                            onClick={onClear}
-                            className="text-[10px] lg:text-[11px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                            CLEAR
-                        </button>
-                        <div className="w-px h-6 bg-gray-200 mx-1 lg:mx-2" />
-
-                        {/* Undo/Redo Buttons */}
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={onUndo}
-                                disabled={!canUndo}
-                                className={cn(
-                                    "p-1.5 lg:p-2 rounded-xl transition-all",
-                                    canUndo
-                                        ? "hover:bg-gray-100 text-gray-600"
-                                        : "text-gray-300 cursor-not-allowed"
-                                )}
-                                title="Undo (Ctrl+Z)"
-                            >
-                                <Undo2 className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={onRedo}
-                                disabled={!canRedo}
-                                className={cn(
-                                    "p-1.5 lg:p-2 rounded-xl transition-all",
-                                    canRedo
-                                        ? "hover:bg-gray-100 text-gray-600"
-                                        : "text-gray-300 cursor-not-allowed"
-                                )}
-                                title="Redo (Ctrl+Y)"
-                            >
-                                <Redo2 className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <div className="w-px h-6 bg-gray-200 mx-1 lg:mx-2" />
-
-                        <button
-                            onClick={() => onToolSelect('background')}
-                            className={cn(
-                                "p-2 rounded-xl transition-all",
-                                activeTool === 'background' ? "bg-indigo-100 text-indigo-600" : "hover:bg-gray-100 text-gray-500"
-                            )}
-                            title="Background"
-                        >
-                            <Palette className="h-5 w-5" />
-                        </button>
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1.5 bg-gray-50/50 p-1 rounded-lg border border-gray-100 shrink-0">
+                    <div className="flex items-center gap-0.5">
+                        <button onClick={onZoomOut} className="p-1 hover:bg-white rounded-md text-gray-400"><ZoomOut size={14} /></button>
+                        <span className="text-[10px] font-black text-indigo-600 min-w-[30px] text-center">{Math.round(zoomScale * 100)}%</span>
+                        <button onClick={onZoomIn} className="p-1 hover:bg-white rounded-md text-gray-400"><ZoomIn size={14} /></button>
                     </div>
-
-                    <div className="flex items-center gap-2 lg:gap-3 shrink-0">
-                        <button onClick={onZoomOut} className="p-1 lg:p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-all active:scale-90" title="Zoom Out">
-                            <ZoomOut className="h-4 w-4" />
-                        </button>
-                        <button onClick={onZoomReset} className="text-[10px] lg:text-[11px] font-bold text-gray-600 min-w-[30px] lg:min-w-[40px] text-center hover:text-indigo-600 transition-colors" title="Reset Zoom">
-                            {Math.round(zoomScale * 100)}%
-                        </button>
-                        <button onClick={onZoomIn} className="p-1 lg:p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-all active:scale-90" title="Zoom In">
-                            <ZoomIn className="h-4 w-4" />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={onZoomReset} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-all active:scale-90" title="Reset Camera">
-                            <RotateCcw className="h-4 w-4" />
-                        </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-all active:scale-90">
-                            <Maximize className="h-4 w-4" />
-                        </button>
-                    </div>
+                    <div className="w-px h-4 bg-gray-200" />
+                    <button onClick={onZoomReset} className="p-1 hover:bg-white rounded-md text-gray-400"><RotateCcw size={14} /></button>
+                    <button className="p-1 hover:bg-white rounded-md text-gray-400"><Maximize size={14} /></button>
                 </div>
             </div>
+
+            {/* Filter Dropdowns Positioning */}
+            {activeFilter && (
+                <div className="relative">
+                    {activeFilter === 'year' && <FilterDropdown onClose={() => setActiveFilter(null)} options={Array.from(new Set(activePlanner?.pages?.map(p => p.year).filter(Boolean) || [])).sort() as number[]} onSelect={setYearFilter} selected={currentYear} />}
+                    {activeFilter === 'month' && <FilterDropdown onClose={() => setActiveFilter(null)} options={['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']} onSelect={(val) => setMonthFilter(val as any)} selected={currentMonth} />}
+                    {activeFilter === 'section' && <FilterDropdown onClose={() => setActiveFilter(null)} options={Array.from(new Set(activePlanner?.pages?.map(p => p.section).filter(Boolean) || [])).sort() as string[]} onSelect={(val) => setSectionFilter(val as any)} selected={currentSection} />}
+                    {activeFilter === 'category' && <FilterDropdown onClose={() => setActiveFilter(null)} options={Array.from(new Set([...libraryCategories, ...(activePlanner?.pages?.map(p => p.category).filter(Boolean) as string[] || [])])).sort() as string[]} onSelect={(val) => setCategoryFilter(val as any)} selected={currentCategory} />}
+                </div>
+            )}
+
+            <PlannerSettingsModal isOpen={showPlannerSettings} onClose={() => setShowPlannerSettings(false)} />
         </div>
     );
 }
 
-function ToolButton({ icon, active, onClick, className }: { icon: React.ReactNode, active: boolean, onClick: () => void, className?: string }) {
+function ToolButton({ icon, active, onClick }: { icon: React.ReactNode, active: boolean, onClick: () => void }) {
     return (
         <button
             onClick={onClick}
             className={cn(
-                "p-1.5 lg:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0",
-                active
-                    ? "bg-white shadow-sm ring-1 ring-gray-100 text-orange-500"
-                    : "text-gray-500 hover:bg-white hover:text-gray-900"
-                , className)}
+                "p-1.5 md:p-2 rounded-md transition-all flex items-center justify-center shrink-0",
+                active ? "bg-white shadow-sm ring-1 ring-gray-100 text-indigo-600" : "text-gray-500 hover:bg-white hover:text-gray-900"
+            )}
         >
             {icon}
         </button>
+    );
+}
+
+function FilterSelector({ label, active, onClick, icon }: { label: string, active: boolean, onClick: () => void, icon: React.ReactNode }) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "flex items-center gap-1 px-1.5 py-1 rounded-md transition-all",
+                active ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-400"
+            )}
+        >
+            {icon}
+            <span className="text-[9px] font-bold uppercase truncate max-w-[50px]">{label}</span>
+        </button>
+    );
+}
+
+function FilterDropdown({ options, onSelect, selected, onClose }: { options: (string | number)[], onSelect: (val: any) => void, selected: any, onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[200]" onClick={onClose}>
+            <div
+                className="absolute bg-white rounded-xl shadow-2xl border border-gray-100 p-1.5 w-40 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95"
+                style={{ top: '80px', left: '10%' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {options.map(opt => (
+                    <button
+                        key={opt}
+                        onClick={() => { onSelect(opt); onClose(); }}
+                        className={cn(
+                            "w-full text-left px-3 py-2 text-[11px] font-bold rounded-lg transition-colors",
+                            selected === opt ? "bg-indigo-50 text-indigo-600" : "text-gray-600 hover:bg-gray-50"
+                        )}
+                    >
+                        {opt}
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 }

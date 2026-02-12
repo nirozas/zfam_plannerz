@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlannerStore } from '@/store/plannerStore';
 import { cn } from '@/lib/utils';
+import { PDFThumbnail } from '../ui/PDFThumbnail';
 
 interface AssetHubProps {
     isOpen: boolean;
@@ -379,10 +380,7 @@ export function AssetHub({ isOpen, onClose, onSelectAsset, initialTab }: AssetHu
                                                             )}
                                                         >
                                                             {asset.url.toLowerCase().endsWith('.pdf') ? (
-                                                                <div className="flex flex-col items-center gap-2">
-                                                                    <Book className="w-12 h-12 text-indigo-400" />
-                                                                    <span className="text-[10px] font-bold text-gray-500">PDF Planner</span>
-                                                                </div>
+                                                                <PDFThumbnail url={asset.url} />
                                                             ) : (
                                                                 <img
                                                                     src={asset.url}

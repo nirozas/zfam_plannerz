@@ -806,7 +806,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                 const lineText = text.substring(lineStartIndex, actualLineEndIndex);
 
                 // Basic prefix clean up
-                let clean = lineText.trimStart().replace(/^([•▪○*-]|\d+\.)\s+/, '').replace(/^\[[ x]\]\s+/, '');
+                let clean = lineText.trimStart().replace(/^([•▪○*-]|\d+\.)\s+/, '').replace(/^\[[ x-]\]\s+/, '');
 
                 let transformedLine = '';
                 if (type === 'bullet') transformedLine = `• ${clean} `;
@@ -823,7 +823,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                     transformedLine = `${num}. ${clean} `;
                 }
                 else if (type === 'square') transformedLine = `▪ ${clean} `;
-                else if (type === 'checkbox') transformedLine = `[] ${clean} `;
+                else if (type === 'checkbox') transformedLine = `[ ] ${clean} `;
                 else transformedLine = clean;
 
                 const newText = text.substring(0, lineStartIndex) + transformedLine + text.substring(actualLineEndIndex);
@@ -839,11 +839,11 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
             } else {
                 const lines = text.split('\n');
                 const newLines = lines.map((line, i) => {
-                    let clean = line.trimStart().replace(/^([•▪○*-]|\d+\.)\s+/, '').replace(/^\[[ x]\]\s+/, '');
+                    let clean = line.trimStart().replace(/^([•▪○*-]|\d+\.)\s+/, '').replace(/^\[[ x-]\]\s+/, '');
                     if (type === 'bullet') return `• ${clean} `;
                     if (type === 'number') return `${i + 1}. ${clean} `;
                     if (type === 'square') return `▪ ${clean} `;
-                    if (type === 'checkbox') return `[] ${clean} `;
+                    if (type === 'checkbox') return `[ ] ${clean} `;
                     return clean;
                 });
                 updateElement(targetId, { text: newLines.join('\n') });
@@ -1487,15 +1487,15 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                             interactionRef.current.isZooming = false;
                         }
 
-                        // SWIPE DETECTION
-                        if (touchStartPos.current && e.evt.changedTouches.length === 1 && !selectedId) {
+                        // SWIPE DETECTION: Only if not zoomed in and not selecting
+                        if (zoomScale < 1.05 && touchStartPos.current && e.evt.changedTouches.length === 1 && !selectedId) {
                             const dx = e.evt.changedTouches[0].clientX - touchStartPos.current.x;
                             const dy = e.evt.changedTouches[0].clientY - touchStartPos.current.y;
 
                             const absDx = Math.abs(dx);
                             const absDy = Math.abs(dy);
 
-                            if (absDx > 80 && absDy < absDx / 2) {
+                            if (absDx > 120 && absDy < absDx / 2) { // Increased threshold to 120
                                 if (dx > 0) prevPage();
                                 else nextPage();
                                 touchStartPos.current = null;
@@ -1639,7 +1639,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                                         strokeWidth={0.5}
                                         dash={editMode === 'write' ? [3, 3] : undefined}
                                         onMouseEnter={(e) => {
-                                            if (editMode === 'read') {
+                                            if (externalTool === 'select' || externalTool === 'link') {
                                                 const container = e.target.getStage()?.container();
                                                 if (container) container.style.cursor = 'pointer';
                                             }
@@ -1649,21 +1649,25 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                                             if (container) container.style.cursor = externalTool === 'select' ? 'default' : 'crosshair';
                                         }}
                                         onDblClick={() => {
-                                            if (link.targetPageIndex !== undefined) {
-                                                usePlannerStore.getState().goToPage(link.targetPageIndex);
-                                            } else if (link.url) {
-                                                window.open(link.url, '_blank');
+                                            if (externalTool === 'select' || externalTool === 'link') {
+                                                if (link.targetPageIndex !== undefined) {
+                                                    usePlannerStore.getState().goToPage(link.targetPageIndex);
+                                                } else if (link.url) {
+                                                    window.open(link.url, '_blank');
+                                                }
                                             }
                                         }}
                                         onDblTap={() => {
-                                            if (link.targetPageIndex !== undefined) {
-                                                usePlannerStore.getState().goToPage(link.targetPageIndex);
-                                            } else if (link.url) {
-                                                window.open(link.url, '_blank');
+                                            if (externalTool === 'select' || externalTool === 'link') {
+                                                if (link.targetPageIndex !== undefined) {
+                                                    usePlannerStore.getState().goToPage(link.targetPageIndex);
+                                                } else if (link.url) {
+                                                    window.open(link.url, '_blank');
+                                                }
                                             }
                                         }}
                                         onClick={() => {
-                                            if (editMode === 'read') {
+                                            if (externalTool === 'select' || externalTool === 'link') {
                                                 if (link.targetPageIndex !== undefined) {
                                                     usePlannerStore.getState().goToPage(link.targetPageIndex);
                                                 } else if (link.url) {
@@ -1672,7 +1676,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                                             }
                                         }}
                                         onTap={() => {
-                                            if (editMode === 'read') {
+                                            if (externalTool === 'select' || externalTool === 'link') {
                                                 if (link.targetPageIndex !== undefined) {
                                                     usePlannerStore.getState().goToPage(link.targetPageIndex);
                                                 } else if (link.url) {

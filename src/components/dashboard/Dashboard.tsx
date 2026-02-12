@@ -7,7 +7,7 @@ import CreationWizard from './CreationWizard';
 import { CoverEditorModal } from './CoverEditorModal'; // New Import
 import { PDFImportModal } from './PDFImportModal';
 import './Dashboard.css';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../supabase/client';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -127,16 +127,16 @@ const Dashboard: React.FC = () => {
 
                 <nav className="nav-menu">
                     <NavLink to="/homepage" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <LayoutGrid size={20} /> Home
+                        <LayoutGrid size={20} /> <span>Home</span>
                     </NavLink>
                     <NavLink to="/favorites" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Heart size={20} /> Favorites
+                        <Heart size={20} /> <span>Favorites</span>
                     </NavLink>
                     <NavLink to="/archive" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Archive size={20} /> Archive
+                        <Archive size={20} /> <span>Archive</span>
                     </NavLink>
                     <NavLink to="/library" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Book size={20} /> Library
+                        <Book size={20} /> <span>Library</span>
                     </NavLink>
                 </nav>
 
@@ -362,3 +362,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

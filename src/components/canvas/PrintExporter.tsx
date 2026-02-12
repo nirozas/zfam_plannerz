@@ -142,22 +142,30 @@ export const PrintExporter = ({ range, customRange, onClose, onProgress, onCompl
         }
 
         setPagesToPrint(pages);
-        startPrinting();
+        startPrinting(pages);
     }, []);
 
     const pdfRef = useRef<jsPDF | null>(null);
+    const PX_TO_MM = 25.4 / 96;
 
-    const startPrinting = async () => {
+    const startPrinting = async (pages: number[]) => {
+        if (!activePlanner || pages.length === 0) return;
+
         setIsPrinting(true);
-        // Initialize PDF
-        // Currently assuming A4 portrait, but we should match planner dimensions ideally
-        // A4: 210mm x 297mm
-        // If planner is landscape, we set orientation 'l'
+
+        // Get dimensions of the first page to initialize PDF
+        const firstPageData = activePlanner.pages[pages[0]];
+        const wPx = firstPageData?.dimensions?.width || 800;
+        const hPx = firstPageData?.dimensions?.height || 1000;
+
+        const wMm = wPx * PX_TO_MM;
+        const hMm = hPx * PX_TO_MM;
+
+        // Initialize PDF with the first page's size
         pdfRef.current = new jsPDF({
-            orientation: 'p',
+            orientation: wMm > hMm ? 'l' : 'p',
             unit: 'mm',
-            format: 'a4'
-            // Note: We'll adjust page size per page if needed or scale content
+            format: [wMm, hMm]
         });
 
         // Start processing first page
@@ -217,13 +225,22 @@ export const PrintExporter = ({ range, customRange, onClose, onProgress, onCompl
 
             if (pdfRef.current) {
                 const pdf = pdfRef.current;
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                // Calculate dimensions for the CURRENT page
+                const wPx = pageData?.dimensions?.width || 800;
+                const hPx = pageData?.dimensions?.height || 1000;
+                const wMm = wPx * PX_TO_MM;
+                const hMm = hPx * PX_TO_MM;
 
                 // Add new page if not the very first page of the doc
                 if (currentIndex > 0) {
-                    pdf.addPage();
+                    pdf.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
                 }
+
+                // Add image to the current page (filling it completely)
+                // Using internal page size to be safe
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
 
                 pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
             }

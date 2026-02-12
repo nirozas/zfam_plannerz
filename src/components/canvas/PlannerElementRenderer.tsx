@@ -1,6 +1,7 @@
 import { Line, Rect, Circle, RegularPolygon, Star, Arrow, Text as KonvaText, Group } from 'react-konva';
 import { usePlannerStore } from '@/store/plannerStore';
 import { ResizableImage } from './ResizableImage';
+import { SmartCheckbox, CheckboxState } from './SmartCheckbox';
 
 // Define Tool type locally if not available globally, or use string
 type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'sticker' | 'shape';
@@ -225,36 +226,52 @@ export const PlannerElementRenderer = ({
     if (el.type === 'text') {
         const textWidth = el.width || 200;
         const textHeight = el.height || 100;
+        const fontSize = el.fontSize || 16;
+        const lineHeight = fontSize * 1.2;
+        const padding = 8;
+
+        const lines = (el.text || '').split('\n');
 
         const handleTextClick = (e: any) => {
-            if (readOnly || externalTool !== 'select' || el.isLocked) return;
+            if (readOnly || (externalTool !== 'select' && externalTool !== 'text') || el.isLocked) return;
 
-            // Simple line-based toggle logic
             const stage = e.target.getStage();
             const mousePos = stage.getPointerPosition();
             const transform = e.currentTarget.getAbsoluteTransform().copy().invert();
             const localPos = transform.point(mousePos);
 
-            // Padding is 8, line height is approx 1.2 * fontSize
-            const fontSize = el.fontSize || 16;
-            const lineHeight = fontSize * 1.2;
-            const relativeY = localPos.y - 8;
+            const relativeY = localPos.y - padding;
             const lineIndex = Math.floor(relativeY / lineHeight);
 
-            const lines = (el.text || '').split('\n');
             if (lineIndex >= 0 && lineIndex < lines.length) {
                 const line = lines[lineIndex];
-                if (line.trim().startsWith('[ ]') || line.trim().startsWith('[x]')) {
-                    const newLines = [...lines];
-                    newLines[lineIndex] = line.trim().startsWith('[ ]')
-                        ? line.replace('[ ]', '[x]')
-                        : line.replace('[x]', '[ ]');
-                    handleUpdate(el.id, { text: newLines.join('\n') });
-                    // No return here, allow selection as well
+                const trimmed = line.trimStart();
+                if (trimmed.startsWith('[ ]') || trimmed.startsWith('[x]') || trimmed.startsWith('[-]')) {
+                    // Checkbox click is handled by SmartCheckbox component
+                    // But we still want to select the element if in select mode
                 }
             }
 
             onSelect(el.id);
+        };
+
+        const handleCheckboxChange = (lineIndex: number, newState: CheckboxState) => {
+            if (readOnly || el.isLocked) return;
+            const newLines = [...lines];
+            const line = newLines[lineIndex];
+
+            // Map states back to text representation
+            const stateMap: Record<CheckboxState, string> = {
+                'empty': '[ ]',
+                'completed': '[x]',
+                'failed': '[-]'
+            };
+
+            const prefix = line.match(/^\s*/)?.[0] || '';
+            const content = line.trimStart().replace(/^\[[ x-]\]/, '');
+            newLines[lineIndex] = `${prefix}${stateMap[newState]}${content}`;
+
+            handleUpdate(el.id, { text: newLines.join('\n') });
         };
 
         return (
@@ -263,17 +280,25 @@ export const PlannerElementRenderer = ({
                 id={el.id}
                 x={el.x}
                 y={el.y}
-                draggable={!readOnly && externalTool === 'select' && !el.isLocked}
+                draggable={!readOnly && (externalTool === 'select' || externalTool === 'text') && !el.isLocked}
                 onClick={handleTextClick}
                 onTap={handleTextClick}
-                onDblClick={() => { if (!readOnly && externalTool === 'select' && !el.isLocked) onTextDblClick?.(el.id); }}
+                onDblClick={() => {
+                    if (!readOnly && (externalTool === 'select' || externalTool === 'text') && !el.isLocked) {
+                        onTextDblClick?.(el.id);
+                    }
+                }}
                 onDragEnd={(e: any) => handleUpdate(el.id, { x: e.target.x(), y: e.target.y() })}
                 onTransformEnd={(e: any) => {
                     if (readOnly) return;
-                    const node = e.target; const scaleX = node.scaleX(); const scaleY = node.scaleY();
-                    node.scaleX(1); node.scaleY(1);
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    node.scaleX(1);
+                    node.scaleY(1);
                     handleUpdate(el.id, {
-                        x: node.x(), y: node.y(),
+                        x: node.x(),
+                        y: node.y(),
                         width: Math.max(50, (el.width || 200) * scaleX),
                         height: Math.max(20, (el.height || 100) * scaleY),
                         rotation: node.rotation()
@@ -283,21 +308,76 @@ export const PlannerElementRenderer = ({
                 {renderHighlight(textWidth, textHeight)}
                 {el.backgroundColor && el.backgroundColor !== 'transparent' && <Rect width={textWidth} height={textHeight} fill={el.backgroundColor} cornerRadius={4} />}
                 {el.borderColor && el.borderColor !== 'transparent' && (el.borderWidth || 0) > 0 && <Rect width={textWidth} height={textHeight} stroke={el.borderColor} strokeWidth={el.borderWidth} cornerRadius={4} dash={el.borderStyle === 'dashed' ? [5, 5] : []} />}
-                <KonvaText
-                    visible={editingTextId !== el.id}
-                    text={el.text || 'Click to add text'}
-                    fontSize={el.fontSize || 16}
-                    fontFamily={el.fontFamily || 'Inter'}
-                    fill={el.fill || '#000000'}
-                    fontStyle={el.fontStyle || 'normal'}
-                    align={el.align || 'left'}
-                    verticalAlign={el.verticalAlign || 'top'}
-                    width={textWidth}
-                    height={textHeight}
-                    padding={8}
-                    wrap="word"
-                    opacity={el.text ? 1 : 0.4}
-                />
+
+                <Group visible={editingTextId !== el.id}>
+                    {lines.map((line: string, i: number) => {
+                        const trimmed = line.trimStart();
+                        const indent = line.length - trimmed.length;
+                        const charWidth = fontSize * 0.6; // Approximation for Inter
+                        const xOffset = padding + (indent * charWidth / 2);
+
+                        let checkboxState: CheckboxState | null = null;
+                        let textContent = line;
+
+                        if (trimmed.startsWith('[ ]')) {
+                            checkboxState = 'empty';
+                            textContent = line.replace('[ ]', '    '); // Replace with spaces to preserve layout
+                        } else if (trimmed.startsWith('[x]')) {
+                            checkboxState = 'completed';
+                            textContent = line.replace('[x]', '    ');
+                        } else if (trimmed.startsWith('[-]')) {
+                            checkboxState = 'failed';
+                            textContent = line.replace('[-]', '    ');
+                        }
+
+                        const isCompleted = checkboxState === 'completed';
+                        const isFailed = checkboxState === 'failed';
+
+                        return (
+                            <Group key={i} y={i * lineHeight}>
+                                <KonvaText
+                                    x={0}
+                                    y={0}
+                                    text={textContent}
+                                    fontSize={fontSize}
+                                    fontFamily={el.fontFamily || 'Inter'}
+                                    fill={el.fill || '#000000'}
+                                    fontStyle={el.fontStyle || 'normal'}
+                                    align={el.align || 'left'}
+                                    verticalAlign="top"
+                                    width={textWidth}
+                                    padding={padding}
+                                    wrap="none" // Line by line rendering
+                                    opacity={isFailed ? 0.5 : 1}
+                                />
+                                {checkboxState && (
+                                    <SmartCheckbox
+                                        state={checkboxState}
+                                        x={padding + (indent * 8)}
+                                        y={(lineHeight - 18) / 2 + 2}
+                                        size={18}
+                                        onChange={(s) => handleCheckboxChange(i, s)}
+                                    />
+                                )}
+                                {(isCompleted || isFailed) && (
+                                    <Line
+                                        points={[
+                                            xOffset + (checkboxState ? 24 : 0),
+                                            padding + lineHeight / 2,
+                                            textWidth - padding,
+                                            padding + lineHeight / 2
+                                        ]}
+                                        stroke={el.fill || '#000000'}
+                                        strokeWidth={1}
+                                        opacity={isFailed ? 0.4 : 0.6}
+                                        listening={false}
+                                    />
+                                )}
+                            </Group>
+                        );
+                    })}
+                </Group>
+
                 {!readOnly && isSelected && !editingTextId && <Rect width={textWidth} height={textHeight} stroke="#4F46E5" strokeWidth={1} dash={[4, 2]} listening={false} />}
             </Group>
         );

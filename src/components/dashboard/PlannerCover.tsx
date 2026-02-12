@@ -43,7 +43,7 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
     };
 
     return (
-        <div className="flex flex-col items-center gap-3 w-56">
+        <div className="flex flex-col items-center gap-3 w-full">
             <motion.div
                 className="planner-book-container relative w-full aspect-[2/3]"
                 whileHover={{ scale: 1.05, rotateY: -10 }}

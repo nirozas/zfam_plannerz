@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Heart, Archive, Hash, ChevronRight, Edit, Trash2, Palette } from 'lucide-react';
+import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Heart, Archive, Hash, ChevronRight, Edit, Trash2, Palette, RefreshCcw } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { usePlannerStore } from '../../store/plannerStore';
 import AssetEditor from './AssetEditor';
 import { PDFImportModal } from '../dashboard/PDFImportModal';
+import { PDFThumbnail } from '../ui/PDFThumbnail';
 import * as pdfjsLib from 'pdfjs-dist';
 import { generateUUID } from '../../store/plannerStore';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../supabase/client';
 import '../dashboard/Dashboard.css';
 
 // Configure PDF.js worker
@@ -59,6 +60,9 @@ const LibraryPage: React.FC = () => {
     const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
     const [pdfSourceUrl, setPdfSourceUrl] = useState<string | undefined>(undefined);
 
+    // Sidebar Visibility
+    const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
+
     // Initial fetch
     useEffect(() => {
         fetchLibraryCategories(activeTab);
@@ -96,7 +100,8 @@ const LibraryPage: React.FC = () => {
                     if (activeTab === 'planner' && file.type === 'application/pdf') {
                         try {
                             const arrayBuffer = await file.arrayBuffer();
-                            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                            const pdf = await loadingTask.promise;
                             if (pdf.numPages > 0) {
                                 const page = await pdf.getPage(1);
                                 const viewport = page.getViewport({ scale: 0.5 });
@@ -147,8 +152,6 @@ const LibraryPage: React.FC = () => {
             setIsUploading(false);
         }
     };
-
-
 
     const handleEditMetadata = (asset: any) => {
         setEditingAsset(asset);
@@ -224,303 +227,188 @@ const LibraryPage: React.FC = () => {
 
     return (
         <div className="dashboard-layout">
-            {/* Sidebar Navigation */}
+            {/* 1. PRIMARY SIDEBAR (Fixed Narrow 70px) */}
             <aside className="dashboard-sidebar">
                 <div className="brand-logo">ZOABI</div>
                 <nav className="nav-menu">
-                    <NavLink to="/homepage" className="nav-item">
-                        <LayoutGrid size={20} /> Home
+                    <NavLink to="/homepage" className="nav-item" title="Home">
+                        <LayoutGrid size={22} />
                     </NavLink>
-                    <NavLink to="/favorites" className="nav-item">
-                        <Heart size={20} /> Favorites
+                    <NavLink to="/favorites" className="nav-item" title="Favorites">
+                        <Heart size={22} />
                     </NavLink>
-                    <NavLink to="/archive" className="nav-item">
-                        <Archive size={20} /> Archive
+                    <NavLink to="/archive" className="nav-item" title="Archive">
+                        <Archive size={22} />
                     </NavLink>
-                    <div className="nav-item active">
-                        <Book size={20} /> Library
+                    <div className="nav-item active" title="Library">
+                        <Book size={22} />
                     </div>
                 </nav>
+                <div className="sidebar-footer">
+                    <div className="avatar-circle">M</div>
+                </div>
             </aside>
 
-            {/* Content Area */}
-            <main className="dashboard-main" style={{ background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+            {/* THE STAGE */}
+            <main className="dashboard-main">
+                {/* 5. HEADER (Compact Single Row Row) */}
                 <header className="dashboard-header">
-                    <div className="search-bar">
-                        <div className="search-wrapper">
-                            <Search size={18} className="search-icon" />
-                            <input
-                                type="text"
-                                placeholder={`Search ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}s...`}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                    <div className="header-left-group">
+                        <button
+                            onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex' }}
+                            title="Toggle Categories"
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
+                        <h2 className="library-title-compact">Library</h2>
+
+                        <div className="nav-pill-tabs">
+                            <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
+                            <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
+                            <TabButton active={activeTab === 'template'} onClick={() => setActiveTab('template')} icon={<LayoutTemplate size={14} />} label="Templates" />
+                            <TabButton active={activeTab === 'image'} onClick={() => setActiveTab('image')} icon={<FileImage size={14} />} label="Images" />
+                            <TabButton active={activeTab === 'planner'} onClick={() => setActiveTab('planner')} icon={<Book size={14} />} label="Planners" />
                         </div>
                     </div>
-                    <button
-                        className="btn-refresh"
-                        style={{ marginLeft: '1rem', whiteSpace: 'nowrap' }}
-                        onClick={() => {
-                            fetchLibraryCategories(activeTab);
-                            fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined);
-                        }}
-                    >
-                        Refresh Library
-                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="search-bar">
+                            <div className="search-wrapper">
+                                <Search size={14} className="search-icon" />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', paddingLeft: '32px' }}
+                                />
+                            </div>
+                        </div>
+                        <button
+                            className="btn-refresh"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                            onClick={() => {
+                                fetchLibraryCategories(activeTab);
+                                fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined);
+                            }}
+                            title="Refresh"
+                        >
+                            <RefreshCcw size={14} />
+                        </button>
+                    </div>
                 </header>
 
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                    {/* Secondary Sidebar for Categories */}
-                    <aside style={{
-                        width: '240px',
-                        background: 'white',
-                        borderRight: '1px solid #e2e8f0',
-                        padding: '1.5rem',
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem'
-                    }}>
-                        <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05rem', marginBottom: '1rem' }}>Categories</h3>
-
-                        <button
+                    {/* 2. SECONDARY SIDEBAR (Fluid-Fixed fit-content) */}
+                    <aside className={`library-secondary-sidebar ${isCategoriesExpanded ? 'expanded' : 'collapsed'}`}>
+                        <h3 className="sidebar-section-title">Categories</h3>
+                        <CategoryButton
+                            active={selectedCategory === null}
                             onClick={() => handleCategorySelect(null)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                width: '100%',
-                                padding: '0.6rem 0.8rem',
-                                borderRadius: '8px',
-                                background: selectedCategory === null ? '#f1f5f9' : 'transparent',
-                                color: selectedCategory === null ? '#6366f1' : '#64748b',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontWeight: selectedCategory === null ? '600' : '400'
-                            }}
-                        >
-                            <span>All {activeTab}s</span>
-                            {selectedCategory === null && <ChevronRight size={14} />}
-                        </button>
-
+                            label={`All ${activeTab}s`}
+                            showChevron={selectedCategory === null}
+                        />
                         {libraryCategories.map(cat => (
-                            <button
+                            <CategoryButton
                                 key={cat}
+                                active={selectedCategory === cat}
                                 onClick={() => handleCategorySelect(cat)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    width: '100%',
-                                    padding: '0.6rem 0.8rem',
-                                    borderRadius: '8px',
-                                    background: selectedCategory === cat ? '#f1f5f9' : 'transparent',
-                                    color: selectedCategory === cat ? '#6366f1' : '#64748b',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: selectedCategory === cat ? '600' : '400',
-                                    textAlign: 'left'
-                                }}
-                            >
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat}</span>
-                                {selectedCategory === cat && <ChevronRight size={14} />}
-                            </button>
+                                label={cat}
+                                showChevron={selectedCategory === cat}
+                            />
                         ))}
                     </aside>
 
-                    {/* Main Grid */}
-                    <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                            <div>
-                                <h1 style={{ fontSize: '2rem', fontWeight: '800', background: 'linear-gradient(to right, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-                                    Asset Library
-                                </h1>
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                    {activeHashtag && (
-                                        <span
-                                            onClick={() => handleHashtagSelect(null)}
-                                            style={{ background: '#e0e7ff', color: '#4338ca', padding: '0.2rem 0.6rem', borderRadius: '100px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                        >
-                                            <Hash size={12} /> {activeHashtag} ✕
-                                        </span>
-                                    )}
-                                </div>
+                    {/* 3. CONTENT AREA (Flex-Grow Stage) */}
+                    <div className="content-scroll-area">
+                        {activeHashtag && (
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <span
+                                    onClick={() => handleHashtagSelect(null)}
+                                    style={{ background: '#e0e7ff', color: '#4338ca', padding: '0.2rem 0.6rem', borderRadius: '100px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content' }}
+                                >
+                                    <Hash size={12} /> {activeHashtag} ✕
+                                </span>
                             </div>
-
-                            {/* Main Tabs */}
-                            <div className="glass-panel" style={{ padding: '0.4rem', borderRadius: '12px', display: 'flex', gap: '0.2rem' }}>
-                                <button className={`tab-btn ${activeTab === 'sticker' ? 'active' : ''}`} onClick={() => setActiveTab('sticker')}>
-                                    <Sticker size={16} /> Stickers
-                                </button>
-                                <button className={`tab-btn ${activeTab === 'cover' ? 'active' : ''}`} onClick={() => setActiveTab('cover')}>
-                                    <FileImage size={16} /> Covers
-                                </button>
-                                <button className={`tab-btn ${activeTab === 'template' ? 'active' : ''}`} onClick={() => setActiveTab('template')}>
-                                    <LayoutTemplate size={16} /> Templates
-                                </button>
-                                <button className={`tab-btn ${activeTab === 'image' ? 'active' : ''}`} onClick={() => setActiveTab('image')}>
-                                    <FileImage size={16} /> My Images
-                                </button>
-                                <button className={`tab-btn ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>
-                                    <Book size={16} /> Planners
-                                </button>
-                            </div>
-                        </div>
+                        )}
 
                         {isLoadingAssets ? (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: '#64748b' }}>Loading assets...</div>
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: '#64748b' }}>
+                                <RefreshCcw size={24} className="animate-spin" />
+                            </div>
                         ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                                gap: '1.5rem'
-                            }}>
-                                {/* Upload Button */}
-                                <div style={{
-                                    aspectRatio: '1',
-                                    background: 'white',
-                                    borderRadius: '16px',
-                                    border: '2px dashed #e2e8f0',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexDirection: 'column',
-                                    color: '#94a3b8',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+                            <div className="library-asset-grid">
+                                {/* Add Asset Button Card */}
+                                <div
+                                    className="asset-card"
                                     onClick={() => setIsUploadModalOpen(true)}
+                                    style={{ border: '2px dashed #e2e8f0', justifyContent: 'center', alignItems: 'center', background: '#fcfdfe' }}
                                 >
-                                    <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>+</div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
+                                    <div style={{ fontSize: '2rem', color: '#cbd5e1' }}>+</div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#94a3b8' }}>
+                                        Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                                    </div>
                                 </div>
 
                                 {libraryAssets.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase())).map(asset => (
-                                    <div key={asset.id} className="asset-card" style={{
-                                        background: 'white',
-                                        borderRadius: '16px',
-                                        padding: '1rem',
-                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.75rem',
-                                        border: '1px solid #f1f5f9',
-                                        transition: 'all 0.2s',
-                                        cursor: 'pointer',
-                                        position: 'relative'
-                                    }}>
-                                        {isAdmin && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '0.5rem',
-                                                right: '0.5rem',
-                                                display: 'flex',
-                                                gap: '0.3rem',
-                                                zIndex: 10
-                                            }}>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleEditMetadata(asset); }}
-                                                    style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem', color: '#6366f1', display: 'flex' }}
-                                                    title="Edit Metadata"
-                                                >
-                                                    <Edit size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setPaintingAsset(asset); }}
-                                                    style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem', color: '#a855f7', display: 'flex' }}
-                                                    title="Open in Paint"
-                                                >
-                                                    <Palette size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteAsset(asset.id); }}
-                                                    style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem', color: '#ef4444', display: 'flex' }}
-                                                    title="Delete Asset"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div style={{
-                                            width: '100%',
-                                            aspectRatio: '1',
-                                            background: '#f8fafc',
-                                            borderRadius: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            overflow: 'hidden',
-                                            position: 'relative'
-                                        }}>
+                                    <div key={asset.id} className="asset-card">
+                                        {/* 4. ASSET CARD (Hover Actions + Aspects) */}
+                                        <div className="asset-actions-overlay">
+                                            <button onClick={(e) => { e.stopPropagation(); handleEditMetadata(asset); }} className="overlay-btn" title="Edit">
+                                                <Edit size={14} />
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); setPaintingAsset(asset); }} className="overlay-btn" title="Paint">
+                                                <Palette size={14} />
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteAsset(asset.id); }} className="overlay-btn" title="Delete">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+
+                                        <div className="asset-thumbnail-container">
                                             {asset.thumbnail_url ? (
-                                                <img
-                                                    src={asset.thumbnail_url}
-                                                    alt={asset.title}
-                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                />
+                                                <img src={asset.thumbnail_url} alt={asset.title} />
                                             ) : asset.url.toLowerCase().endsWith('.pdf') ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <Book size={48} textAnchor='middle' className="text-indigo-400" />
-                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b' }}>PDF Planner</span>
-                                                </div>
+                                                <PDFThumbnail url={asset.url} />
                                             ) : (
                                                 <img
                                                     src={asset.url}
                                                     alt={asset.title}
-                                                    style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }}
+                                                    style={{ objectFit: 'contain', padding: '10%' }}
                                                     onError={(e) => {
                                                         e.currentTarget.onerror = null;
-                                                        e.currentTarget.src = 'https://placehold.co/200x200/f1f5f9/94a3b8?text=No+Image';
+                                                        e.currentTarget.src = 'https://placehold.co/200x300/f1f5f9/94a3b8?text=No+Image';
                                                     }}
                                                 />
                                             )}
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span>{asset.title}</span>
-                                                {activeTab === 'planner' && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPdfSourceUrl(asset.url);
-                                                            setIsPDFModalOpen(true);
-                                                        }}
-                                                        style={{
-                                                            background: '#6366f1',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '0.3rem 0.6rem',
-                                                            borderRadius: '6px',
-                                                            fontSize: '0.65rem',
-                                                            fontWeight: '700',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        LOAD AS PLANNER
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                                {/* Ensure hashtags is an array before using slice */}
-                                                {(Array.isArray(asset.hashtags) ? asset.hashtags : []).slice(0, 2).map((tag: string) => (
-                                                    <span
-                                                        key={tag}
-                                                        onClick={(e) => { e.stopPropagation(); handleHashtagSelect(tag); }}
-                                                        style={{ fontSize: '0.7rem', color: '#6366f1', background: '#f5f3ff', padding: '0.1rem 0.4rem', borderRadius: '4px' }}
-                                                    >
-                                                        #{tag}
-                                                    </span>
-                                                ))}
-                                            </div>
+
+                                        <div className="asset-info">
+                                            <div className="asset-title-indigo">{asset.title}</div>
+                                            {asset.category && (
+                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{asset.category}</div>
+                                            )}
                                         </div>
+
+                                        {activeTab === 'planner' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPdfSourceUrl(asset.url);
+                                                    setIsPDFModalOpen(true);
+                                                }}
+                                                className="load-planner-btn-indigo"
+                                            >
+                                                Load as Planner
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
 
-                                {libraryAssets.length === 0 && !isLoadingAssets && (
+                                {libraryAssets.length === 0 && (
                                     <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
-                                        No {activeTab}s found in this category.
+                                        No {activeTab}s found.
                                     </div>
                                 )}
                             </div>
@@ -529,310 +417,159 @@ const LibraryPage: React.FC = () => {
                 </div>
             </main>
 
-            {/* Upload Modal */}
-            {
-                isUploadModalOpen && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        backdropFilter: 'blur(4px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        padding: '1rem'
+            {/* Modals */}
+            {isUploadModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '1rem'
+                }}>
+                    <div className="glass-panel" style={{
+                        width: '100%', maxWidth: '480px',
+                        background: 'white', borderRadius: '24px', padding: '2rem',
+                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
                     }}>
-                        <div className="glass-panel" style={{
-                            width: '100%',
-                            maxWidth: '480px',
-                            background: 'white',
-                            borderRadius: '24px',
-                            padding: '2rem',
-                            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
-                                <button
-                                    onClick={() => setIsUploadModalOpen(false)}
-                                    style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}
-                                >✕</button>
-                            </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+                            <button onClick={() => setIsUploadModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+                        </div>
 
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: '12px' }}>
-                                <button
-                                    onClick={() => setUploadMode('file')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.6rem',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        background: uploadMode === 'file' ? 'white' : 'transparent',
-                                        color: uploadMode === 'file' ? '#6366f1' : '#64748b',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        boxShadow: uploadMode === 'file' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                                    }}
-                                >Local File</button>
-                                <button
-                                    onClick={() => setUploadMode('url')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.6rem',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        background: uploadMode === 'url' ? 'white' : 'transparent',
-                                        color: uploadMode === 'url' ? '#6366f1' : '#64748b',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        boxShadow: uploadMode === 'url' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                                    }}
-                                >Internet URL</button>
-                            </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: '12px' }}>
+                            <button onClick={() => setUploadMode('file')} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: uploadMode === 'file' ? 'white' : 'transparent', color: uploadMode === 'file' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer' }}>Local File</button>
+                            <button onClick={() => setUploadMode('url')} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: uploadMode === 'url' ? 'white' : 'transparent', color: uploadMode === 'url' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer' }}>Internet URL</button>
+                        </div>
 
-                            <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {uploadMode === 'file' ? (
+                        <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {uploadMode === 'file' ? (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Select Files</label>
+                                    <input type="file" ref={fileInputRef} accept={activeTab === 'template' || activeTab === 'planner' ? "image/*,.pdf" : "image/*"} multiple required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }} />
+                                </div>
+                            ) : (
+                                <>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Select Files</label>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            accept={activeTab === 'template' || activeTab === 'planner' ? "image/*,.pdf" : "image/*"}
-                                            multiple
-                                            required
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                borderRadius: '12px',
-                                                border: '1px solid #e2e8f0',
-                                                background: '#f8fafc'
-                                            }}
-                                        />
-                                        <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.4rem' }}>
-                                            Supports multiple PNG, JPG, GIF {(activeTab === 'template' || activeTab === 'planner') && "and PDF"} files
-                                        </p>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>URL</label>
+                                        <input type="url" placeholder="https://example.com/asset.png" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
                                     </div>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Image URL</label>
-                                            <input
-                                                type="url"
-                                                placeholder="https://example.com/image.png"
-                                                value={inputUrl}
-                                                onChange={(e) => setInputUrl(e.target.value)}
-                                                required
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '0.75rem',
-                                                    borderRadius: '12px',
-                                                    border: '1px solid #e2e8f0',
-                                                    outline: 'none'
-                                                }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Title</label>
-                                            <input
-                                                type="text"
-                                                placeholder="My Awesome Asset"
-                                                value={inputTitle}
-                                                onChange={(e) => setInputTitle(e.target.value)}
-                                                required
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '0.75rem',
-                                                    borderRadius: '12px',
-                                                    border: '1px solid #e2e8f0',
-                                                    outline: 'none'
-                                                }}
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Title</label>
+                                        <input type="text" placeholder="Title" value={inputTitle} onChange={(e) => setInputTitle(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                                    </div>
+                                </>
+                            )}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Category</label>
+                                <input type="text" placeholder="e.g. Minimalist" value={inputCategory} onChange={(e) => setInputCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hashtags</label>
+                                <input type="text" placeholder="cute, pastel" value={inputHashtags} onChange={(e) => setInputHashtags(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            </div>
+                            <button type="submit" disabled={isUploading} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: '700', cursor: isUploading ? 'not-allowed' : 'pointer' }}>
+                                {isUploading ? 'Uploading...' : 'Add Asset'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Category</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Minimalist, Floral, Work"
-                                        value={inputCategory}
-                                        onChange={(e) => setInputCategory(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: '12px',
-                                            border: '1px solid #e2e8f0',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hashtags (comma separated)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="cute, pastel, functional"
-                                        value={inputHashtags}
-                                        onChange={(e) => setInputHashtags(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: '12px',
-                                            border: '1px solid #e2e8f0',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={isUploading}
-                                    style={{
-                                        marginTop: '1rem',
-                                        background: 'linear-gradient(to right, #6366f1, #a855f7)',
-                                        color: 'white',
-                                        border: 'none',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        fontWeight: '700',
-                                        cursor: isUploading ? 'not-allowed' : 'pointer',
-                                        opacity: isUploading ? 0.7 : 1,
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    {isUploading ? 'Uploading...' : `Add to ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}s`}
+            {editingAsset && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', background: 'white', borderRadius: '24px', padding: '2rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem' }}>Edit Asset</h2>
+                        <form onSubmit={handleSaveMetadata} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            <input type="text" value={editHashtags} onChange={(e) => setEditHashtags(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button type="button" onClick={() => setEditingAsset(null)} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white' }}>Cancel</button>
+                                <button type="submit" disabled={isSavingEdit} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white' }}>
+                                    {isSavingEdit ? 'Saving...' : 'Save'}
                                 </button>
-                            </form>
-                        </div>
+                            </div>
+                        </form>
                     </div>
-                )
-            }
+                </div>
+            )}
 
-            {/* Edit Metadata Modal */}
-            {
-                editingAsset && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        backdropFilter: 'blur(4px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        padding: '1rem'
-                    }}>
-                        <div className="glass-panel" style={{
-                            width: '100%', maxWidth: '400px',
-                            background: 'white', borderRadius: '24px', padding: '2rem'
-                        }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem' }}>Edit {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+            {paintingAsset && (
+                <AssetEditor imageUrl={paintingAsset.url} onSave={handleSavePainting} onClose={() => setPaintingAsset(null)} />
+            )}
 
-                            <form onSubmit={handleSaveMetadata} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.4rem' }}>Title</label>
-                                    <input
-                                        type="text"
-                                        value={editTitle}
-                                        onChange={(e) => setEditTitle(e.target.value)}
-                                        required
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.4rem' }}>Category</label>
-                                    <input
-                                        type="text"
-                                        value={editCategory}
-                                        onChange={(e) => setEditCategory(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.4rem' }}>Hashtags (comma separated)</label>
-                                    <input
-                                        type="text"
-                                        value={editHashtags}
-                                        onChange={(e) => setEditHashtags(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditingAsset(null)}
-                                        style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', fontWeight: '600' }}
-                                    >Cancel</button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSavingEdit}
-                                        style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: 'none', background: '#6366f1', color: 'white', fontWeight: '600' }}
-                                    >
-                                        {isSavingEdit ? 'Saving...' : 'Save Changes'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Asset Paint Editor */}
-            {
-                paintingAsset && (
-                    <AssetEditor
-                        imageUrl={paintingAsset.url}
-                        onSave={handleSavePainting}
-                        onClose={() => setPaintingAsset(null)}
-                    />
-                )
-            }
-
-            <PDFImportModal
-                isOpen={isPDFModalOpen}
-                onClose={() => {
-                    setIsPDFModalOpen(false);
-                    setPdfSourceUrl(undefined);
-                }}
-                sourceUrl={pdfSourceUrl}
-            />
+            <PDFImportModal isOpen={isPDFModalOpen} onClose={() => { setIsPDFModalOpen(false); setPdfSourceUrl(undefined); }} sourceUrl={pdfSourceUrl} />
 
             <style>{`
-                .tab-btn {
-                    padding: 0.5rem 1rem;
-                    border: none;
-                    background: transparent;
-                    border-radius: 8px;
-                    color: #64748b;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    transition: all 0.2s;
-                }
-                .tab-btn:hover {
-                    color: #1e293b;
-                }
-                .tab-btn.active {
-                    background: white;
-                    color: #6366f1;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-                }
-                .asset-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-                    border-color: #6366f133;
-                }
+                .tab-btn { padding: 0.5rem 1rem; border: none; background: transparent; border-radius: 8px; color: #64748b; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; alignItems: center; gap: 0.5rem; transition: all 0.2s; }
+                .tab-btn:hover { color: #1e293b; }
+                .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+                .asset-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #6366f133; }
             `}</style>
         </div>
     );
 };
+
+const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
+    <button
+        onClick={onClick}
+        style={{
+            padding: '0.4rem 0.75rem',
+            border: 'none',
+            background: active ? 'white' : 'transparent',
+            borderRadius: '8px',
+            color: active ? '#6366f1' : '#64748b',
+            fontSize: '0.8rem',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.2s',
+            boxShadow: active ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+        }}
+    >
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+    </button>
+);
+
+const CategoryButton: React.FC<{ active: boolean; onClick: () => void; label: string, showChevron?: boolean }> = ({ active, onClick, label, showChevron }) => (
+    <button
+        onClick={onClick}
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '8px',
+            background: active ? '#f1f5f9' : 'transparent',
+            color: active ? '#6366f1' : '#64748b',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: active ? '700' : '500',
+            fontSize: '0.85rem',
+            textAlign: 'left',
+            transition: 'all 0.1s'
+        }}
+    >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        {active && showChevron && <ChevronRight size={14} />}
+    </button>
+);
 
 export default LibraryPage;

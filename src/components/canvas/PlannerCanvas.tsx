@@ -66,7 +66,7 @@ const CanvasBackground = ({ elements, width, height, onSelect }: { elements: any
     const bg = elements.find(el => el.type === 'background');
     const bgFill = bg?.fill || "white";
     const isImage = bgFill.startsWith('data:image/') || bgFill.startsWith('http');
-    const [image] = useImage(isImage ? bgFill : '');
+    const [image] = useImage(isImage ? bgFill : '', 'anonymous');
 
     if (isImage && image) {
         const isTexture = bgFill.startsWith('data:image/');
@@ -846,7 +846,18 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                     if (type === 'checkbox') return `[ ] ${clean} `;
                     return clean;
                 });
-                updateElement(targetId, { text: newLines.join('\n') });
+                const combinedText = newLines.join('\n');
+                updateElement(targetId, { text: combinedText });
+
+                // Enter edit mode after toggling if not already in it
+                setEditingTextId(targetId);
+                setTimeout(() => {
+                    if (textareaRef.current) {
+                        textareaRef.current.value = combinedText;
+                        textareaRef.current.focus();
+                        textareaRef.current.setSelectionRange(combinedText.length, combinedText.length);
+                    }
+                }, 50);
             }
         },
         updateElement: (id: string, props: any) => {
@@ -1314,7 +1325,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
                 if (textareaRef.current) {
                     textareaRef.current.value = textEl.text || ""
                     textareaRef.current.focus()
-                    textareaRef.current.select()
+                    // Remove auto-select for a more natural single-click experience
                 }
             }, 50)
         }

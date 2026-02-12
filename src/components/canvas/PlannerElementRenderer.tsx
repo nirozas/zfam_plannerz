@@ -253,6 +253,8 @@ export const PlannerElementRenderer = ({
             }
 
             onSelect(el.id);
+            // Trigger edit mode on single click
+            onTextDblClick?.(el.id);
         };
 
         const handleCheckboxChange = (lineIndex: number, newState: CheckboxState) => {

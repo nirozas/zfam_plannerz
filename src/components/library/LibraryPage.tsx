@@ -46,6 +46,7 @@ const LibraryPage: React.FC = () => {
     const [inputTitle, setInputTitle] = useState('');
     const [inputCategory, setInputCategory] = useState('');
     const [inputHashtags, setInputHashtags] = useState('');
+    const [isPublicInput, setIsPublicInput] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -54,6 +55,7 @@ const LibraryPage: React.FC = () => {
     const [editTitle, setEditTitle] = useState('');
     const [editCategory, setEditCategory] = useState('');
     const [editHashtags, setEditHashtags] = useState('');
+    const [editIsPublic, setEditIsPublic] = useState(false);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
 
     // Painting State
@@ -135,10 +137,10 @@ const LibraryPage: React.FC = () => {
                         }
                     }
 
-                    await uploadAsset(file, activeTab, inputCategory || 'Personal', hashtags, thumbnailUrl);
+                    await uploadAsset(file, activeTab, inputCategory || 'Personal', hashtags, thumbnailUrl, isAdmin ? isPublicInput : false);
                 }
             } else if (uploadMode === 'url' && inputUrl) {
-                await addAssetByUrl(inputUrl, inputTitle || 'New Asset', activeTab, inputCategory || 'Personal', hashtags);
+                await addAssetByUrl(inputUrl, inputTitle || 'New Asset', activeTab, inputCategory || 'Personal', hashtags, isAdmin ? isPublicInput : false);
             }
 
             // Reset and close
@@ -161,6 +163,7 @@ const LibraryPage: React.FC = () => {
         setEditTitle(asset.title);
         setEditCategory(asset.category || '');
         setEditHashtags(Array.isArray(asset.hashtags) ? asset.hashtags.join(', ') : '');
+        setEditIsPublic(!asset.user_id);
     };
 
     const handleSaveMetadata = async (e: React.FormEvent) => {
@@ -173,7 +176,8 @@ const LibraryPage: React.FC = () => {
             await updateAssetMetadata(editingAsset.id, {
                 title: editTitle,
                 category: editCategory,
-                hashtags: hashtags
+                hashtags: hashtags,
+                user_id: isAdmin ? (editIsPublic ? null : userProfile?.id) : editingAsset.user_id
             });
             setEditingAsset(null);
         } catch (error) {
@@ -216,7 +220,9 @@ const LibraryPage: React.FC = () => {
                     file,
                     paintingAsset.type,
                     paintingAsset.category || 'Edited',
-                    paintingAsset.hashtags || []
+                    paintingAsset.hashtags || [],
+                    undefined,
+                    isAdmin ? isPublicInput : false
                 );
             }
             setPaintingAsset(null);
@@ -237,17 +243,22 @@ const LibraryPage: React.FC = () => {
             />
 
             {/* HEADER (Controls Bar) */}
-            <header className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 flex flex-col items-stretch sticky top-0 z-10 shadow-sm gap-4">
-                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-6 flex-1">
+            <header className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-6">
+                    {/* LEFT: Planner Navigation */}
+                    <div className="flex-shrink-0 flex items-center gap-4">
                         <button
                             onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors hidden md:block"
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors hidden xl:block"
                             title="Toggle Categories"
                         >
                             <LayoutGrid size={20} />
                         </button>
+                        <PlannerTabs />
+                    </div>
 
+                    {/* MIDDLE: Asset Categories (Stickers, Covers, etc) */}
+                    <div className="flex-1 flex justify-center min-w-0">
                         <div className="flex bg-gray-100/80 p-1 rounded-xl overflow-x-auto scrollbar-hide">
                             <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
                             <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
@@ -257,7 +268,8 @@ const LibraryPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 justify-between md:justify-end">
+                    {/* RIGHT: Controls (Personal/Community, Search, Refresh) */}
+                    <div className="flex items-center gap-4 justify-between lg:justify-end flex-shrink-0">
                         <div className="flex bg-indigo-50/50 p-1 rounded-xl border border-indigo-100/50">
                             <button
                                 onClick={() => setViewMode('mine')}
@@ -280,7 +292,7 @@ const LibraryPage: React.FC = () => {
                                 placeholder={`Search...`}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 w-48 text-xs transition-all outline-none"
+                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 w-40 xl:w-48 text-xs transition-all outline-none"
                             />
                         </div>
 
@@ -295,11 +307,6 @@ const LibraryPage: React.FC = () => {
                             <RefreshCcw size={18} className={isLoadingAssets ? 'animate-spin' : ''} />
                         </button>
                     </div>
-                </div>
-
-                {/* Sub-Tabs */}
-                <div className="flex items-center justify-between border-t border-gray-50 pt-2 md:pt-0 md:border-t-0">
-                    <PlannerTabs />
                 </div>
             </header>
 
@@ -468,6 +475,22 @@ const LibraryPage: React.FC = () => {
                                     <input type="text" placeholder="cute, study, planning" value={inputHashtags} onChange={(e) => setInputHashtags(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
                                 </div>
 
+                                {isAdmin && (
+                                    <div className="flex items-center gap-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                                        <div className="flex-1">
+                                            <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider">Public Asset</h4>
+                                            <p className="text-[10px] text-indigo-600 font-medium">Make this visible to the entire community.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPublicInput(!isPublicInput)}
+                                            className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${isPublicInput ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                        >
+                                            <div className={`w-4 h-4 bg-white rounded-full transition-all duration-300 transform ${isPublicInput ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+                                )}
+
                                 <button type="submit" disabled={isUploading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] disabled:opacity-50">
                                     {isUploading ? 'Transferring...' : 'Complete Upload'}
                                 </button>
@@ -485,6 +508,22 @@ const LibraryPage: React.FC = () => {
                             <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Title" />
                             <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Category" />
                             <input type="text" value={editHashtags} onChange={(e) => setEditHashtags(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Hashtags" />
+
+                            {isAdmin && (
+                                <div className="flex items-center gap-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                                    <div className="flex-1">
+                                        <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider">Public Asset</h4>
+                                        <p className="text-[10px] text-indigo-600 font-medium">Make this visible to the community.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditIsPublic(!editIsPublic)}
+                                        className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${editIsPublic ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                    >
+                                        <div className={`w-4 h-4 bg-white rounded-full transition-all duration-300 transform ${editIsPublic ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="flex gap-3 mt-8">
                                 <button type="button" onClick={() => setEditingAsset(null)} className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Discard</button>

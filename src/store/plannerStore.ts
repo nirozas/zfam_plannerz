@@ -168,14 +168,14 @@ interface PlannerState {
     customTemplates: { id: string; name: string; url: string; category: string }[];
 
     // Actions - Assets
+    saveEditedAsset: (id: string, blob: Blob) => Promise<void>;
+    deleteAsset: (id: string) => Promise<void>;
     fetchLibraryAssets: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtag?: string, viewMode?: 'mine' | 'all') => Promise<void>;
     fetchMultipleLibraryAssets: (types: string[], viewMode?: 'mine' | 'all') => Promise<void>;
     fetchLibraryCategories: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', viewMode?: 'mine' | 'all') => Promise<void>;
-    uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], thumbnailUrl?: string) => Promise<string>;
-    addAssetByUrl: (url: string, title: string, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[]) => Promise<string>;
-    updateAssetMetadata: (id: string, data: { title?: string, category?: string, hashtags?: string[] }) => Promise<void>;
-    saveEditedAsset: (id: string, blob: Blob) => Promise<void>;
-    deleteAsset: (id: string) => Promise<void>;
+    uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], thumbnailUrl?: string, isPublic?: boolean) => Promise<string>;
+    addAssetByUrl: (url: string, title: string, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], isPublic?: boolean) => Promise<string>;
+    updateAssetMetadata: (id: string, data: { title?: string, category?: string, hashtags?: string[], user_id?: string | null }) => Promise<void>;
 
     // Actions - User
     fetchUserProfile: () => Promise<void>;
@@ -2034,6 +2034,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         if (category) query = query.eq('category', category);
@@ -2062,6 +2064,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         const { data, error } = await query.order('created_at', { ascending: false });
@@ -2084,6 +2088,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         const { data, error } = await query;
@@ -2097,7 +2103,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set({ libraryCategories: uniqueCategories });
     },
 
-    uploadAsset: async (file, type, category = 'Personal', hashtags = [], thumbnailUrl?: string) => {
+    uploadAsset: async (file, type, category = 'Personal', hashtags = [], thumbnailUrl?: string, isPublic = false) => {
         const { user } = get();
         if (!user) {
             throw new Error('User must be logged in to upload assets');
@@ -2136,7 +2142,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             const { error: dbError } = await supabase
                 .from('assets')
                 .insert({
-                    user_id: user.id, // Associate with user
+                    user_id: isPublic ? null : user.id, // Associate with user or make public
                     title: file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name,
                     type: type,
                     url: publicUrl,
@@ -2165,7 +2171,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
     },
 
-    addAssetByUrl: async (url, title, type, category = 'Personal', hashtags = []) => {
+    addAssetByUrl: async (url, title, type, category = 'Personal', hashtags = [], isPublic = false) => {
         const { user } = get();
         if (!user) {
             throw new Error('User must be logged in to add assets');
@@ -2177,7 +2183,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             const { error } = await supabase
                 .from('assets')
                 .insert({
-                    user_id: user.id,
+                    user_id: isPublic ? null : user.id,
                     title: title,
                     type: type,
                     url: url,

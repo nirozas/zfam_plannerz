@@ -10,6 +10,7 @@ import { generateUUID } from '../../store/plannerStore';
 import { supabase } from '../../supabase/client';
 import '../dashboard/Dashboard.css';
 import PageHero from '../ui/PageHero';
+import { PlannerTabs } from '../dashboard/PlannerTabs';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -36,7 +37,7 @@ const LibraryPage: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeHashtag, setActiveHashtag] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
+    const [viewMode, setViewMode] = useState<'mine' | 'all'>('all');
 
     // Upload Modal State
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -236,65 +237,69 @@ const LibraryPage: React.FC = () => {
             />
 
             {/* HEADER (Controls Bar) */}
-            <header className="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-                <div className="flex items-center gap-6">
-                    <button
-                        onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                        title="Toggle Case"
-                    >
-                        <LayoutGrid size={20} />
-                    </button>
+            <header className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 flex flex-col items-stretch sticky top-0 z-10 shadow-sm gap-4">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-6 flex-1">
+                        <button
+                            onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors hidden md:block"
+                            title="Toggle Categories"
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
 
-                    <div className="flex bg-gray-100/80 p-1 rounded-xl">
-                        <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
-                        <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
-                        <TabButton active={activeTab === 'template'} onClick={() => setActiveTab('template')} icon={<LayoutTemplate size={14} />} label="Templates" />
-                        <TabButton active={activeTab === 'image'} onClick={() => setActiveTab('image')} icon={<FileImage size={14} />} label="Images" />
-                        <TabButton active={activeTab === 'planner'} onClick={() => setActiveTab('planner')} icon={<Book size={14} />} label="Planners" />
+                        <div className="flex bg-gray-100/80 p-1 rounded-xl overflow-x-auto scrollbar-hide">
+                            <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
+                            <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
+                            <TabButton active={activeTab === 'template'} onClick={() => setActiveTab('template')} icon={<LayoutTemplate size={14} />} label="Templates" />
+                            <TabButton active={activeTab === 'image'} onClick={() => setActiveTab('image')} icon={<FileImage size={14} />} label="Images" />
+                            <TabButton active={activeTab === 'planner'} onClick={() => setActiveTab('planner')} icon={<Book size={14} />} label="Planners" />
+                        </div>
                     </div>
 
-                    <div className="h-6 w-px bg-gray-200 mx-2" />
+                    <div className="flex items-center gap-4 justify-between md:justify-end">
+                        <div className="flex bg-indigo-50/50 p-1 rounded-xl border border-indigo-100/50">
+                            <button
+                                onClick={() => setViewMode('mine')}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'mine' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
+                            >
+                                Personal
+                            </button>
+                            <button
+                                onClick={() => setViewMode('all')}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
+                            >
+                                Community
+                            </button>
+                        </div>
 
-                    <div className="flex bg-indigo-50/50 p-1 rounded-xl border border-indigo-100/50">
+                        <div className="relative hidden sm:block">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder={`Search...`}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 w-48 text-xs transition-all outline-none"
+                            />
+                        </div>
+
                         <button
-                            onClick={() => setViewMode('mine')}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'mine' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                            onClick={() => {
+                                fetchLibraryCategories(activeTab, viewMode);
+                                fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined, viewMode);
+                            }}
+                            title="Refresh"
                         >
-                            Personal
-                        </button>
-                        <button
-                            onClick={() => setViewMode('all')}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
-                        >
-                            Community
+                            <RefreshCcw size={18} className={isLoadingAssets ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="search-bar">
-                        <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder={`Search ${activeTab}s...`}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 w-64 text-xs transition-all outline-none"
-                            />
-                        </div>
-                    </div>
-                    <button
-                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                        onClick={() => {
-                            fetchLibraryCategories(activeTab, viewMode);
-                            fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined, viewMode);
-                        }}
-                        title="Refresh"
-                    >
-                        <RefreshCcw size={18} className={isLoadingAssets ? 'animate-spin' : ''} />
-                    </button>
+                {/* Sub-Tabs */}
+                <div className="flex items-center justify-between border-t border-gray-50 pt-2 md:pt-0 md:border-t-0">
+                    <PlannerTabs />
                 </div>
             </header>
 
@@ -337,18 +342,20 @@ const LibraryPage: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                        {/* Add Asset Button Card */}
-                        <button
-                            className="aspect-square bg-white border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all group"
-                            onClick={() => setIsUploadModalOpen(true)}
-                        >
-                            <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                                <Plus size={24} className="text-gray-400 group-hover:text-indigo-600" />
-                            </div>
-                            <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600">
-                                Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                            </span>
-                        </button>
+                        {/* Add Asset Button Card - Only for Admin */}
+                        {isAdmin && (
+                            <button
+                                className="aspect-square bg-white border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all group"
+                                onClick={() => setIsUploadModalOpen(true)}
+                            >
+                                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                                    <Plus size={24} className="text-gray-400 group-hover:text-indigo-600" />
+                                </div>
+                                <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600">
+                                    Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                                </span>
+                            </button>
+                        )}
 
                         {libraryAssets.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase())).map(asset => (
                             <div key={asset.id} className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">

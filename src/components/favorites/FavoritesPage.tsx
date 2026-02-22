@@ -4,6 +4,7 @@ import { Heart, Search, SortAsc, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PlannerCover from '../dashboard/PlannerCover';
 import PageHero from '../ui/PageHero';
+import { PlannerTabs } from '../dashboard/PlannerTabs';
 
 const FavoritesPage: React.FC = () => {
     const { availablePlanners, fetchPlanners, toggleFavorite, openPlanner, archivePlanner, deletePlanner, isFetchingPlanners } = usePlannerStore();
@@ -56,35 +57,42 @@ const FavoritesPage: React.FC = () => {
             />
 
             {/* Controls Bar */}
-            <div className="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-                <div className="flex items-center gap-4 flex-1 max-w-2xl">
-                    <div className="relative flex-1">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search favorites..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
-                        />
+            <div className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 flex flex-col items-stretch sticky top-0 z-10 shadow-sm gap-4">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 md:gap-4 flex-1 max-w-2xl">
+                        <div className="relative flex-1">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search favorites..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 justify-end">
+                        <button
+                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl border transition-all text-xs md:text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                            onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
+                        >
+                            <SortAsc size={16} />
+                            <span className="hidden sm:inline">{sortBy === 'date' ? 'By Date Added' : 'A-Z'}</span>
+                        </button>
+                        <button
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                            onClick={() => fetchPlanners()}
+                            title="Refresh"
+                        >
+                            <RefreshCcw size={18} className={isFetchingPlanners ? 'animate-spin' : ''} />
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                        onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
-                    >
-                        <SortAsc size={18} />
-                        {sortBy === 'date' ? 'By Date Added' : 'Alphabetical'}
-                    </button>
-                    <button
-                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                        onClick={() => fetchPlanners()}
-                        title="Refresh"
-                    >
-                        <RefreshCcw size={20} className={isFetchingPlanners ? 'animate-spin' : ''} />
-                    </button>
+                {/* Sub-Tabs */}
+                <div className="flex items-center justify-between border-t border-gray-50 pt-2 md:pt-0 md:border-t-0">
+                    <PlannerTabs />
                 </div>
             </div>
 

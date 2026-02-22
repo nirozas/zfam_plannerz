@@ -33,7 +33,7 @@ const LibraryPage: React.FC = () => {
     const isAdmin = userProfile?.role === 'admin';
 
     // Use singular types to match DB: 'sticker', 'cover', 'template', 'image'
-    const [activeTab, setActiveTab] = useState<'sticker' | 'cover' | 'template' | 'image' | 'planner'>('sticker');
+    const [activeTab, setActiveTab] = useState<'sticker' | 'cover' | 'template' | 'image' | 'planner'>('planner');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeHashtag, setActiveHashtag] = useState<string | null>(null);

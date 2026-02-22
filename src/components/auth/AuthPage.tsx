@@ -37,7 +37,7 @@ const AuthPage: React.FC = () => {
                     password: formData.password
                 });
                 if (error) throw error;
-                navigate('/homepage');
+                navigate('/');
             }
         } catch (err: any) {
             setError(err.message);

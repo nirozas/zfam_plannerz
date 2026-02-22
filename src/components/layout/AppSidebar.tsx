@@ -25,7 +25,7 @@ export const AppSidebar: React.FC = () => {
 
     return (
         <aside className="app-sidebar">
-            <div className="brand-logo">ZOABI</div>
+            <div className="brand-logo cursor-pointer" onClick={() => navigate('/')}>ZOABI</div>
 
             <nav className="nav-menu">
                 <NavLink

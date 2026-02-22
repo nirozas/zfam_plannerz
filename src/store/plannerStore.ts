@@ -2034,8 +2034,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
-        } else if (viewMode === 'all' && user) {
-            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         if (category) query = query.eq('category', category);
@@ -2064,8 +2062,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
-        } else if (viewMode === 'all' && user) {
-            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         const { data, error } = await query.order('created_at', { ascending: false });
@@ -2088,8 +2084,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (viewMode === 'mine' && user) {
             query = query.eq('user_id', user.id);
-        } else if (viewMode === 'all' && user) {
-            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
         }
 
         const { data, error } = await query;

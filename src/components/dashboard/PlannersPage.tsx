@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { usePlannerStore, slugify } from '../../store/plannerStore';
-import { Plus, Search, SortAsc, RefreshCcw, Archive as ArchiveIcon, Star, BookOpen, LayoutGrid, RotateCcw } from 'lucide-react';
+import { Plus, Search, SortAsc, RefreshCcw, Archive as ArchiveIcon, Star, BookOpen, LayoutGrid } from 'lucide-react';
 import PlannerCover from './PlannerCover';
 import CreationWizard from './CreationWizard';
 import { CoverEditorModal } from './CoverEditorModal';

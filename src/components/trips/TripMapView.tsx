@@ -11,8 +11,8 @@ import {
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
+import 'react-leaflet-cluster/lib/assets/MarkerCluster.css';
+import 'react-leaflet-cluster/lib/assets/MarkerCluster.Default.css';
 import 'leaflet-polylinedecorator';
 
 // Fix Leaflet's default icon paths in Vite

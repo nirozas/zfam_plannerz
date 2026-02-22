@@ -46,7 +46,7 @@ export interface Template {
     content_url: string; // URL to the template base (SVG or image)
 }
 
-export type AIFeature = 'ink-to-text' | 'summarize' | 'sound-to-text' | 'ink-to-artwork';
+export type AIFeature = 'ink-to-text' | 'summarize' | 'sound-to-text' | 'ink-to-artwork' | 'smart-tasks' | 'creative-summary' | 'improve-handwriting';
 
 export type BrushType = 'pen' | 'pencil' | 'marker' | 'fountain' | 'calligraphy' | 'art';
 

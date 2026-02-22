@@ -276,6 +276,52 @@
     border-color: white;
 }
 
+/* Bottom Sticky Nav */
+.bottom-sticky-nav {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
+.sticky-nav-inner {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.sticky-nav-item {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sticky-nav-item:hover {
+    transform: scale(1.02);
+}
+
+.planners-page-layout {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 640px) {
+    .bottom-sticky-nav {
+        bottom: 20px;
+        width: 90%;
+    }
+
+    .sticky-nav-inner {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
 /* 4. ASSET GRID & CARDS */
 .content-scroll-area {
     flex: 1;

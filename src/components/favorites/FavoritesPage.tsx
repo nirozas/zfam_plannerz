@@ -1,19 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePlannerStore, slugify } from '../../store/plannerStore';
-import { Heart, ArrowLeft } from 'lucide-react';
+import { Heart, Search, SortAsc, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PlannerCover from '../dashboard/PlannerCover';
-import '../dashboard/Dashboard.css'; // Reuse dashboard styles for grid
+import PageHero from '../ui/PageHero';
 
 const FavoritesPage: React.FC = () => {
-    const { availablePlanners, fetchPlanners, toggleFavorite, openPlanner, archivePlanner, deletePlanner } = usePlannerStore();
+    const { availablePlanners, fetchPlanners, toggleFavorite, openPlanner, archivePlanner, deletePlanner, isFetchingPlanners } = usePlannerStore();
     const navigate = useNavigate();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
     useEffect(() => {
         fetchPlanners();
     }, [fetchPlanners]);
 
-    const favoritePlanners = availablePlanners.filter(p => p.isFavorite && !p.isArchived);
+    const favoritePlanners = availablePlanners
+        .filter(p => p.isFavorite && !p.isArchived)
+        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .sort((a, b) => {
+            if (sortBy === 'date') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+            return a.name.localeCompare(b.name);
+        });
 
     const handleOpenPlanner = (id: string, name: string) => {
         openPlanner(id);
@@ -40,46 +48,79 @@ const FavoritesPage: React.FC = () => {
     };
 
     return (
-        <div className="dashboard-layout">
-            <aside className="dashboard-sidebar">
-                <div className="brand-logo">ZOABI</div>
-                <nav className="nav-menu">
-                    <div className="nav-item" onClick={() => navigate('/library')}>
-                        <ArrowLeft size={20} /> Back to Library
+        <div className="flex flex-col h-full w-full overflow-hidden bg-white">
+            <PageHero
+                pageKey="favorites"
+                title="Your Favorites"
+                subtitle="A collection of your most loved notebooks and trackers."
+            />
+
+            {/* Controls Bar */}
+            <div className="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-4 flex-1 max-w-2xl">
+                    <div className="relative flex-1">
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search favorites..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
+                        />
                     </div>
-                </nav>
-            </aside>
-
-            <main className="dashboard-main">
-                <header className="dashboard-header">
-                    <h1>Favorites</h1>
-                </header>
-
-                <div className="content-scroll-area">
-                    {favoritePlanners.length === 0 ? (
-                        <div className="empty-search">
-                            <Heart size={48} />
-                            <p>No favorite planners yet. Heart a planner in your library to see it here!</p>
-                        </div>
-                    ) : (
-                        <div className="planner-grid">
-                            {favoritePlanners.map(planner => (
-                                <PlannerCover
-                                    key={planner.id}
-                                    color={planner.coverColor || '#6366f1'}
-                                    title={planner.name}
-                                    category={planner.category}
-                                    isFavorite={true}
-                                    onClick={() => handleOpenPlanner(planner.id, planner.name)}
-                                    onArchive={(e) => handleArchive(planner.id, e)}
-                                    onDelete={(e) => handleDelete(planner.id, e)}
-                                    onFavorite={(e) => handleUnfavorite(planner.id, e)}
-                                />
-                            ))}
-                        </div>
-                    )}
                 </div>
-            </main>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                        onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
+                    >
+                        <SortAsc size={18} />
+                        {sortBy === 'date' ? 'By Date Added' : 'Alphabetical'}
+                    </button>
+                    <button
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        onClick={() => fetchPlanners()}
+                        title="Refresh"
+                    >
+                        <RefreshCcw size={20} className={isFetchingPlanners ? 'animate-spin' : ''} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
+                {favoritePlanners.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
+                        <div className="p-6 bg-white rounded-full shadow-sm">
+                            <Heart size={48} className="text-pink-100" fill="currentColor" />
+                        </div>
+                        <p className="font-medium text-gray-500">No favorite planners found.</p>
+                        <button
+                            onClick={() => navigate('/planners')}
+                            className="text-sm text-indigo-600 font-bold hover:underline"
+                        >
+                            Back to My Planners
+                        </button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                        {favoritePlanners.map(planner => (
+                            <PlannerCover
+                                key={planner.id}
+                                color={planner.coverColor || '#6366f1'}
+                                title={planner.name}
+                                category={planner.category}
+                                coverUrl={planner.cover_url}
+                                isFavorite={true}
+                                onClick={() => handleOpenPlanner(planner.id, planner.name)}
+                                onArchive={(e) => handleArchive(planner.id, e)}
+                                onDelete={(e) => handleDelete(planner.id, e)}
+                                onFavorite={(e) => handleUnfavorite(planner.id, e)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -32,8 +32,10 @@ export async function performOCR(input: InkPath[] | string | Blob): Promise<stri
         // Add 10% whitespace padding (min 20px)
         const padding = Math.max(20, Math.max(contentWidth, contentHeight) * 0.1);
 
-        const drawWidth = contentWidth + (padding * 2);
-        const drawHeight = contentHeight + (padding * 2);
+        // Upscale factor for better OCR
+        const scale = 3;
+        const drawWidth = (contentWidth + (padding * 2)) * scale;
+        const drawHeight = (contentHeight + (padding * 2)) * scale;
 
         const canvas = document.createElement('canvas');
         canvas.width = drawWidth;
@@ -45,6 +47,8 @@ export async function performOCR(input: InkPath[] | string | Blob): Promise<stri
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        ctx.scale(scale, scale);
+
         // Rendering Ink-Only with normalization
         ctx.translate(padding - minX, padding - minY);
 
@@ -54,9 +58,9 @@ export async function performOCR(input: InkPath[] | string | Blob): Promise<stri
             ctx.beginPath();
             ctx.strokeStyle = '#000000'; // High-contrast black
 
-            // STROKE WEIGHTING: Increase by 1.5x for AI visibility
+            // STROKE WEIGHTING: Increase signficantly for AI visibility
             const originalWidth = path.width || 2;
-            ctx.lineWidth = originalWidth * 1.5;
+            ctx.lineWidth = Math.max(originalWidth * 2.5, 6);
 
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -72,24 +76,73 @@ export async function performOCR(input: InkPath[] | string | Blob): Promise<stri
         source = canvas;
     }
 
-    // 3. AI INSTRUCTION (System Prompt for Vision Engine)
-    console.log("[Computer Vision] System Prompt Active: You are a specialist in deciphering messy digital handwriting. Transcribe the ink in this image precisely. Return ONLY the text found.");
+    // 3. AI VISION (Primary Engine)
+    try {
+        let base64Image = '';
+        if (source instanceof HTMLCanvasElement) {
+            base64Image = source.toDataURL('image/png').split(',')[1];
+        } else if (typeof source === 'string' && source.startsWith('data:')) {
+            base64Image = source.split(',')[1];
+        } else if (source instanceof Blob) {
+            // Convert blob to base64
+            const reader = new FileReader();
+            base64Image = await new Promise((resolve) => {
+                reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                reader.readAsDataURL(source);
+            });
+        }
 
+        if (base64Image) {
+            // Dynamically import to avoid circular dependencies if any
+            const { transcribeImage } = await import('./transcription');
+            console.log("[OCR] Attempting AI Vision for high-sensitivity handwriting recognition...");
+            const aiText = await transcribeImage(base64Image);
+            if (aiText && aiText.length > 0) {
+                console.log("[OCR] AI Vision Result:", aiText);
+                return aiText;
+            }
+        }
+    } catch (aiError) {
+        console.warn("[OCR] AI Vision failed/skipped, falling back to Tesseract:", aiError);
+    }
+
+    // 4. TESSERACT FALLBACK (Local Engine)
+    console.log("[OCR] Engaging local Tesseract engine...");
     try {
         const { data: { text } } = await Tesseract.recognize(
             source,
             'eng',
+            // Cast options to any as types can be finicky for custom params
             {
-                // High-DPI Capture handled by rendering at high resolution
-                // logger: m => console.log(m)
-            }
+                tessedit_pageseg_mode: '7'
+            } as any
         );
 
-        const result = text.replace(/\n+/g, ' ').trim();
-        console.log("[Computer Vision] Transcription Result:", result);
+        let result = text.replace(/\n+/g, ' ').trim();
+        console.log("[OCR] Raw Tesseract Result:", result);
+
+        // 5. FUZZY MATCHING POST-PROCESSOR
+        if (result.length > 2 && result.length < 15) {
+            try {
+                // Dynamic import to keep bundle size optimized if not used often
+                const fuzzysort = (await import('fuzzysort')).default;
+                const { commonWords } = await import('./dictionary');
+
+                const match = fuzzysort.go(result, commonWords, { limit: 1 })[0];
+
+                // If we have a decent match, suggest it
+                if (match && match.score > -500) {
+                    console.log(`[OCR] Auto-Correcting: "${result}" -> "${match.target}" (Score: ${match.score})`);
+                    result = match.target;
+                }
+            } catch (err) {
+                console.warn("Dictionary lookup failed:", err);
+            }
+        }
+
         return result;
     } catch (error) {
-        console.error('[Computer Vision] OCR Failure:', error);
+        console.error('[OCR] All engines failed:', error);
         return '';
     }
 }

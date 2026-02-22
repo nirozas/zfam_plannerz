@@ -1,5 +1,6 @@
 import { InkPath } from '@/types/planner';
-import { getOpenAIKey } from './apiKey';
+import { getOpenAIKey, getGeminiKey } from './apiKey';
+import { generateTextAI } from './transcription';
 
 /**
  * Prepares a clean, high-contrast ink-only image for AI generation.
@@ -76,20 +77,20 @@ export async function prepareInkImage(input: InkPath[]): Promise<string> {
 export async function generateArtFromInk(
     baseImage: string,
     prompt: string,
-    style: string
+    style: string,
+    preferredEngine: 'openai' | 'gemini' = 'gemini'
 ): Promise<string> {
     // 1. DEPTH ANALYSIS (Simulation - DALL-E 3 does not support direct ControlNet yet)
     console.log(`[AI Art Engine] Analysing Clean Sketch Structure...`);
     console.log(`[AI Art Engine] High-Contrast Map Detected: ${baseImage.length} bytes of vector data.`);
 
     const apiKey = getOpenAIKey();
+    const geminiKey = getGeminiKey();
 
-    // REAL AI GENERATION (DALL-E 3)
-    if (apiKey) {
-        console.log(`[AI Art Engine] OpenAI Key Detected. Engaging DALL-E 3...`);
+    // 1. OPENAI DALL-E 3 PATH
+    if (preferredEngine === 'openai' && apiKey) {
+        console.log(`[AI Art Engine] Using OpenAI DALL-E 3...`);
         try {
-            const refinedPrompt = `A ${style} style artwork of ${prompt}. High quality, detailed, masterpiece.`;
-
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 headers: {
@@ -98,42 +99,69 @@ export async function generateArtFromInk(
                 },
                 body: JSON.stringify({
                     model: "dall-e-3",
-                    prompt: refinedPrompt,
+                    prompt: `A ${style} style artwork of ${prompt}. High quality, detailed, masterpiece.`,
                     n: 1,
                     size: "1024x1024",
-                    response_format: "url"
                 })
             });
 
-            if (!response.ok) {
+            if (response.ok) {
+                const data = await response.json();
+                return data.data[0].url;
+            } else {
                 const err = await response.json();
-                console.warn("[AI Art Engine] DALL-E Error:", err);
-                throw new Error(err.error?.message || "Image generation failed");
+                console.log("[AI Art Engine] OpenAI Request Failed:", err); // Log as info, not warning
+
+                // For any error (Quota, Auth, Bad Request), we just log and fall through
+                console.log("[AI Art Engine] OpenAI failed, switching to Free Tier automatically...");
             }
-
-            const data = await response.json();
-            return data.data[0].url;
-
         } catch (e) {
-            console.error(e);
-            console.log("Falling back to simulation due to API error...");
+            console.log("[AI Art Engine] OpenAI Path Exception, switching to Free Tier...", e);
         }
     }
 
-    // FALLBACK SIMULATION (If no key or error)
-    // 2. PROMPT ENHANCEMENT
-    const compositePrompt = `${prompt}, ${style} style, masterpiece, high quality, consistent with original sketch anatomy`;
-    console.log(`[AI Art Engine] Diffusion Prompt: ${compositePrompt}`);
-    console.log(`[AI Art Engine] Parameter: controlnet_depth_strength=0.8 (Locking anatomy to sketch)`);
+    // 2. GEMINI + POLLINATIONS PATH (Reliable & Creative)
+    try {
+        let enhancedPrompt = prompt; // Initialize enhancedPrompt
 
-    // Simulate AI Diffusion Process
-    await new Promise(r => setTimeout(r, 2500)); // Faster simulation
+        if (geminiKey) {
+            console.log("[AI Art Engine] Using Gemini to enhance artistic prompt...");
+            try {
+                // We ask for exactly 5 keywords to keep the URL extremely short and safe
+                const expansionPrompt = `Return exactly 5 artistic keywords (nouns or adjectives) describing a ${style} of "${prompt}". Return ONLY the keywords separated by spaces, no punctuation.`;
+                const expanded = await generateTextAI(expansionPrompt);
+                if (expanded && expanded.length > 5) {
+                    enhancedPrompt = expanded;
+                }
+            } catch (err) {
+                console.log("[AI Art Engine] Prompt enhancement skipped (Quota), using original prompt.");
+            }
+        }
 
-    // Dynamic Keyword Extraction for visualization
-    const keywords = prompt.toLowerCase().split(' ').filter(w => w.length > 3);
-    const primarySubject = keywords[0] || 'artwork';
-    const secondaryStyle = style.toLowerCase().replace(' ', ',');
-    const seed = Math.floor(Math.random() * 999999);
+        // 3. CORS PROXY WRAPPER (The Final Hammer)
+        const safePrompt = (enhancedPrompt || prompt)
+            .replace(/['".,;!?:()\-]/g, "")
+            .replace(/[^\x00-\x7F]/g, "")
+            .trim()
+            .split(/\s+/)
+            .filter(w => w.length > 2)
+            .slice(0, 8)
+            .join(' ');
 
-    return `https://loremflickr.com/1024/1024/${primarySubject},${secondaryStyle},highly,detailed/all?lock=${seed}`;
+        const seed = Math.floor(Math.random() * 999999);
+        const encoded = encodeURIComponent(safePrompt);
+
+        // Base Pollinations URL
+        const targetUrl = `https://pollinations.ai/p/${encoded}?seed=${seed}&width=1024&height=1024&nologo=true&model=flux`;
+
+        console.log(`[AI Art Engine] Engaging CORS Proxy: ${safePrompt}`);
+        // We use images.weserv.nl to proxy the request and add CORS headers
+        return `https://images.weserv.nl/?url=${encodeURIComponent(targetUrl)}&output=jpg`;
+    } catch (e) {
+        console.error("[AI Art Engine] Fallback failed:", e);
+        // Absolute last resort: simpler style-only URL with CORS proxy
+        const simpleKeyword = (prompt.split(' ')[0] || "artwork").replace(/[^a-zA-Z]/g, "");
+        const fallbackUrl = `https://pollinations.ai/p/${simpleKeyword}?seed=${Math.floor(Math.random() * 9999)}&width=1024&height=1024&nologo=true&model=flux`;
+        return `https://images.weserv.nl/?url=${encodeURIComponent(fallbackUrl)}&output=jpg`;
+    }
 }

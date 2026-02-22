@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { transcribeAudio } from '@/utils/transcription';
-import { getOpenAIKey, setOpenAIKey, hasUserKey } from '@/utils/apiKey';
+import { transcribeAudio, generateTextAI } from '@/utils/transcription';
+import { getOpenAIKey, setOpenAIKey, hasUserOpenAIKey, getGeminiKey, setGeminiKey, hasUserGeminiKey } from '@/utils/apiKey';
 import {
     Sparkles,
     PenTool,
@@ -72,6 +72,30 @@ const aiFeatures: {
             color: 'text-orange-600',
             bgColor: 'bg-orange-50',
         },
+        {
+            id: 'smart-tasks',
+            title: 'Smart Tasks',
+            description: 'Extract checklist from your notes',
+            icon: Check,
+            color: 'text-cyan-600',
+            bgColor: 'bg-cyan-50',
+        },
+        {
+            id: 'creative-summary',
+            title: 'Creative Mood',
+            description: 'Inspiring summary of your day',
+            icon: Sparkles,
+            color: 'text-pink-600',
+            bgColor: 'bg-pink-50',
+        },
+        {
+            id: 'improve-handwriting',
+            title: 'Polished Text',
+            description: 'Refine and formalize your notes',
+            icon: Wand2,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
+        },
     ];
 
 export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRunAI, selectedElement }: AIFeaturesPanelProps) {
@@ -84,10 +108,12 @@ export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRu
     const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [userApiKey, setUserApiKey] = useState(getOpenAIKey() || '');
+    const [userGeminiKey, setUserGeminiKey] = useState(getGeminiKey() || '');
     const [keySaved, setKeySaved] = useState(false);
 
     const handleSaveKey = () => {
         setOpenAIKey(userApiKey);
+        setGeminiKey(userGeminiKey);
         setKeySaved(true);
         setTimeout(() => {
             setKeySaved(false);
@@ -99,46 +125,60 @@ export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRu
         if (!activeFeature) return;
 
         if (activeFeature === 'sound-to-text') {
-            // New Professional Recorder Logic handled within the render
-            return;
-        }
-
-        if (activeFeature === 'ink-to-text' || activeFeature === 'ink-to-artwork') {
-            setIsProcessing(true);
-            try {
-                const res = await onRunAI(activeFeature);
-                if (res) {
-                    setResult(res as string);
-                } else {
-                    // Result might have been applied directly to canvas (like ink-to-text)
-                    // If no result returned and it was ink-to-text, maybe we just close or show success
-                    if (activeFeature === 'ink-to-text') {
-                        setResult("Handwriting converted successfully!");
-                    }
-                }
-            } catch (err) {
-                console.error("AI Feature Error:", err);
-            } finally {
-                setIsProcessing(false);
-            }
-            return;
+            return; // Handled by VoiceTranscriptionUI
         }
 
         setIsProcessing(true);
-        // Simulate AI processing for other features
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        try {
+            let prompt = "";
+            let context = inputText;
 
-        let mockResult = '';
-        switch (activeFeature) {
-            case 'summarize':
-                const sizeLabel = summarySize === 'sentence' ? 'one sentence' : summarySize === '100words' ? 'about 100 words' : 'a paragraph';
-                const source = uploadedFile ? `the uploaded file "${uploadedFile.name}"` : 'the provided text';
-                mockResult = `[AI Summary (${sizeLabel})] Based on ${source}, here is your summary: ${inputText.slice(0, 100) || "The core themes focus on efficiency and creative organization within the planner ecosystem..."}...`;
-                break;
+            switch (activeFeature) {
+                case 'summarize':
+                    const size = summarySize === 'sentence' ? 'a single sentence' : summarySize === '100words' ? 'about 100 words' : 'a detailed paragraph';
+                    prompt = `Provide a high-density, professional summary of the following content in ${size}. Focus on key actions, themes, and dates.`;
+                    if (uploadedFile) {
+                        context = `File Name: ${uploadedFile.name}\nContent: (Summarization of uploaded file content - implement file reading if needed)`;
+                        // Note: For real production, we'd need a PDF/DocX text extractor here.
+                    }
+                    break;
+                case 'ink-to-text':
+                case 'ink-to-artwork':
+                    const res = await onRunAI(activeFeature);
+                    if (res) {
+                        setResult(res as string);
+                    } else if (activeFeature === 'ink-to-text') {
+                        setResult("Handwriting converted successfully!");
+                    }
+                    setIsProcessing(false);
+                    return;
+                case 'smart-tasks':
+                    prompt = "Extract all actionable tasks, deadlines, and responsibilities from the following text and present them as a clean, high-density checklist.";
+                    break;
+                case 'creative-summary':
+                    prompt = "Give me a creative, inspiring summary of these notes. High density, poetic but practical.";
+                    break;
+                case 'improve-handwriting':
+                    prompt = "The user has converted handwriting to the text below. Please polish the grammar, refine the wording for clarity, and maintain a professional tone while keeping the original intent.";
+                    break;
+            }
+
+            if (prompt) {
+                const response = await generateTextAI(prompt, context);
+                setResult(response);
+            }
+        } catch (err: any) {
+            console.error("AI Feature Error:", err);
+            if (err.message === "OPENAI_QUOTA_EXCEEDED") {
+                setResult("Error: OpenAI quota exceeded. Please switch to Gemini in Settings.");
+            } else if (err.message === "GEMINI_RATE_LIMIT") {
+                setResult("Error: Gemini rate limit reached (15/min). Please wait a few seconds.");
+            } else {
+                setResult("Error: Failed to process request. Please check your API keys.");
+            }
+        } finally {
+            setIsProcessing(false);
         }
-
-        setResult(mockResult);
-        setIsProcessing(false);
     };
 
     return (
@@ -164,7 +204,7 @@ export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRu
                         title="AI Settings"
                     >
                         <Settings className="h-5 w-5" />
-                        {hasUserKey() && (
+                        {(hasUserOpenAIKey() || hasUserGeminiKey()) && (
                             <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full border border-white" />
                         )}
                     </button>
@@ -182,19 +222,42 @@ export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRu
                     <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 p-6 animate-in fade-in duration-200">
                         <div className="space-y-4">
                             <h3 className="text-sm font-bold text-gray-900 border-b pb-2">User API Settings</h3>
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-gray-700 block">OpenAI API Key</label>
-                                <input
-                                    type="password"
-                                    value={userApiKey}
-                                    onChange={(e) => setUserApiKey(e.target.value)}
-                                    placeholder="sk-..."
-                                    className="w-full p-2 text-xs border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                />
-                                <p className="text-[10px] text-gray-400">
-                                    Your key is stored locally on this device. We do not access it.
-                                </p>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-semibold text-gray-700 block">OpenAI API Key</label>
+                                        {hasUserOpenAIKey() && <span className="text-[9px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded">ACTIVE</span>}
+                                    </div>
+                                    <input
+                                        type="password"
+                                        value={userApiKey}
+                                        onChange={(e) => setUserApiKey(e.target.value)}
+                                        placeholder="sk-..."
+                                        className="w-full p-2 text-xs border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[9px] text-indigo-500 hover:underline">Get OpenAI Key</a>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-semibold text-gray-700 block">Google Gemini Key (Recommended)</label>
+                                        {hasUserGeminiKey() && <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded">ACTIVE</span>}
+                                    </div>
+                                    <input
+                                        type="password"
+                                        value={userGeminiKey}
+                                        onChange={(e) => setUserGeminiKey(e.target.value)}
+                                        placeholder="AIza..."
+                                        className="w-full p-2 text-xs border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[9px] text-indigo-500 hover:underline">Get Gemini Key (Free Tier available)</a>
+                                </div>
                             </div>
+
+                            <p className="text-[10px] text-gray-400 italic">
+                                Keys are stored locally on your browser. We never see them on our servers.
+                            </p>
+
                             <Button
                                 onClick={handleSaveKey}
                                 className={cn(
@@ -205,18 +268,10 @@ export function AIFeaturesPanel({ onClose, onApplyResult, onStartSelection, onRu
                                 {keySaved ? (
                                     <div className="flex items-center gap-2">
                                         <Check className="w-4 h-4" />
-                                        Saved!
+                                        Settings Saved!
                                     </div>
-                                ) : "Save Key"}
+                                ) : "Update Settings"}
                             </Button>
-                            <a
-                                href="https://platform.openai.com/api-keys"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-indigo-500 hover:text-indigo-700 block text-center underline font-medium"
-                            >
-                                Get your OpenAI API Key here
-                            </a>
                         </div>
                     </div>
                 )}
@@ -490,8 +545,14 @@ function getFeatureInstructions(feature: AIFeature): string {
             return 'Record voice memos to transcribe them directly into your planner';
         case 'ink-to-artwork':
             return 'Turn any simple sketch into a beautiful, professional illustration';
+        case 'smart-tasks':
+            return 'Extract todos and tasks from your handwritten or typed notes';
+        case 'creative-summary':
+            return 'Generate an inspiring, deep-dive summary of your recent notes';
+        case 'improve-handwriting':
+            return 'Refine and polish your text for clarity and professional tone';
         default:
-            return '';
+            return 'Use AI to enhance your planning experience';
     }
 }
 
@@ -500,7 +561,6 @@ function getFeatureInstructions(feature: AIFeature): string {
 function VoiceTranscriptionUI({ selectedElement, onResult }: { selectedElement?: any, onResult: (text: string) => void }) {
     const [status, setStatus] = useState<'idle' | 'recording' | 'processing'>('idle');
     const [vizData, setVizData] = useState<number[]>(new Array(20).fill(10));
-    const hasApiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
     // Check if a voice note is selected
     const isVoiceNoteSelected = selectedElement?.type === 'voice';
@@ -535,9 +595,13 @@ function VoiceTranscriptionUI({ selectedElement, onResult }: { selectedElement?:
                 try {
                     const text = await transcribeAudio(audioBlob);
                     onResult(text);
-                } catch (err) {
+                } catch (err: any) {
                     console.error(err);
-                    onResult("Error: Failed to transcribe audio. Please check your API key.");
+                    if (err.message === "OPENAI_QUOTA_EXCEEDED") {
+                        onResult("Error: OpenAI quota exceeded. Please visit Settings and add a Google Gemini Key (Recommended) for free, accurate transcription.");
+                    } else {
+                        onResult("Error: Failed to transcribe audio. Please check your API keys.");
+                    }
                 } finally {
                     setStatus('idle');
                 }
@@ -598,9 +662,13 @@ function VoiceTranscriptionUI({ selectedElement, onResult }: { selectedElement?:
                             const blob = await response.blob();
                             const text = await transcribeAudio(blob);
                             onResult(text);
-                        } catch (err) {
+                        } catch (err: any) {
                             console.error(err);
-                            onResult("Error: Failed to transcribe voice note.");
+                            if (err.message === "OPENAI_QUOTA_EXCEEDED") {
+                                onResult("Error: OpenAI quota exceeded. Please visit Settings and add a Google Gemini Key (Recommended).");
+                            } else {
+                                onResult("Error: Failed to transcribe voice note.");
+                            }
                         } finally {
                             setStatus('idle');
                         }
@@ -630,7 +698,9 @@ function VoiceTranscriptionUI({ selectedElement, onResult }: { selectedElement?:
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
                         <div className="flex flex-col items-center gap-2">
                             <Loader2 className="h-5 w-5 text-indigo-400 animate-spin" />
-                            <span className="text-[10px] font-bold text-indigo-200">Processing with Whisper AI...</span>
+                            <span className="text-[10px] font-bold text-indigo-200">
+                                {getGeminiKey() ? "Processing with Gemini 1.5 Flash..." : "Processing with OpenAI Whisper..."}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -669,9 +739,9 @@ function VoiceTranscriptionUI({ selectedElement, onResult }: { selectedElement?:
 
             <div className="text-[10px] text-center text-gray-400 flex flex-col gap-1">
                 <span>AI Denoising Active • Temperature: 0</span>
-                {!hasApiKey && (
+                {!(hasUserOpenAIKey() || hasUserGeminiKey()) && (
                     <span className="text-amber-500 font-bold bg-amber-50 px-2 py-1 rounded-full w-fit mx-auto border border-amber-200">
-                        ⚠️ OpenAI API Key Missing (Using Mock)
+                        ⚠️ AI API Key Missing (Using Mock)
                     </span>
                 )}
             </div>

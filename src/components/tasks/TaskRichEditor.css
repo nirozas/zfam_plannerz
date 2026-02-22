@@ -1,0 +1,44 @@
+.task-rich-editor .ql-container {
+    font-size: 14px;
+    border-radius: 0 0 12px 12px;
+    border-color: #f3f4f6;
+    min-height: 220px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.task-rich-editor:not(.read-only) .ql-container:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.05);
+}
+
+.task-rich-editor .ql-editor {
+    min-height: 220px;
+    font-family: inherit;
+    line-height: 1.6;
+    color: #374151;
+}
+
+.task-rich-editor .ql-toolbar {
+    border-radius: 12px 12px 0 0;
+    border-color: #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+    background-color: #ffffff;
+    padding: 12px !important;
+}
+
+.task-rich-editor.read-only .ql-toolbar {
+    display: none;
+}
+
+.task-rich-editor.read-only .ql-container {
+    border: none;
+    border-radius: 8px;
+    background-color: transparent;
+    min-height: auto;
+}
+
+.task-rich-editor.read-only .ql-editor {
+    padding: 0;
+    min-height: auto;
+}

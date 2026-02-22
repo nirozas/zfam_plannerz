@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 interface GenArtModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onGenerate: (data: { prompt: string; style: string; replaceInk: boolean }) => void;
+    onGenerate: (data: { prompt: string; style: string; replaceInk: boolean; engine: 'openai' | 'gemini' }) => void;
 }
 
 const styles = [
@@ -31,6 +31,7 @@ export function GenArtModal({ isOpen, onClose, onGenerate }: GenArtModalProps) {
     const [selectedStyle, setSelectedStyle] = useState(styles[0]);
     const [replaceInk, setReplaceInk] = useState(true);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [engine, setEngine] = useState<'openai' | 'gemini'>('gemini');
 
     if (!isOpen) return null;
 
@@ -61,6 +62,34 @@ export function GenArtModal({ isOpen, onClose, onGenerate }: GenArtModalProps) {
                 </div>
 
                 <div className="p-6 space-y-6">
+                    {/* Engine Selector */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                            <Layers size={12} className="text-indigo-500" />
+                            Select Engine
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                            <button
+                                onClick={() => setEngine('gemini')}
+                                className={cn(
+                                    "py-2 text-[10px] font-bold rounded-lg transition-all",
+                                    engine === 'gemini' ? "bg-white text-indigo-600 shadow-sm border border-indigo-100" : "text-gray-400 hover:text-gray-600"
+                                )}
+                            >
+                                GOOGLE GEMINI (FREE)
+                            </button>
+                            <button
+                                onClick={() => setEngine('openai')}
+                                className={cn(
+                                    "py-2 text-[10px] font-bold rounded-lg transition-all",
+                                    engine === 'openai' ? "bg-white text-indigo-600 shadow-sm border border-indigo-100" : "text-gray-400 hover:text-gray-600"
+                                )}
+                            >
+                                OPENAI DALL-E 3
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Style Selector */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -142,7 +171,7 @@ export function GenArtModal({ isOpen, onClose, onGenerate }: GenArtModalProps) {
                     <Button
                         className="w-full h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] font-bold text-sm flex items-center justify-center gap-3"
                         disabled={!prompt.trim()}
-                        onClick={() => onGenerate({ prompt, style: selectedStyle, replaceInk })}
+                        onClick={() => onGenerate({ prompt, style: selectedStyle, replaceInk, engine })}
                     >
                         TRANSFORM SKETCH
                         <Sparkles size={18} className="animate-pulse" />

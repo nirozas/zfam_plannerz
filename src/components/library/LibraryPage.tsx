@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Heart, Archive, Hash, ChevronRight, Edit, Trash2, Palette, RefreshCcw } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Hash, ChevronRight, Edit, Trash2, Palette, RefreshCcw, Plus, X } from 'lucide-react';
+
 import { usePlannerStore } from '../../store/plannerStore';
 import AssetEditor from './AssetEditor';
 import { PDFImportModal } from '../dashboard/PDFImportModal';
@@ -9,6 +9,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { generateUUID } from '../../store/plannerStore';
 import { supabase } from '../../supabase/client';
 import '../dashboard/Dashboard.css';
+import PageHero from '../ui/PageHero';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -35,6 +36,7 @@ const LibraryPage: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeHashtag, setActiveHashtag] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');
 
     // Upload Modal State
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -65,20 +67,20 @@ const LibraryPage: React.FC = () => {
 
     // Initial fetch
     useEffect(() => {
-        fetchLibraryCategories(activeTab);
-        fetchLibraryAssets(activeTab);
-    }, [activeTab, fetchLibraryCategories, fetchLibraryAssets]);
+        fetchLibraryCategories(activeTab, viewMode);
+        fetchLibraryAssets(activeTab, undefined, undefined, viewMode);
+    }, [activeTab, fetchLibraryCategories, fetchLibraryAssets, viewMode]);
 
     // Handle Category change
     const handleCategorySelect = (cat: string | null) => {
         setSelectedCategory(cat);
-        fetchLibraryAssets(activeTab, cat || undefined, activeHashtag || undefined);
+        fetchLibraryAssets(activeTab, cat || undefined, activeHashtag || undefined, viewMode);
     };
 
     // Handle Hashtag change
     const handleHashtagSelect = (tag: string | null) => {
         setActiveHashtag(tag);
-        fetchLibraryAssets(activeTab, selectedCategory || undefined, tag || undefined);
+        fetchLibraryAssets(activeTab, selectedCategory || undefined, tag || undefined, viewMode);
     };
 
     // Handle Upload
@@ -226,280 +228,261 @@ const LibraryPage: React.FC = () => {
     };
 
     return (
-        <div className="dashboard-layout">
-            {/* 1. PRIMARY SIDEBAR (Fixed Narrow 70px) */}
-            <aside className="dashboard-sidebar">
-                <div className="brand-logo">ZOABI</div>
-                <nav className="nav-menu">
-                    <NavLink to="/homepage" className="nav-item" title="Home">
-                        <LayoutGrid size={22} />
-                    </NavLink>
-                    <NavLink to="/favorites" className="nav-item" title="Favorites">
-                        <Heart size={22} />
-                    </NavLink>
-                    <NavLink to="/archive" className="nav-item" title="Archive">
-                        <Archive size={22} />
-                    </NavLink>
-                    <div className="nav-item active" title="Library">
-                        <Book size={22} />
+        <div className="flex flex-col h-full w-full overflow-hidden bg-white">
+            <PageHero
+                pageKey="library"
+                title="Asset Library"
+                subtitle="Manage your templates, stickers, and creative assets."
+            />
+
+            {/* HEADER (Controls Bar) */}
+            <header className="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-6">
+                    <button
+                        onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        title="Toggle Case"
+                    >
+                        <LayoutGrid size={20} />
+                    </button>
+
+                    <div className="flex bg-gray-100/80 p-1 rounded-xl">
+                        <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
+                        <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
+                        <TabButton active={activeTab === 'template'} onClick={() => setActiveTab('template')} icon={<LayoutTemplate size={14} />} label="Templates" />
+                        <TabButton active={activeTab === 'image'} onClick={() => setActiveTab('image')} icon={<FileImage size={14} />} label="Images" />
+                        <TabButton active={activeTab === 'planner'} onClick={() => setActiveTab('planner')} icon={<Book size={14} />} label="Planners" />
                     </div>
-                </nav>
-                <div className="sidebar-footer">
-                    <div className="avatar-circle">M</div>
+
+                    <div className="h-6 w-px bg-gray-200 mx-2" />
+
+                    <div className="flex bg-indigo-50/50 p-1 rounded-xl border border-indigo-100/50">
+                        <button
+                            onClick={() => setViewMode('mine')}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'mine' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
+                        >
+                            Personal
+                        </button>
+                        <button
+                            onClick={() => setViewMode('all')}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${viewMode === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-indigo-600'}`}
+                        >
+                            Community
+                        </button>
+                    </div>
                 </div>
-            </aside>
 
-            {/* THE STAGE */}
-            <main className="dashboard-main">
-                {/* 5. HEADER (Compact Single Row Row) */}
-                <header className="dashboard-header">
-                    <div className="header-left-group">
-                        <button
-                            onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex' }}
-                            title="Toggle Categories"
-                        >
-                            <LayoutGrid size={20} />
-                        </button>
-                        <h2 className="library-title-compact">Library</h2>
-
-                        <div className="nav-pill-tabs">
-                            <TabButton active={activeTab === 'sticker'} onClick={() => setActiveTab('sticker')} icon={<Sticker size={14} />} label="Stickers" />
-                            <TabButton active={activeTab === 'cover'} onClick={() => setActiveTab('cover')} icon={<FileImage size={14} />} label="Covers" />
-                            <TabButton active={activeTab === 'template'} onClick={() => setActiveTab('template')} icon={<LayoutTemplate size={14} />} label="Templates" />
-                            <TabButton active={activeTab === 'image'} onClick={() => setActiveTab('image')} icon={<FileImage size={14} />} label="Images" />
-                            <TabButton active={activeTab === 'planner'} onClick={() => setActiveTab('planner')} icon={<Book size={14} />} label="Planners" />
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div className="search-bar">
-                            <div className="search-wrapper">
-                                <Search size={14} className="search-icon" />
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', paddingLeft: '32px' }}
-                                />
-                            </div>
-                        </div>
-                        <button
-                            className="btn-refresh"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '8px' }}
-                            onClick={() => {
-                                fetchLibraryCategories(activeTab);
-                                fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined);
-                            }}
-                            title="Refresh"
-                        >
-                            <RefreshCcw size={14} />
-                        </button>
-                    </div>
-                </header>
-
-                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                    {/* 2. SECONDARY SIDEBAR (Fluid-Fixed fit-content) */}
-                    <aside className={`library-secondary-sidebar ${isCategoriesExpanded ? 'expanded' : 'collapsed'}`}>
-                        <h3 className="sidebar-section-title">Categories</h3>
-                        <CategoryButton
-                            active={selectedCategory === null}
-                            onClick={() => handleCategorySelect(null)}
-                            label={`All ${activeTab}s`}
-                            showChevron={selectedCategory === null}
-                        />
-                        {libraryCategories.map(cat => (
-                            <CategoryButton
-                                key={cat}
-                                active={selectedCategory === cat}
-                                onClick={() => handleCategorySelect(cat)}
-                                label={cat}
-                                showChevron={selectedCategory === cat}
+                <div className="flex items-center gap-4">
+                    <div className="search-bar">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder={`Search ${activeTab}s...`}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 w-64 text-xs transition-all outline-none"
                             />
-                        ))}
-                    </aside>
+                        </div>
+                    </div>
+                    <button
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        onClick={() => {
+                            fetchLibraryCategories(activeTab, viewMode);
+                            fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined, viewMode);
+                        }}
+                        title="Refresh"
+                    >
+                        <RefreshCcw size={18} className={isLoadingAssets ? 'animate-spin' : ''} />
+                    </button>
+                </div>
+            </header>
 
-                    {/* 3. CONTENT AREA (Flex-Grow Stage) */}
-                    <div className="content-scroll-area">
-                        {activeHashtag && (
-                            <div style={{ marginBottom: '1.25rem' }}>
-                                <span
-                                    onClick={() => handleHashtagSelect(null)}
-                                    style={{ background: '#e0e7ff', color: '#4338ca', padding: '0.2rem 0.6rem', borderRadius: '100px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content' }}
-                                >
-                                    <Hash size={12} /> {activeHashtag} ✕
-                                </span>
-                            </div>
-                        )}
+            <div className="flex flex-1 overflow-hidden">
+                {/* SIDEBAR */}
+                <aside className={`bg-gray-50/50 border-r border-gray-100 overflow-y-auto transition-all duration-300 ${isCategoriesExpanded ? 'w-64' : 'w-0 opacity-0'}`}>
+                    <div className="p-6">
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Categories</h3>
+                        <div className="flex flex-col gap-1">
+                            <CategoryButton
+                                active={selectedCategory === null}
+                                onClick={() => handleCategorySelect(null)}
+                                label={`All ${activeTab}s`}
+                                showChevron={selectedCategory === null}
+                            />
+                            {libraryCategories.map(cat => (
+                                <CategoryButton
+                                    key={cat}
+                                    active={selectedCategory === cat}
+                                    onClick={() => handleCategorySelect(cat)}
+                                    label={cat}
+                                    showChevron={selectedCategory === cat}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </aside>
 
-                        {isLoadingAssets ? (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: '#64748b' }}>
-                                <RefreshCcw size={24} className="animate-spin" />
+                {/* CONTENT AREA */}
+                <div className="flex-1 overflow-y-auto p-8 bg-gray-50/20">
+                    {activeHashtag && (
+                        <div className="mb-6">
+                            <button
+                                onClick={() => handleHashtagSelect(null)}
+                                className="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-indigo-100 shadow-sm"
+                            >
+                                <Hash size={12} /> {activeHashtag} <span className="text-indigo-300">✕</span>
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                        {/* Add Asset Button Card */}
+                        <button
+                            className="aspect-square bg-white border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all group"
+                            onClick={() => setIsUploadModalOpen(true)}
+                        >
+                            <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                                <Plus size={24} className="text-gray-400 group-hover:text-indigo-600" />
                             </div>
-                        ) : (
-                            <div className="library-asset-grid">
-                                {/* Add Asset Button Card */}
-                                <div
-                                    className="asset-card"
-                                    onClick={() => setIsUploadModalOpen(true)}
-                                    style={{ border: '2px dashed #e2e8f0', justifyContent: 'center', alignItems: 'center', background: '#fcfdfe' }}
-                                >
-                                    <div style={{ fontSize: '2rem', color: '#cbd5e1' }}>+</div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#94a3b8' }}>
-                                        Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                                    </div>
+                            <span className="text-xs font-bold text-gray-500 group-hover:text-indigo-600">
+                                Add {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                            </span>
+                        </button>
+
+                        {libraryAssets.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase())).map(asset => (
+                            <div key={asset.id} className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
+                                {/* CARD ACTIONS OVERLAY */}
+                                <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all z-10 translate-x-4 group-hover:translate-x-0">
+                                    <button onClick={(e) => { e.stopPropagation(); handleEditMetadata(asset); }} className="p-2 bg-white/90 backdrop-blur shadow-lg rounded-xl text-gray-600 hover:text-indigo-600 hover:scale-110 transition-all">
+                                        <Edit size={14} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setPaintingAsset(asset); }} className="p-2 bg-white/90 backdrop-blur shadow-lg rounded-xl text-gray-600 hover:text-pink-600 hover:scale-110 transition-all">
+                                        <Palette size={14} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteAsset(asset.id); }} className="p-2 bg-white/90 backdrop-blur shadow-lg rounded-xl text-gray-600 hover:text-red-600 hover:scale-110 transition-all">
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
 
-                                {libraryAssets.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase())).map(asset => (
-                                    <div key={asset.id} className="asset-card">
-                                        {/* 4. ASSET CARD (Hover Actions + Aspects) */}
-                                        <div className="asset-actions-overlay">
-                                            <button onClick={(e) => { e.stopPropagation(); handleEditMetadata(asset); }} className="overlay-btn" title="Edit">
-                                                <Edit size={14} />
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setPaintingAsset(asset); }} className="overlay-btn" title="Paint">
-                                                <Palette size={14} />
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteAsset(asset.id); }} className="overlay-btn" title="Delete">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
+                                <div className="aspect-square relative overflow-hidden bg-gray-50 flex items-center justify-center">
+                                    {asset.thumbnail_url ? (
+                                        <img src={asset.thumbnail_url} alt={asset.title} className="w-full h-full object-cover" />
+                                    ) : asset.url.toLowerCase().endsWith('.pdf') ? (
+                                        <div className="scale-75"><PDFThumbnail url={asset.url} /></div>
+                                    ) : (
+                                        <img
+                                            src={asset.url}
+                                            alt={asset.title}
+                                            className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                                            onError={(e) => {
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = 'https://placehold.co/400x400/f1f5f9/94a3b8?text=Error';
+                                            }}
+                                        />
+                                    )}
+                                </div>
 
-                                        <div className="asset-thumbnail-container">
-                                            {asset.thumbnail_url ? (
-                                                <img src={asset.thumbnail_url} alt={asset.title} />
-                                            ) : asset.url.toLowerCase().endsWith('.pdf') ? (
-                                                <PDFThumbnail url={asset.url} />
-                                            ) : (
-                                                <img
-                                                    src={asset.url}
-                                                    alt={asset.title}
-                                                    style={{ objectFit: 'contain', padding: '10%' }}
-                                                    onError={(e) => {
-                                                        e.currentTarget.onerror = null;
-                                                        e.currentTarget.src = 'https://placehold.co/200x300/f1f5f9/94a3b8?text=No+Image';
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="asset-info">
-                                            <div className="asset-title-indigo">{asset.title}</div>
-                                            {asset.category && (
-                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{asset.category}</div>
-                                            )}
-                                        </div>
-
-                                        {activeTab === 'planner' && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setPdfSourceUrl(asset.url);
-                                                    setIsPDFModalOpen(true);
-                                                }}
-                                                className="load-planner-btn-indigo"
-                                            >
-                                                Load as Planner
-                                            </button>
-                                        )}
+                                <div className="p-4 flex-1 flex flex-col justify-between">
+                                    <div>
+                                        <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{asset.category || 'Uncategorized'}</div>
+                                        <div className="text-sm font-bold text-gray-800 line-clamp-1">{asset.title}</div>
                                     </div>
-                                ))}
 
-                                {libraryAssets.length === 0 && (
-                                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
-                                        No {activeTab}s found.
-                                    </div>
-                                )}
+                                    {activeTab === 'planner' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPdfSourceUrl(asset.url);
+                                                setIsPDFModalOpen(true);
+                                            }}
+                                            className="mt-4 w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all"
+                                        >
+                                            Load as Planner
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        )}
+                        ))}
                     </div>
+
+                    {!isLoadingAssets && libraryAssets.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-4">
+                            <div className="p-8 bg-white rounded-3xl shadow-sm">
+                                <LayoutTemplate size={64} className="text-gray-100" />
+                            </div>
+                            <p className="font-medium">No {activeTab}s found in this category.</p>
+                        </div>
+                    )}
                 </div>
-            </main>
+            </div>
 
             {/* Modals */}
             {isUploadModalOpen && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(15, 23, 42, 0.6)',
-                    backdropFilter: 'blur(4px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    padding: '1rem'
-                }}>
-                    <div className="glass-panel" style={{
-                        width: '100%', maxWidth: '480px',
-                        background: 'white', borderRadius: '24px', padding: '2rem',
-                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
-                            <button onClick={() => setIsUploadModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: '12px' }}>
-                            <button onClick={() => setUploadMode('file')} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: uploadMode === 'file' ? 'white' : 'transparent', color: uploadMode === 'file' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer' }}>Local File</button>
-                            <button onClick={() => setUploadMode('url')} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: uploadMode === 'url' ? 'white' : 'transparent', color: uploadMode === 'url' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer' }}>Internet URL</button>
-                        </div>
-
-                        <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {uploadMode === 'file' ? (
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Select Files</label>
-                                    <input type="file" ref={fileInputRef} accept={activeTab === 'template' || activeTab === 'planner' ? "image/*,.pdf" : "image/*"} multiple required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc' }} />
-                                </div>
-                            ) : (
-                                <>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>URL</label>
-                                        <input type="url" placeholder="https://example.com/asset.png" value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Title</label>
-                                        <input type="text" placeholder="Title" value={inputTitle} onChange={(e) => setInputTitle(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                                    </div>
-                                </>
-                            )}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Category</label>
-                                <input type="text" placeholder="e.g. Minimalist" value={inputCategory} onChange={(e) => setInputCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Hashtags</label>
-                                <input type="text" placeholder="cute, pastel" value={inputHashtags} onChange={(e) => setInputHashtags(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                            </div>
-                            <button type="submit" disabled={isUploading} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: '700', cursor: isUploading ? 'not-allowed' : 'pointer' }}>
-                                {isUploading ? 'Uploading...' : 'Add Asset'}
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New {activeTab}</h2>
+                            <button onClick={() => setIsUploadModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                                <X size={24} />
                             </button>
-                        </form>
+                        </div>
+
+                        <div className="px-8 pb-8">
+                            <div className="flex bg-gray-100 p-1 rounded-2xl mb-8">
+                                <button onClick={() => setUploadMode('file')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${uploadMode === 'file' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Local File</button>
+                                <button onClick={() => setUploadMode('url')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${uploadMode === 'url' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Online URL</button>
+                            </div>
+
+                            <form onSubmit={handleUpload} className="space-y-6">
+                                {uploadMode === 'file' ? (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Select Files</label>
+                                        <input type="file" ref={fileInputRef} accept={activeTab === 'template' || activeTab === 'planner' ? "image/*,.pdf" : "image/*"} multiple required className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl file:hidden text-sm font-medium text-gray-600 cursor-pointer hover:border-indigo-300 transition-colors" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">URL</label>
+                                            <input type="url" placeholder="https://..." value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Title</label>
+                                            <input type="text" placeholder="Inspiration" value={inputTitle} onChange={(e) => setInputTitle(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                                        </div>
+                                    </>
+                                )}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Category</label>
+                                    <input type="text" placeholder="e.g. Minimalist" value={inputCategory} onChange={(e) => setInputCategory(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Hashtags</label>
+                                    <input type="text" placeholder="cute, study, planning" value={inputHashtags} onChange={(e) => setInputHashtags(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                                </div>
+
+                                <button type="submit" disabled={isUploading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] disabled:opacity-50">
+                                    {isUploading ? 'Transferring...' : 'Complete Upload'}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
             {editingAsset && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(15, 23, 42, 0.6)',
-                    backdropFilter: 'blur(4px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', background: 'white', borderRadius: '24px', padding: '2rem' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem' }}>Edit Asset</h2>
-                        <form onSubmit={handleSaveMetadata} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                            <input type="text" value={editHashtags} onChange={(e) => setEditHashtags(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button type="button" onClick={() => setEditingAsset(null)} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white' }}>Cancel</button>
-                                <button type="submit" disabled={isSavingEdit} style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white' }}>
-                                    {isSavingEdit ? 'Saving...' : 'Save'}
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+                        <h2 className="text-xl font-black mb-6">Edit Properties</h2>
+                        <form onSubmit={handleSaveMetadata} className="space-y-4">
+                            <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Title" />
+                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Category" />
+                            <input type="text" value={editHashtags} onChange={(e) => setEditHashtags(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl" placeholder="Hashtags" />
+
+                            <div className="flex gap-3 mt-8">
+                                <button type="button" onClick={() => setEditingAsset(null)} className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Discard</button>
+                                <button type="submit" disabled={isSavingEdit} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100">
+                                    {isSavingEdit ? 'Saving...' : 'Confirm'}
                                 </button>
                             </div>
                         </form>
@@ -512,35 +495,14 @@ const LibraryPage: React.FC = () => {
             )}
 
             <PDFImportModal isOpen={isPDFModalOpen} onClose={() => { setIsPDFModalOpen(false); setPdfSourceUrl(undefined); }} sourceUrl={pdfSourceUrl} />
-
-            <style>{`
-                .tab-btn { padding: 0.5rem 1rem; border: none; background: transparent; border-radius: 8px; color: #64748b; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; alignItems: center; gap: 0.5rem; transition: all 0.2s; }
-                .tab-btn:hover { color: #1e293b; }
-                .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-                .asset-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #6366f133; }
-            `}</style>
-        </div>
+        </div >
     );
 };
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
     <button
         onClick={onClick}
-        style={{
-            padding: '0.4rem 0.75rem',
-            border: 'none',
-            background: active ? 'white' : 'transparent',
-            borderRadius: '8px',
-            color: active ? '#6366f1' : '#64748b',
-            fontSize: '0.8rem',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            transition: 'all 0.2s',
-            boxShadow: active ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-        }}
+        className={`px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${active ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
     >
         {icon}
         <span className="hidden sm:inline">{label}</span>
@@ -550,24 +512,9 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.Re
 const CategoryButton: React.FC<{ active: boolean; onClick: () => void; label: string, showChevron?: boolean }> = ({ active, onClick, label, showChevron }) => (
     <button
         onClick={onClick}
-        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '8px',
-            background: active ? '#f1f5f9' : 'transparent',
-            color: active ? '#6366f1' : '#64748b',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: active ? '700' : '500',
-            fontSize: '0.85rem',
-            textAlign: 'left',
-            transition: 'all 0.1s'
-        }}
+        className={`flex items-center justify-between w-full px-4 py-2.5 rounded-xl transition-all text-xs font-bold ${active ? 'bg-white shadow-sm text-indigo-600 border border-gray-100' : 'text-gray-500 hover:bg-white/50 hover:text-gray-700'}`}
     >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        <span className="truncate">{label}</span>
         {active && showChevron && <ChevronRight size={14} />}
     </button>
 );

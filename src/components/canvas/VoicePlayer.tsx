@@ -15,25 +15,37 @@ export function VoicePlayer({ src, duration, x, y, onClose }: VoicePlayerProps) 
     const [currentTime, setCurrentTime] = useState(0)
 
     useEffect(() => {
-        const audio = new Audio(src)
-        audioRef.current = audio
+        let isMounted = true;
+        const audio = new Audio(src);
+        audioRef.current = audio;
 
-        const updateTime = () => setCurrentTime(audio.currentTime)
-        const handleEnded = () => setIsPlaying(false)
+        const updateTime = () => setCurrentTime(audio.currentTime);
+        const handleEnded = () => setIsPlaying(false);
 
-        audio.addEventListener('timeupdate', updateTime)
-        audio.addEventListener('ended', handleEnded)
+        audio.addEventListener('timeupdate', updateTime);
+        audio.addEventListener('ended', handleEnded);
 
-        // Auto-play when opened? Maybe not, consistent with user intent "when playing... show controls"
-        // Let's auto-play.
-        audio.play().then(() => setIsPlaying(true)).catch(console.error)
+        // Auto-play when opened
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    if (isMounted) setIsPlaying(true);
+                })
+                .catch(error => {
+                    if (error.name !== 'AbortError') {
+                        console.error("[VoicePlayer] Playback error:", error);
+                    }
+                });
+        }
 
         return () => {
-            audio.pause()
-            audio.removeEventListener('timeupdate', updateTime)
-            audio.removeEventListener('ended', handleEnded)
-        }
-    }, [src])
+            isMounted = false;
+            audio.pause();
+            audio.removeEventListener('timeupdate', updateTime);
+            audio.removeEventListener('ended', handleEnded);
+        };
+    }, [src]);
 
     const togglePlay = () => {
         if (!audioRef.current) return

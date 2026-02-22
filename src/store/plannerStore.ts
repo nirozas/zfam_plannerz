@@ -77,6 +77,19 @@ const fetchTemplateOrAsset = async (id: string) => {
 };
 
 export type ViewType = 'home' | 'workspace' | 'settings' | 'admin';
+export type ConnectionType = 'family' | 'work';
+export interface Connection {
+    id: string;
+    requester_id: string;
+    receiver_id: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    connection_type: ConnectionType;
+    created_at: string;
+    peer_id: string;
+    peer_email?: string;
+    peer_name?: string;
+    peer_avatar?: string;
+}
 
 interface PlannerState {
     view: ViewType;
@@ -92,10 +105,19 @@ interface PlannerState {
     isReadOnly: boolean;
     saveStatus: 'idle' | 'saving' | 'saved' | 'error';
     isFetchingPlanners: boolean;
-    userProfile: { id: string; role: string; full_name?: string; username?: string; avatar_url?: string } | null;
-    userStats: { totalPlanners: number; totalPages: number; totalAssets: number } | null;
+    isAuthInitialized: boolean; // New: tracks if we've checked Supabase session
+    userProfile: { id: string; role: string; full_name?: string; username?: string; avatar_url?: string; hero_config?: Record<string, { imageUrl?: string; title?: string; subtitle?: string }> } | null;
+    globalHeroConfig: Record<string, { imageUrl?: string; title?: string; subtitle?: string }>;
+    userStats: { totalPlanners: number; totalPages: number; totalAssets: number; totalTasks: number; totalTrips: number } | null;
     highlightedElementId: string | null;
     setHighlightedElementId: (id: string | null) => void;
+    // Connections
+    connections: Connection[];
+    fetchConnections: () => Promise<void>;
+    requestConnection: (email: string, connectionType: 'family' | 'work') => Promise<void>;
+    acceptConnection: (connectionId: string) => Promise<void>;
+    updateConnectionType: (connectionId: string, connectionType: 'family' | 'work') => Promise<void>;
+    removeConnection: (connectionId: string) => Promise<void>;
     // ...
 
     // Search Action
@@ -146,9 +168,9 @@ interface PlannerState {
     customTemplates: { id: string; name: string; url: string; category: string }[];
 
     // Actions - Assets
-    fetchLibraryAssets: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtag?: string) => Promise<void>;
-    fetchMultipleLibraryAssets: (types: string[]) => Promise<void>;
-    fetchLibraryCategories: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner') => Promise<void>;
+    fetchLibraryAssets: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtag?: string, viewMode?: 'mine' | 'all') => Promise<void>;
+    fetchMultipleLibraryAssets: (types: string[], viewMode?: 'mine' | 'all') => Promise<void>;
+    fetchLibraryCategories: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', viewMode?: 'mine' | 'all') => Promise<void>;
     uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], thumbnailUrl?: string) => Promise<string>;
     addAssetByUrl: (url: string, title: string, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[]) => Promise<string>;
     updateAssetMetadata: (id: string, data: { title?: string, category?: string, hashtags?: string[] }) => Promise<void>;
@@ -160,6 +182,10 @@ interface PlannerState {
     updateProfile: (data: any) => Promise<void>;
     uploadAvatar: (file: File) => Promise<string>;
     fetchUserStats: () => Promise<void>;
+    updateHeroImage: (page: string, file: File) => Promise<string>;
+    updateHeroImageUrl: (page: string, url: string) => Promise<void>;
+    updateHeroText: (page: string, data: { title?: string; subtitle?: string }) => Promise<void>;
+    updateHomeBoxImageUrl: (boxId: string, url: string | null) => Promise<void>;
 
     // Actions - PDF
     createPlannerFromPDF: (name: string, pdfPages: { url: string, width: number, height: number, links?: any[] }[], options?: { presetName?: string; section?: string }) => Promise<void>;
@@ -259,6 +285,7 @@ interface PlannerState {
     // Actions - Misc
     setPlanners: (planners: Planner[]) => void;
     setUser: (user: any | null) => void;
+    setAuthInitialized: (initialized: boolean) => void;
     triggerExport: () => void;
     addCustomSticker: (url: string) => void;
     addCustomTemplate: (template: { name: string; url: string; category: string }) => void;
@@ -287,9 +314,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     isReadOnly: false,
     saveStatus: 'idle',
     isFetchingPlanners: false,
+    isAuthInitialized: false, // Start false
     userProfile: null,
+    globalHeroConfig: {},
     userStats: null,
-
+    connections: [],
 
     brushColor: '#000000',
     brushSize: 3,
@@ -352,6 +381,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     resetView: () => set({ zoomScale: 1, panPosition: { x: 0, y: 0 } }),
     setSelection: (ids) => set({ selection: ids }),
 
+    setAuthInitialized: (initialized) => set({ isAuthInitialized: initialized }),
     setView: (view) => set({ view }),
 
     currentYear: null as number | null,
@@ -443,10 +473,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             let planner = planners.find(p => slugify(p.name) === slugify(idOrName) || p.id === idOrName);
 
             if (!planner) {
-                console.log(`[openPlanner] Not in cache, querying Supabase for: ${idOrName}`);
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("Not authenticated");
+
                 const { data: dbPlanner, error: dbError } = await supabase
                     .from('planners')
                     .select('*')
+                    .eq('user_id', user.id)
                     .or(`id.eq.${idOrName},name.eq.${idOrName}`)
                     .maybeSingle();
 
@@ -1803,6 +1836,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             const { data, error, status, statusText } = await supabase
                 .from('planners')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             console.log('Supabase Status:', status, statusText);
@@ -1989,12 +2023,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
     },
 
-    fetchLibraryAssets: async (type, category, hashtag) => {
+    fetchLibraryAssets: async (type, category, hashtag, viewMode = 'all') => {
+        const { user } = get();
         set({ isLoadingAssets: true });
+
         let query = supabase
             .from('assets')
             .select('*')
             .eq('type', type);
+
+        if (viewMode === 'mine' && user) {
+            query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
+        }
 
         if (category) query = query.eq('category', category);
         if (hashtag) query = query.contains('hashtags', [hashtag]);
@@ -2011,13 +2053,22 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set({ libraryAssets: data || [], isLoadingAssets: false });
     },
 
-    fetchMultipleLibraryAssets: async (types) => {
+    fetchMultipleLibraryAssets: async (types, viewMode = 'all') => {
+        const { user } = get();
         set({ isLoadingAssets: true });
-        const { data, error } = await supabase
+
+        let query = supabase
             .from('assets')
             .select('*')
-            .in('type', types)
-            .order('created_at', { ascending: false });
+            .in('type', types);
+
+        if (viewMode === 'mine' && user) {
+            query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             console.error(`Error fetching multiple assets:`, error);
@@ -2028,11 +2079,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set({ libraryAssets: data || [], isLoadingAssets: false });
     },
 
-    fetchLibraryCategories: async (type) => {
-        const { data, error } = await supabase
+    fetchLibraryCategories: async (type, viewMode = 'all') => {
+        const { user } = get();
+        let query = supabase
             .from('assets')
             .select('category')
             .eq('type', type);
+
+        if (viewMode === 'mine' && user) {
+            query = query.eq('user_id', user.id);
+        } else if (viewMode === 'all' && user) {
+            query = query.or(`user_id.is.null,user_id.eq.${user.id}`);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error fetching categories:', error);
@@ -2249,33 +2309,54 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (error) {
             console.error('Error fetching user profile:', error);
-            return;
+            // Optionally fetch admin config even if user fetch fails
         }
 
-        set({ userProfile: data });
+        // Fetch the global admin config for hero covers
+        const { data: adminData } = await supabase
+            .from('profiles')
+            .select('hero_config')
+            .eq('role', 'admin')
+            .limit(1)
+            .single();
+
+        set({
+            userProfile: data || null,
+            globalHeroConfig: adminData?.hero_config || {}
+        });
     },
 
     updateProfile: async (updates) => {
-        const { user } = get();
-        if (!user) return;
+        let { user } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) return;
+            user = supabaseUser;
+        }
 
         const { error } = await supabase
             .from('profiles')
-            .upsert({ id: user.id, ...updates, updated_at: new Date().toISOString() });
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', user.id);
 
         if (error) {
             console.error('Error updating profile:', error);
             throw error;
         }
 
-        // Update local state
-        const currentProfile = get().userProfile;
-        set({ userProfile: { ...currentProfile, ...updates } as any });
+        // Update local state and merge with existing profile if any
+        set((state) => ({
+            userProfile: state.userProfile ? { ...state.userProfile, ...updates } : updates
+        }) as any);
     },
 
     uploadAvatar: async (file) => {
-        const { user } = get();
-        if (!user) throw new Error('Not logged in');
+        let { user } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) throw new Error('Not logged in');
+            user = supabaseUser;
+        }
 
         const fileExt = file.name.split('.').pop();
         const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
@@ -2296,6 +2377,103 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         await get().updateProfile({ avatar_url: publicUrl });
 
         return publicUrl;
+    },
+
+    updateHeroImage: async (page, file) => {
+        let { user, userProfile, updateProfile } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) throw new Error('Not logged in');
+            user = supabaseUser;
+        }
+
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/hero-${page}-${Date.now()}.${fileExt}`;
+
+        // 1. Upload to 'covers' bucket
+        const { error: uploadError } = await supabase.storage
+            .from('covers')
+            .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // 2. Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('covers')
+            .getPublicUrl(filePath);
+
+        // 3. Update hero_config in profile
+        const currentRaw = userProfile?.hero_config?.[page];
+        const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
+            (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
+
+        const newHeroConfig = {
+            ...(userProfile?.hero_config || {}),
+            [page]: { ...currentConfig, imageUrl: publicUrl }
+        };
+        await updateProfile({ hero_config: newHeroConfig });
+        set({ globalHeroConfig: newHeroConfig });
+
+        return publicUrl;
+    },
+
+    updateHeroImageUrl: async (page: string, url: string) => {
+        let { user, userProfile, updateProfile } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) throw new Error('Not logged in');
+            user = supabaseUser;
+        }
+
+        const currentRaw = userProfile?.hero_config?.[page];
+        const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
+            (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
+
+        const newHeroConfig = {
+            ...(userProfile?.hero_config || {}),
+            [page]: { ...currentConfig, imageUrl: url }
+        };
+        await updateProfile({ hero_config: newHeroConfig });
+        set({ globalHeroConfig: newHeroConfig });
+    },
+
+    updateHeroText: async (page: string, data: { title?: string; subtitle?: string }) => {
+        let { user, userProfile, updateProfile } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) throw new Error('Not logged in');
+            user = supabaseUser;
+        }
+
+        const currentRaw = userProfile?.hero_config?.[page];
+        const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
+            (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
+
+        const newHeroConfig = {
+            ...(userProfile?.hero_config || {}),
+            [page]: { ...currentConfig, ...data }
+        };
+        await updateProfile({ hero_config: newHeroConfig });
+        set({ globalHeroConfig: newHeroConfig });
+    },
+
+    updateHomeBoxImageUrl: async (boxId: string, url: string | null) => {
+        let { user, userProfile, updateProfile } = get();
+        if (!user) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (!supabaseUser) throw new Error('Not logged in');
+            user = supabaseUser;
+        }
+
+        const currentRaw = userProfile?.hero_config || {};
+        const boxKey = `home_box_${boxId}`;
+
+        const newHeroConfig: Record<string, { imageUrl?: string; title?: string; subtitle?: string }> = {
+            ...(currentRaw as any),
+            [boxKey]: { ...(currentRaw[boxKey] || {}), imageUrl: url || undefined }
+        };
+        await updateProfile({ hero_config: newHeroConfig });
+        set({ globalHeroConfig: newHeroConfig });
     },
 
     fetchUserStats: async () => {
@@ -2330,11 +2508,25 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id);
 
+            // 4. Tasks count
+            const { count: tasksCount } = await supabase
+                .from('tasks')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            // 5. Trips count
+            const { count: tripsCount } = await supabase
+                .from('trips')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
             set({
                 userStats: {
                     totalPlanners: plannersCount || 0,
                     totalPages: totalPages,
-                    totalAssets: assetsCount || 0
+                    totalAssets: assetsCount || 0,
+                    totalTasks: tasksCount || 0,
+                    totalTrips: tripsCount || 0
                 }
             });
 
@@ -2343,6 +2535,123 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
     },
 
+    fetchConnections: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        // Fetch raw connection rows
+        const { data, error } = await supabase
+            .from('connections')
+            .select('*')
+            .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+        if (error) {
+            console.error('Error fetching connections:', error);
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            set({ connections: [] });
+            return;
+        }
+
+        // Collect all peer IDs we need profile info for
+        const peerIds = data.map((c: any) =>
+            c.requester_id === user.id ? c.receiver_id : c.requester_id
+        );
+
+        // Fetch profiles for those peers (profiles has full_name + avatar_url)
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', peerIds);
+
+        // Fetch emails via RPC (profiles table does NOT store email — only auth.users does)
+        const { data: emailRows } = await supabase
+            .rpc('get_emails_for_users', { user_ids: peerIds });
+
+        const profileMap: Record<string, any> = {};
+        (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+        const emailMap: Record<string, string> = {};
+        (emailRows || []).forEach((r: any) => { emailMap[r.id] = r.email; });
+
+        const mapped = data.map((c: any) => {
+            const isRequester = c.requester_id === user.id;
+            const peerId: string = isRequester ? c.receiver_id : c.requester_id;
+            const profile = profileMap[peerId] || {};
+            return {
+                id: c.id,
+                requester_id: c.requester_id,
+                receiver_id: c.receiver_id,
+                status: c.status,
+                created_at: c.created_at,
+                peer_id: peerId,
+                peer_email: emailMap[peerId] || 'Unknown',
+                peer_name: profile.full_name || emailMap[peerId] || 'Anonymous',
+                peer_avatar: profile.avatar_url || '',
+                connection_type: (c.connection_type as 'family' | 'work') || 'work'
+            };
+        });
+        set({ connections: mapped });
+    },
+
+    requestConnection: async (email: string, connectionType: 'family' | 'work' = 'work') => {
+        const { user, fetchConnections } = get();
+        if (!user) throw new Error('Not logged in');
+
+        // Use RPC to securely get user ID from email
+        const { data: receiverId, error: rpcError } = await supabase
+            .rpc('get_user_id_by_email', { p_email: email });
+
+        if (rpcError || !receiverId) {
+            throw new Error('User not found with that email.');
+        }
+
+        if (receiverId === user.id) throw new Error('You cannot connect with yourself.');
+
+        const { error } = await supabase
+            .from('connections')
+            .insert({
+                requester_id: user.id,
+                receiver_id: receiverId,
+                status: 'pending',
+                connection_type: connectionType
+            });
+
+        if (error) throw new Error(error.message);
+        await fetchConnections();
+    },
+
+    acceptConnection: async (connectionId: string) => {
+        const { error } = await supabase
+            .from('connections')
+            .update({ status: 'accepted' })
+            .eq('id', connectionId);
+
+        if (error) throw error;
+        await get().fetchConnections();
+    },
+
+    updateConnectionType: async (connectionId: string, connectionType: 'family' | 'work') => {
+        const { error } = await supabase
+            .from('connections')
+            .update({ connection_type: connectionType })
+            .eq('id', connectionId);
+        if (error) throw error;
+        await get().fetchConnections();
+    },
+
+    removeConnection: async (connectionId: string) => {
+        const { error } = await supabase
+            .from('connections')
+            .delete()
+            .eq('id', connectionId);
+
+        if (error) throw error;
+        await get().fetchConnections();
+    },
+
+    // ─── Document Operations ────────────────────────────────────────────────────────
     createPlannerFromPDF: async (name, pdfPages, options) => {
         const { user } = get();
         if (!user) throw new Error("User must be logged in");

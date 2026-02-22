@@ -292,7 +292,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
         setShowGenArtModal(true);
     };
 
-    const handleGenerateArt = async (data: { prompt: string, style: string, replaceInk: boolean }) => {
+    const handleGenerateArt = async (data: { prompt: string, style: string, replaceInk: boolean, engine: 'openai' | 'gemini' }) => {
         setShowGenArtModal(false);
         const targetIds = selectedId ? [selectedId] : selection;
         if (targetIds.length === 0 || !selectionRect) return;
@@ -308,7 +308,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasHandle, CanvasProps>(({
             const cleanSketch = await prepareInkImage(inkElements);
 
             // 2. GENERATION: Hit the Image-to-Image API (Simulated)
-            const artUrl = await generateArtFromInk(cleanSketch, data.prompt, data.style);
+            const artUrl = await generateArtFromInk(cleanSketch, data.prompt, data.style, data.engine);
 
             const { addElement, deleteElement, saveHistory, updateElement } = usePlannerStore.getState();
             saveHistory();

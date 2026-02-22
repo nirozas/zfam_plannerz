@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { usePlannerStore } from '../../store/plannerStore';
-import { ArrowLeft, Trash2, RotateCcw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Trash2, RotateCcw, Search, SortAsc } from 'lucide-react';
 import PlannerCover from '../dashboard/PlannerCover';
+import PageHero from '../ui/PageHero';
 import './ArchivePage.css';
 
 const ArchivePage: React.FC = () => {
     const { availablePlanners, fetchPlanners, unarchivePlanner, deletePlanner } = usePlannerStore();
-    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
 
@@ -36,51 +35,69 @@ const ArchivePage: React.FC = () => {
     };
 
     return (
-        <div className="archive-page">
-            <header className="archive-header">
-                <div className="archive-top">
-                    <button className="back-btn" onClick={() => navigate('/homepage')}>
-                        <ArrowLeft size={24} />
-                    </button>
-                    <h1>Archived Planners</h1>
+        <div className="flex flex-col h-full overflow-hidden w-full bg-white">
+            <PageHero
+                pageKey="archive"
+                title="Archived Workspace"
+                subtitle="Restore your previous work or clear old projects."
+            />
+
+            {/* Controls Bar */}
+            <div className="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-4 flex-1 max-w-2xl">
+                    <div className="relative flex-1">
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search archived planners..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
+                        />
+                    </div>
                 </div>
 
-                {/* Search & Sort for Archive - Reusing dashboard types */}
-                <div className="search-bar" style={{ width: '100%', maxWidth: '500px' }}>
-                    <input
-                        type="text"
-                        placeholder="Search archives..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ padding: '10px 15px', borderRadius: '15px', border: '1px solid #ccc', flex: 1 }}
-                    />
-                    <button onClick={() => setSortBy(prev => prev === 'date' ? 'name' : 'date')} style={{ padding: '0 1rem', background: 'none', border: '1px solid #ccc', borderRadius: '15px', cursor: 'pointer' }}>
-                        {sortBy === 'date' ? 'Date' : 'Name'}
+                <div className="flex items-center gap-3">
+                    <button
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                        onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
+                    >
+                        <SortAsc size={18} />
+                        {sortBy === 'date' ? 'By Date' : 'Alphabetical'}
+                    </button>
+                    <button
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        onClick={() => fetchPlanners()}
+                        title="Refresh"
+                    >
+                        <RotateCcw size={20} />
                     </button>
                 </div>
-            </header>
+            </div>
 
-            <main className="archive-content">
+            <main className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
                 {archivedPlanners.length === 0 ? (
-                    <div className="empty-archive">
-                        <Trash2 size={48} />
-                        <p>No archived planners found.</p>
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
+                        <div className="p-6 bg-white rounded-full shadow-sm">
+                            <Trash2 size={48} className="text-gray-200" />
+                        </div>
+                        <p className="font-medium text-gray-500">Your archive is empty.</p>
                     </div>
                 ) : (
-                    <div className="planner-grid">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                         {archivedPlanners.map(planner => (
-                            <div key={planner.id} className="archived-item-wrapper">
+                            <div key={planner.id} className="group relative">
                                 <PlannerCover
                                     color={planner.coverColor || '#94a3b8'}
                                     title={planner.name}
                                     category={planner.category}
-                                    // Overriding specific actions for archive context
-                                    onClick={() => { }} // Disabled click
-                                    onArchive={(e) => handleRestore(planner.id, e)} // Re-purpose for restore
+                                    coverUrl={planner.cover_url}
+                                    onClick={() => { }}
+                                    onArchive={(e) => handleRestore(planner.id, e)}
                                     onDelete={(e) => handleDelete(planner.id, e)}
                                 />
-                                <div className="restore-hint">
-                                    <RotateCcw size={14} /> Restore
+                                <div className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-gray-400 group-hover:text-indigo-500 transition-colors uppercase tracking-widest">
+                                    <RotateCcw size={12} /> Click Archive Icon to Restore
                                 </div>
                             </div>
                         ))}

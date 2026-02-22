@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { usePlannerStore, slugify } from '../../store/plannerStore';
-import { Plus, Search, SortAsc, RefreshCcw, Archive as ArchiveIcon } from 'lucide-react';
+import { Plus, Search, SortAsc, RefreshCcw, Archive as ArchiveIcon, Star, BookOpen, LayoutGrid, RotateCcw } from 'lucide-react';
 import PlannerCover from './PlannerCover';
 import CreationWizard from './CreationWizard';
 import { CoverEditorModal } from './CoverEditorModal';
@@ -12,21 +12,25 @@ import PageHero from '../ui/PageHero';
 
 const PlannersPage: React.FC = () => {
     const {
-        openPlanner, availablePlanners, fetchPlanners, archivePlanner,
-        deletePlanner, toggleFavorite, updatePlannerCover, isFetchingPlanners
+        openPlanner, availablePlanners, fetchPlanners, archivePlanner, unarchivePlanner,
+        deletePlanner, toggleFavorite, updatePlannerCover, isFetchingPlanners,
+        libraryAssets, fetchLibraryAssets
     } = usePlannerStore();
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showPDFModal, setShowPDFModal] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string | undefined>(undefined);
     const [editingPlannerId, setEditingPlannerId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+    const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'archive' | 'library'>('all');
 
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchPlanners();
-    }, [fetchPlanners]);
+        fetchLibraryAssets('planner');
+    }, [fetchPlanners, fetchLibraryAssets]);
 
     const handleOpenPlanner = (id: string, name: string) => {
         openPlanner(id);
@@ -35,8 +39,13 @@ const PlannersPage: React.FC = () => {
 
     const handleArchive = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm('Archive this planner?')) {
-            await archivePlanner(id);
+        const planner = availablePlanners.find(p => p.id === id);
+        if (planner?.isArchived) {
+            await unarchivePlanner(id);
+        } else {
+            if (confirm('Archive this planner?')) {
+                await archivePlanner(id);
+            }
         }
     };
 
@@ -57,16 +66,34 @@ const PlannersPage: React.FC = () => {
         setEditingPlannerId(id);
     };
 
-    const filteredPlanners = availablePlanners
-        .filter(p => !p.isArchived)
-        .filter(p => {
-            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-            return matchesSearch;
-        })
-        .sort((a, b) => {
-            if (sortBy === 'date') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-            return a.name.localeCompare(b.name);
-        });
+    const filteredPlanners = (activeTab === 'library' ? (
+        libraryAssets
+            .filter(a => a.type === 'planner')
+            .map(a => ({
+                id: a.id,
+                name: a.title,
+                cover_url: a.thumbnail_url || a.url,
+                coverColor: '#6366f1',
+                isFavorite: false,
+                isArchived: false,
+                category: a.category,
+                isLibraryAsset: true,
+                url: a.url
+            }))
+    ) : (
+        availablePlanners
+            .filter(p => {
+                if (activeTab === 'favorites') return p.isFavorite && !p.isArchived;
+                if (activeTab === 'archive') return p.isArchived;
+                return !p.isArchived;
+            })
+    )).filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+    }).sort((a: any, b: any) => {
+        if (sortBy === 'date') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        return a.name.localeCompare(b.name);
+    });
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-white">
@@ -78,46 +105,79 @@ const PlannersPage: React.FC = () => {
             />
 
             {/* Controls Bar */}
-            <div className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 flex flex-col md:flex-row items-stretch md:items-center justify-between sticky top-0 z-10 shadow-sm gap-3">
-                <div className="flex items-center gap-3 md:gap-4 flex-1 max-w-2xl">
-                    <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search planners..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
-                        />
+            <div className="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-gray-100 flex flex-col items-stretch sticky top-0 z-10 shadow-sm gap-4">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 md:gap-4 flex-1 max-w-2xl">
+                        <div className="relative flex-1">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search planners..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm outline-none"
+                            />
+                        </div>
+                        <button
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 md:px-5 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all shadow-lg shadow-indigo-100 whitespace-nowrap"
+                            onClick={() => setShowCreateModal(true)}
+                        >
+                            <Plus size={18} /> <span className="hidden sm:inline">Create</span>
+                        </button>
                     </div>
-                    <button
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 md:px-5 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all shadow-lg shadow-indigo-100 whitespace-nowrap"
-                        onClick={() => setShowCreateModal(true)}
-                    >
-                        <Plus size={18} /> <span className="hidden sm:inline">Create</span>
-                    </button>
+
+                    <div className="flex items-center gap-3 justify-end">
+                        <button
+                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl border transition-all text-xs md:text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                            onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
+                        >
+                            <SortAsc size={16} />
+                            <span className="hidden sm:inline">{sortBy === 'date' ? 'By Date' : 'A-Z'}</span>
+                        </button>
+                        <button
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                            onClick={() => fetchPlanners()}
+                            title="Refresh"
+                        >
+                            <RefreshCcw size={18} className={isFetchingPlanners ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Sub-Tabs */}
+                <div className="flex items-center justify-between border-t border-gray-50 pt-2 md:pt-0 md:border-t-0">
+                    <div className="nav-pill-tabs">
+                        <button
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'all' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('all')}
+                        >
+                            <LayoutGrid size={14} /> My Planners
+                        </button>
+                        <button
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'favorites' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('favorites')}
+                        >
+                            <Star size={14} /> Favorites
+                        </button>
+                        <button
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'library' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('library')}
+                        >
+                            <BookOpen size={14} /> Library
+                        </button>
+                        <button
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'archive' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('archive')}
+                        >
+                            <ArchiveIcon size={14} /> Archive
+                        </button>
+                    </div>
+
                     <button
                         className="bg-white border border-gray-200 text-gray-600 px-4 md:px-5 py-2 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-gray-50 transition-all whitespace-nowrap hidden md:flex"
                         onClick={() => setShowPDFModal(true)}
                     >
                         Import PDF
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button
-                        className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl border transition-all text-xs md:text-sm font-medium ${sortBy === 'date' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                        onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
-                    >
-                        <SortAsc size={16} />
-                        <span className="hidden sm:inline">{sortBy === 'date' ? 'By Date' : 'A-Z'}</span>
-                    </button>
-                    <button
-                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                        onClick={() => fetchPlanners()}
-                        title="Refresh"
-                    >
-                        <RefreshCcw size={18} className={isFetchingPlanners ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
@@ -146,11 +206,19 @@ const PlannersPage: React.FC = () => {
                                 category={planner.category}
                                 coverUrl={planner.cover_url}
                                 isFavorite={planner.isFavorite}
-                                onClick={() => handleOpenPlanner(planner.id, planner.name)}
-                                onArchive={(e) => handleArchive(planner.id, e)}
-                                onDelete={(e) => handleDelete(planner.id, e)}
-                                onFavorite={(e) => handleFavorite(planner.id, e)}
-                                onEdit={(e) => handleUpdateCover(planner.id, e)}
+                                isArchived={planner.isArchived}
+                                onClick={() => {
+                                    if ((planner as any).isLibraryAsset) {
+                                        setPdfUrl((planner as any).url);
+                                        setShowPDFModal(true);
+                                    } else {
+                                        handleOpenPlanner(planner.id, planner.name);
+                                    }
+                                }}
+                                onArchive={(planner as any).isLibraryAsset ? undefined : (e) => handleArchive(planner.id, e)}
+                                onDelete={(planner as any).isLibraryAsset ? undefined : (e) => handleDelete(planner.id, e)}
+                                onFavorite={(planner as any).isLibraryAsset ? undefined : (e) => handleFavorite(planner.id, e)}
+                                onEdit={(planner as any).isLibraryAsset ? undefined : (e) => handleUpdateCover(planner.id, e)}
                             />
                         ))}
                     </div>
@@ -167,7 +235,11 @@ const PlannersPage: React.FC = () => {
 
             <PDFImportModal
                 isOpen={showPDFModal}
-                onClose={() => setShowPDFModal(false)}
+                onClose={() => {
+                    setShowPDFModal(false);
+                    setPdfUrl(undefined);
+                }}
+                sourceUrl={pdfUrl}
             />
 
             {editingPlannerId && (

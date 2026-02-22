@@ -563,8 +563,20 @@
     }
 
     .nav-pill-tabs {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: 100%;
+        padding: 4px;
+        gap: 6px;
+    }
+    .nav-pill-tabs::-webkit-scrollbar {
         display: none;
-        /* Hide on small mobile to save header space */
+    }
+    .nav-pill-tabs button {
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .library-title-compact {

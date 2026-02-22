@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, Archive, BookOpen, Star, Edit2 } from 'lucide-react';
+import { Trash2, Archive, BookOpen, Star, Edit2, RotateCcw } from 'lucide-react';
 import './PlannerCover.css';
 
 interface PlannerCoverProps {
@@ -9,6 +9,7 @@ interface PlannerCoverProps {
     coverUrl?: string; // Add coverUrl prop
     category?: string;
     isFavorite?: boolean;
+    isArchived?: boolean; // New prop
     onClick?: () => void;
     onArchive?: (e: React.MouseEvent) => void;
     onDelete?: (e: React.MouseEvent) => void;
@@ -23,6 +24,7 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
     coverUrl,
     category = 'General',
     isFavorite = false,
+    isArchived = false,
     onClick,
     onArchive,
     onDelete,
@@ -102,8 +104,8 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
                         </button>
                     )}
                     {onArchive && (
-                        <button className="action-btn archive" onClick={(e) => { e.stopPropagation(); onArchive(e); }} title="Archive">
-                            <Archive size={18} />
+                        <button className="action-btn archive" onClick={(e) => { e.stopPropagation(); onArchive(e); }} title={isArchived ? "Restore" : "Archive"}>
+                            {isArchived ? <RotateCcw size={18} /> : <Archive size={18} />}
                         </button>
                     )}
                     {onDelete && (

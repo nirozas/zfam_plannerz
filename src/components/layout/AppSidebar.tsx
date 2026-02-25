@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
@@ -139,11 +139,11 @@ export const AppSidebar: React.FC = () => {
 
                 <div className="flex flex-col md:flex-row gap-2 md:gap-0">
                     <NavLink
-                        to="/settings"
+                        to={user ? "/settings" : "/auth"}
                         className={({ isActive }) => `nav-item md:hidden ${isActive ? 'active' : ''}`}
                         title="Workspace Settings"
                     >
-                        <User size={22} />
+                        <Settings size={22} />
                     </NavLink>
                     {user ? (
                         <button

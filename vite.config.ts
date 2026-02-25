@@ -12,8 +12,8 @@ export default defineConfig({
             injectRegister: 'auto',
             includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'logo.png', 'zoabi_icon.jpg'],
             manifest: {
-                name: 'Zoabi Planner',
-                short_name: 'Zoabi',
+                name: 'Zoabi Nexus Vault',
+                short_name: 'Zoabi Nexus Vault',
                 description: 'Premium Digital Planner & Vault',
                 theme_color: '#fafbff',
                 background_color: '#fafbff',
@@ -21,19 +21,19 @@ export default defineConfig({
                 start_url: '/',
                 icons: [
                     {
-                        src: 'pwa-192x192.png',
+                        src: 'nexus_logo.png',
                         sizes: '192x192',
                         type: 'image/png',
                         purpose: 'any'
                     },
                     {
-                        src: 'pwa-512x512.png',
+                        src: 'nexus_logo.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'any'
                     },
                     {
-                        src: 'pwa-512x512.png',
+                        src: 'nexus_logo.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'maskable'

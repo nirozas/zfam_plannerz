@@ -2650,12 +2650,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 .eq('user_id', user.id);
 
             // 6. Total Files Size (from assets)
-            const { data: assetsSizes } = await supabase
-                .from('assets')
-                .select('size')
-                .eq('user_id', user.id);
-
-            const totalSize = assetsSizes?.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0) || 0;
+            // The `assets` table does not have a `size` column in this schema, so we default to 0.
+            const totalSize = 0;
 
             set({
                 userStats: {

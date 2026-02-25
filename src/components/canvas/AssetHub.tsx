@@ -81,9 +81,9 @@ export function AssetHub({ isOpen, onClose, onSelectAsset, initialTab }: AssetHu
                 await uploadAsset(files[i], activeTab, finalCategory || 'Personal', hashtagsArray);
             }
             setActiveSource('library');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload failed:', error);
-            alert('Failed to upload asset.');
+            alert(`Failed: ${error?.message || 'Unknown error occurred during upload.'}`);
         } finally {
             setIsUploading(false);
         }

@@ -177,16 +177,16 @@ const CardsPage: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden transition-all duration-500" style={backgroundStyle}>
             {/* Header / Breadcrumbs */}
             <header className={`flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 z-40 transition-all ${backgroundStyle.backgroundImage ? 'bg-white/80 backdrop-blur-md' : 'bg-white'}`}>
-                <nav className="flex items-center space-x-2 text-sm font-medium">
+                <nav className="flex items-center space-x-1 md:space-x-2 text-[10px] md:text-sm font-medium overflow-x-auto no-scrollbar py-1">
                     {breadcrumbs.map((crumb, index) => (
                         <React.Fragment key={crumb.id || 'home'}>
-                            {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
+                            {index > 0 && <ChevronRight size={12} className="text-slate-400 shrink-0" />}
                             <button
                                 onClick={() => navigateToFolder(crumb.id)}
-                                className={`hover:text-indigo-600 transition-colors ${index === breadcrumbs.length - 1 ? 'text-slate-900 font-bold' : 'text-slate-500'
+                                className={`hover:text-indigo-600 transition-colors whitespace-nowrap ${index === breadcrumbs.length - 1 ? 'text-slate-900 font-bold' : 'text-slate-500'
                                     }`}
                             >
-                                {index === 0 ? <Home size={18} /> : crumb.title}
+                                {index === 0 ? <Home size={16} className="md:size-[18px]" /> : crumb.title}
                             </button>
                         </React.Fragment>
                     ))}
@@ -212,35 +212,35 @@ const CardsPage: React.FC = () => {
                     <div className="w-px h-6 bg-slate-200 mx-1" />
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-sm"
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-[11px] md:text-sm whitespace-nowrap"
                     >
-                        <Plus size={20} />
-                        <span>Add Item</span>
+                        <Plus size={18} className="md:size-5" />
+                        <span className="hidden xs:inline">Add Item</span>
                     </button>
                 </div>
             </header>
 
             {/* Filter & Sort Bar */}
-            <div className={`px-6 py-3 border-b border-slate-100 flex items-center justify-between z-30 transition-all ${backgroundStyle.backgroundImage ? 'bg-white/40 backdrop-blur-md' : 'bg-slate-50/50'}`}>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none no-scrollbar">
+            <div className={`px-4 md:px-6 py-3 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 z-30 transition-all ${backgroundStyle.backgroundImage ? 'bg-white/40 backdrop-blur-md' : 'bg-slate-50/50'}`}>
+                <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto scrollbar-none no-scrollbar pb-1 sm:pb-0">
                     <button
                         onClick={() => setActiveCategory(null)}
-                        className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!activeCategory ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                        className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${!activeCategory ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
                     >
-                        All Items
+                        All
                     </button>
                     {allCategories.map(cat => (
                         <button
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
-                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shrink-0 ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
                         >
                             {cat}
                         </button>
                     ))}
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0 pl-4 border-l border-slate-200">
+                <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end sm:pl-4 sm:border-l border-slate-200">
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Sort:</span>
                         <select
@@ -257,17 +257,17 @@ const CardsPage: React.FC = () => {
             </div>
 
             {/* Main Content - Resizable Grid */}
-            <main className="flex-1 overflow-y-auto p-6">
+            <main className="flex-1 overflow-y-auto p-4 md:p-6">
                 {currentCards.length === 0 ? (
-                    <div className={`flex flex-col items-center justify-center h-full rounded-3xl ${backgroundStyle.backgroundImage ? 'bg-white/40 backdrop-blur-sm' : 'text-slate-400'}`}>
-                        <div className="w-24 h-24 bg-white/80 rounded-full flex items-center justify-center mb-4 shadow-sm">
-                            <Plus size={40} className="text-slate-300" />
+                    <div className={`flex flex-col items-center justify-center h-full rounded-2xl md:rounded-3xl ${backgroundStyle.backgroundImage ? 'bg-white/40 backdrop-blur-sm' : 'text-slate-400'}`}>
+                        <div className="w-16 h-16 md:w-24 md:h-24 bg-white/80 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                            <Plus size={32} className="text-slate-300 md:size-40" />
                         </div>
-                        <p className="text-lg font-bold text-slate-600">No items in this space</p>
-                        <p className="text-sm text-slate-500">Click the "Add Item" button to organize your thoughts</p>
+                        <p className="text-base md:text-lg font-bold text-slate-600 text-center">No items in this space</p>
+                        <p className="text-xs md:text-sm text-slate-500 text-center px-4">Click the "Add Item" button to organize your thoughts</p>
                     </div>
                 ) : (
-                    <div className="flex flex-wrap gap-6 items-start">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 items-start">
                         {displayedCards.map((card) => (
                             <CardItem
                                 key={card.id}
@@ -286,6 +286,7 @@ const CardsPage: React.FC = () => {
                     </div>
                 )}
             </main>
+
 
             {isModalOpen && (
                 <CardEntryModal
@@ -342,11 +343,161 @@ const CardItem: React.FC<{
     onResize: (width: number, height: number) => void;
 }> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize }) => {
     const [showMenu, setShowMenu] = useState(false);
+    const isMobile = window.innerWidth < 640;
+
+    const cardContent = (
+        <div
+            className="h-full w-full relative rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-default flex flex-col overflow-hidden"
+        >
+            {/* Clickable Overlay - Sits above content but below handles and menu */}
+            <div
+                className="absolute inset-0 z-10 cursor-pointer"
+                onClick={(e) => {
+                    if (
+                        (e.target as HTMLElement).closest('.action-menu-btn') ||
+                        (e.target as HTMLElement).closest('.card-link')
+                    ) {
+                        return;
+                    }
+                    onClick();
+                }}
+            />
+
+            {/* Representative Image Area */}
+            <div className={`w-full ${isMobile ? 'h-32' : 'flex-1'} bg-slate-50 relative flex items-center justify-center rounded-t-xl overflow-hidden min-h-0`}>
+                {card.coverImage ? (
+                    <div className="w-full h-full">
+                        <img src={card.coverImage} alt="" className="w-full h-full object-cover" />
+                    </div>
+                ) : (
+                    <div className={`w-full h-full flex items-center justify-center ${card.type === 'folder' ? 'bg-indigo-50/50 text-indigo-100' : card.type === 'list' ? 'bg-emerald-50/50 text-emerald-100' : 'bg-amber-50/50 text-amber-100'}`}>
+                        {card.type === 'folder' ? <Folder size={isMobile ? 32 : 48} strokeWidth={1.5} /> : card.type === 'list' ? <FileText size={isMobile ? 32 : 48} strokeWidth={1.5} /> : <ImageIcon size={isMobile ? 32 : 48} strokeWidth={1.5} />}
+                    </div>
+                )}
+            </div>
+
+            {/* Content Area */}
+            <div className="p-3 md:p-4 flex flex-col relative bg-white shrink-0">
+                <div className="flex items-start justify-between mb-1">
+                    <div className="flex flex-col overflow-hidden flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className={`p-1.5 rounded-lg shrink-0 ${card.type === 'folder' ? 'bg-indigo-50 text-indigo-600' : card.type === 'list' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {card.type === 'folder' ? <Folder size={12} /> : card.type === 'list' ? <FileText size={12} /> : <ImageIcon size={12} />}
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
+                        </div>
+
+                        {card.url && (
+                            <a
+                                href={card.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="card-link relative z-20 text-[10px] text-indigo-500 hover:text-indigo-700 underline truncate block max-w-full mb-1"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <LinkIcon size={10} />
+                                    {card.url.replace(/^https?:\/\//, '').split('/')[0]}
+                                </div>
+                            </a>
+                        )}
+                    </div>
+
+                    <div className="relative z-20">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMenu(!showMenu);
+                            }}
+                            className="action-menu-btn p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
+                        >
+                            <MoreVertical size={16} />
+                        </button>
+
+                        {showMenu && (
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-30 animate-in fade-in zoom-in duration-200">
+                                <button
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        onEdit();
+                                    }}
+                                >
+                                    <Edit size={16} /> Edit Content
+                                </button>
+                                <button
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        onShare();
+                                    }}
+                                >
+                                    <Share2 size={16} /> Share Access
+                                </button>
+                                <button
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        onMetadata();
+                                    }}
+                                >
+                                    <Info size={16} /> Entry Metadata
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        onDelete();
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left font-bold"
+                                >
+                                    <Trash2 size={16} /> Delete
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {card.description && <p className="text-[11px] text-slate-500 line-clamp-2 mb-2 leading-relaxed">{card.description}</p>}
+
+                <div className="mt-auto pt-2 border-t border-slate-50 flex items-center justify-between text-[9px] text-slate-400 font-bold uppercase tracking-tight">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <span className="shrink-0">{new Date(card.createdAt).toLocaleDateString()}</span>
+                        {card.type !== 'folder' && card.rating && (
+                            <div className="flex items-center text-amber-500 gap-0.5">
+                                <span>{card.rating}</span>
+                                <Star size={10} fill="currentColor" />
+                            </div>
+                        )}
+                        {card.type === 'list' && card.notes && card.notes.length > 0 && (
+                            <div className="flex items-center gap-1">
+                                <MessageSquare size={10} />
+                                <span>{card.notes.length}</span>
+                            </div>
+                        )}
+                    </div>
+                    {(card.sharedWith && card.sharedWith.length > 0) && (
+                        <div className="w-5 h-5 rounded-full bg-indigo-500 border-2 border-white flex items-center justify-center text-white shadow-sm" title="Shared">
+                            <Share2 size={10} />
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    if (isMobile) {
+        return <div className="w-full group">{cardContent}</div>;
+    }
 
     return (
         <Resizable
             defaultSize={{
-                width: card.width || 300,
+                width: card.width || '100%',
                 height: card.height || 'auto'
             }}
             minWidth={200}
@@ -359,155 +510,14 @@ const CardItem: React.FC<{
                 topRight: false, bottomRight: true, bottomLeft: false, topLeft: false
             }}
             handleClasses={{
-                bottomRight: 'w-4 h-4 bg-indigo-500/20 rounded-full cursor-nwse-resize hover:bg-indigo-500 transition-colors absolute bottom-1 right-1'
+                bottomRight: 'w-3 h-3 bg-indigo-500/20 rounded-full cursor-nwse-resize hover:bg-indigo-500 transition-colors absolute bottom-1 right-1'
             }}
             className="group"
         >
-            <div
-                className="h-full w-full relative rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-default flex flex-col"
-            >
-                {/* Clickable Overlay - Sits above content but below handles and menu */}
-                <div
-                    className="absolute inset-0 z-10 cursor-pointer"
-                    onClick={(e) => {
-                        // Prevent navigation if we're clicking the action menu or a link
-                        if (
-                            (e.target as HTMLElement).closest('.action-menu-btn') ||
-                            (e.target as HTMLElement).closest('.card-link')
-                        ) {
-                            return;
-                        }
-                        onClick();
-                    }}
-                />
-
-                {/* Representative Image Area - Now flexible to fill height */}
-                <div className="w-full flex-1 bg-slate-50 relative flex items-center justify-center rounded-t-xl overflow-hidden min-h-0">
-                    {card.coverImage ? (
-                        <div className="w-full h-full">
-                            <img src={card.coverImage} alt="" className="w-full h-full object-cover" />
-                        </div>
-                    ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${card.type === 'folder' ? 'bg-indigo-50/50 text-indigo-100' : card.type === 'list' ? 'bg-emerald-50/50 text-emerald-100' : 'bg-amber-50/50 text-amber-100'}`}>
-                            {card.type === 'folder' ? <Folder size={48} strokeWidth={1.5} /> : card.type === 'list' ? <FileText size={48} strokeWidth={1.5} /> : <ImageIcon size={48} strokeWidth={1.5} />}
-                        </div>
-                    )}
-                </div>
-
-                {/* Content Area - Now constant height */}
-                <div className="p-4 flex flex-col relative bg-white shrink-0">
-                    <div className="flex items-start justify-between mb-1">
-                        <div className="flex flex-col overflow-hidden flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className={`p-1.5 rounded-lg shrink-0 ${card.type === 'folder' ? 'bg-indigo-50 text-indigo-600' : card.type === 'list' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                                    {card.type === 'folder' ? <Folder size={12} /> : card.type === 'list' ? <FileText size={12} /> : <ImageIcon size={12} />}
-                                </div>
-                                <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
-                            </div>
-
-                            {card.url && (
-                                <a
-                                    href={card.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="card-link relative z-20 text-[10px] text-indigo-500 hover:text-indigo-700 underline truncate block max-w-full mb-1"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="flex items-center gap-1">
-                                        <LinkIcon size={10} />
-                                        {card.url.replace(/^https?:\/\//, '')}
-                                    </div>
-                                </a>
-                            )}
-                        </div>
-
-                        <div className="relative z-20">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowMenu(!showMenu);
-                                }}
-                                className="action-menu-btn p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
-                            >
-                                <MoreVertical size={16} />
-                            </button>
-
-                            {showMenu && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-30 animate-in fade-in zoom-in duration-200">
-                                    <button
-                                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            onEdit();
-                                        }}
-                                    >
-                                        <Edit size={16} /> Edit Content
-                                    </button>
-                                    <button
-                                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            onShare();
-                                        }}
-                                    >
-                                        <Share2 size={16} /> Share Access
-                                    </button>
-                                    <button
-                                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            onMetadata();
-                                        }}
-                                    >
-                                        <Info size={16} /> Entry Metadata
-                                    </button>
-                                    <div className="h-px bg-slate-100 my-1" />
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            onDelete();
-                                        }}
-                                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left font-bold"
-                                    >
-                                        <Trash2 size={16} /> Delete
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {card.description && <p className="text-[11px] text-slate-500 line-clamp-2 mb-2 leading-relaxed">{card.description}</p>}
-
-                    <div className="mt-auto pt-2 border-t border-slate-50 flex items-center justify-between text-[9px] text-slate-400 font-bold uppercase tracking-tight">
-                        <div className="flex items-center gap-3">
-                            <span>{new Date(card.createdAt).toLocaleDateString()}</span>
-                            {card.type !== 'folder' && card.rating && (
-                                <div className="flex items-center text-amber-500 gap-0.5">
-                                    <span>{card.rating}</span>
-                                    <Star size={10} fill="currentColor" />
-                                </div>
-                            )}
-                            {card.type === 'list' && card.notes && card.notes.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                    <MessageSquare size={10} />
-                                    <span>{card.notes.length}</span>
-                                </div>
-                            )}
-                        </div>
-                        {(card.sharedWith && card.sharedWith.length > 0) && (
-                            <div className="w-5 h-5 rounded-full bg-indigo-500 border-2 border-white flex items-center justify-center text-white shadow-sm" title="Shared">
-                                <Share2 size={10} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+            {cardContent}
         </Resizable>
     );
 };
+
 
 export default CardsPage;

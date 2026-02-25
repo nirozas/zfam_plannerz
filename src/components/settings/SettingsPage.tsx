@@ -7,6 +7,7 @@ import './SettingsPage.css';
 import PageHero from '../ui/PageHero';
 import { GoogleDriveStatus } from '../cloud/GoogleDriveStatus';
 import { StorageMigrationTool } from '../cloud/StorageMigrationTool';
+import AdminBugReports from './AdminBugReports';
 
 const SettingsPage: React.FC = () => {
     const { user, userProfile, userStats, updateProfile, uploadAvatar, fetchUserStats, fetchUserProfile, connections, fetchConnections, requestConnection, acceptConnection, removeConnection, updateConnectionType } = usePlannerStore();
@@ -453,8 +454,26 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Admin Bug Reports (Only for Admins) */}
+                    {userProfile?.role === 'admin' && (
+                        <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-5 md:p-8 border border-white shadow-xl shadow-slate-200/50 mt-6 md:mt-8">
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg shadow-slate-200">
+                                    <ShieldCheck size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Admin Control Center</h3>
+                                    <p className="text-xs font-medium text-slate-500">Review system health and squashed reported bugs.</p>
+                                </div>
+                            </div>
+
+                            <AdminBugReports />
+                        </div>
+                    )}
                 </div>
             </main>
+
         </div>
     );
 };

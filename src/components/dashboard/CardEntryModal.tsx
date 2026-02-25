@@ -103,8 +103,8 @@ export const CardEntryModal: React.FC<CardEntryModalProps> = ({ isOpen, onClose,
                     <X size={20} />
                 </button>
 
-                <div className="p-8">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-6">
+                <div className="p-4 md:p-8">
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6">
                         {editingCard ? 'Edit Item' : 'Create New Item'}
                     </h2>
 

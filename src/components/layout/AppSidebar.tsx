@@ -1,15 +1,17 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2 } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
+import BugReportModal from '../modals/BugReportModal';
 import './AppSidebar.css';
 
 export const AppSidebar: React.FC = () => {
     const { user, userProfile } = usePlannerStore();
     const { signedIn, loading: driveLoading, connect, disconnect } = useGoogleDrive();
     const navigate = useNavigate();
+    const [isBugModalOpen, setIsBugModalOpen] = React.useState(false);
 
     // Determine display name
     const displayName = userProfile?.full_name
@@ -75,6 +77,15 @@ export const AppSidebar: React.FC = () => {
                     <StickyNote size={22} />
                 </NavLink>
 
+                {/* Bug Report Button */}
+                <button
+                    onClick={() => setIsBugModalOpen(true)}
+                    className="nav-item text-rose-400 hover:text-rose-600 transition-colors"
+                    title="Report a Bug"
+                >
+                    <Bug size={22} />
+                </button>
+
                 {/* Google Drive Connection Button */}
                 <div className="relative group/drive mt-auto">
                     <button
@@ -139,6 +150,11 @@ export const AppSidebar: React.FC = () => {
                     </button>
                 </div>
             </nav>
+
+            <BugReportModal
+                isOpen={isBugModalOpen}
+                onClose={() => setIsBugModalOpen(false)}
+            />
 
             <div className="sidebar-footer">
                 <div className="user-mini-profile" title={user?.email || 'User'}>

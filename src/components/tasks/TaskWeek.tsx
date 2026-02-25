@@ -121,7 +121,7 @@ const TaskWeek: React.FC = () => {
                                             >
                                                 {task.attachments && task.attachments.length > 0 && (
                                                     <div className="mb-1.5 h-16 w-full rounded overflow-hidden">
-                                                        <img src={task.attachments[0]} alt="" className="w-full h-full object-cover" />
+                                                        <img src={task.attachments[0]} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
                                                 <div className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">

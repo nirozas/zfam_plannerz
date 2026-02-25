@@ -167,6 +167,7 @@ const HomePage: React.FC = () => {
                     <img
                         src={currentHeroUrl}
                         alt="Hero Background"
+                        referrerPolicy="no-referrer"
                         className="hero-background-image absolute inset-0 w-full h-full object-cover opacity-60 z-0"
                     />
                 )}

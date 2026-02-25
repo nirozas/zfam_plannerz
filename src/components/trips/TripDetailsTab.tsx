@@ -188,7 +188,7 @@ const TripDetailsTab: React.FC<TripDetailsTabProps> = ({ tripId }) => {
                                 onClick={() => isEditing && fileInputRef.current?.click()}
                             >
                                 {currentCover ? (
-                                    <img src={currentCover} alt={activeTrip.title} className="w-full h-full object-cover" />
+                                    <img src={currentCover} alt={activeTrip.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-br from-teal-100 to-indigo-100 flex items-center justify-center">
                                         <ImageIcon size={64} className="text-teal-200" />

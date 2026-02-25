@@ -226,7 +226,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                         <div className="grid grid-cols-2 gap-4">
                                             {savedUrls.map((url, i) => (
                                                 <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border border-gray-100 group">
-                                                    <img src={url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                                    <img src={url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                                 </div>
                                             ))}
                                         </div>
@@ -405,7 +405,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                             <div className="flex flex-wrap gap-2">
                                                 {savedUrls.map((url, i) => (
                                                     <div key={`saved-${i}`} className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-100 group">
-                                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                                        <img src={url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                                         <button type="button" onClick={() => setSavedUrls(p => p.filter((_, j) => j !== i))}
                                                             className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <X size={12} className="text-white" />
@@ -414,7 +414,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                                 ))}
                                                 {newPreviews.map((src, i) => (
                                                     <div key={`new-${i}`} className="relative w-12 h-12 rounded-lg overflow-hidden border border-indigo-200 group">
-                                                        <img src={src} alt="" className="w-full h-full object-cover" />
+                                                        <img src={src} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                                         <button type="button" onClick={() => removeNewFile(i)}
                                                             className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <X size={12} className="text-white" />

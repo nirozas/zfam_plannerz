@@ -460,6 +460,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, index, currentUserId, onClick
                     <img
                         src={trip.cover_url}
                         alt={trip.title}
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                 ) : (

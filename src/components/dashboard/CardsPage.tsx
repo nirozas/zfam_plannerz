@@ -371,7 +371,7 @@ const CardItem: React.FC<{
             <div className={`w-full ${isMobile ? 'h-32' : 'flex-1'} bg-slate-50 relative flex items-center justify-center rounded-t-xl overflow-hidden min-h-0`}>
                 {card.coverImage ? (
                     <div className="w-full h-full">
-                        <img src={card.coverImage} alt="" className="w-full h-full object-cover" />
+                        <img src={card.coverImage} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                     </div>
                 ) : (
                     <div className={`w-full h-full flex items-center justify-center ${card.type === 'folder' ? 'bg-indigo-50/50 text-indigo-100' : card.type === 'list' ? 'bg-emerald-50/50 text-emerald-100' : 'bg-amber-50/50 text-amber-100'}`}>

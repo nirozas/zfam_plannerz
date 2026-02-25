@@ -84,14 +84,18 @@ const TripMasterPage: React.FC = () => {
                     {activeTrip.cover_url ? (
                         <>
                             {/* Blurred background layer */}
-                            <div
-                                className="absolute inset-0 scale-110 blur-sm opacity-60"
-                                style={{ backgroundImage: `url(${activeTrip.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                            <img
+                                src={activeTrip.cover_url}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                className="absolute inset-0 w-full h-full object-cover scale-110 blur-sm opacity-60"
+                                aria-hidden="true"
                             />
                             {/* Sharp center image */}
                             <img
                                 src={activeTrip.cover_url}
                                 alt={activeTrip.title}
+                                referrerPolicy="no-referrer"
                                 className="absolute inset-0 w-full h-full object-cover"
                             />
                         </>

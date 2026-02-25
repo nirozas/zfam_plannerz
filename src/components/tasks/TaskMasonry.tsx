@@ -99,13 +99,12 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
         <div className="flex flex-col h-full relative overflow-hidden">
             {/* Background Image Layer */}
             {dayBg && (
-                <div
-                    className="absolute inset-0 z-0 pointer-events-none opacity-60 transition-opacity duration-700"
-                    style={{
-                        backgroundImage: `url(${dayBg})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
+                <img
+                    src={dayBg}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    aria-hidden="true"
+                    className="absolute inset-0 z-0 w-full h-full object-cover pointer-events-none opacity-60 transition-opacity duration-700"
                 />
             )}
 
@@ -213,7 +212,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                         {/* Optional Cover Image */}
                                         {task.attachments && task.attachments.length > 0 && (
                                             <div className={`${isMobile ? 'h-24' : 'h-32'} w-full flex-shrink-0 relative bg-gray-100 border-b border-gray-50`}>
-                                                <img src={task.attachments[0]} alt="cover" className="w-full h-full object-cover" />
+                                                <img src={task.attachments[0]} alt="cover" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                                 {task.attachments.length > 1 && (
                                                     <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Paperclip size={10} /> +{task.attachments.length - 1}

@@ -96,7 +96,7 @@ export const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ currentU
                                                 onClick={() => setValue(p)}
                                                 className={`aspect-video rounded-lg overflow-hidden border-2 transition-all ${value === p ? 'border-indigo-600 scale-95' : 'border-transparent hover:scale-105'}`}
                                             >
-                                                <img src={p} alt="" className="w-full h-full object-cover" />
+                                                <img src={p} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                             </button>
                                         ))}
                                     </div>

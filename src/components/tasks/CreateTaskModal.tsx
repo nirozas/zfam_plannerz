@@ -206,7 +206,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                             <div className="flex flex-wrap gap-3">
                                 {attachmentUrls.map((url, idx) => (
                                     <div key={`url-${idx}`} className="relative w-16 h-16 rounded-xl overflow-hidden group border border-slate-200 shadow-sm">
-                                        <img src={url} alt="attachment" className="w-full h-full object-cover" />
+                                        <img src={url} alt="attachment" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                         <button
                                             type="button"
                                             onClick={() => removeUrl(idx)}
@@ -218,7 +218,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                                 ))}
                                 {previews.map((src, idx) => (
                                     <div key={`file-${idx}`} className="relative w-16 h-16 rounded-xl overflow-hidden group border border-indigo-200 shadow-sm">
-                                        <img src={src} alt="attachment" className="w-full h-full object-cover" />
+                                        <img src={src} alt="attachment" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                         <button
                                             type="button"
                                             onClick={() => removeAttachment(idx)}

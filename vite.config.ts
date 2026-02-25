@@ -42,9 +42,15 @@ export default defineConfig({
             },
             devOptions: {
                 enabled: true
+            },
+            workbox: {
+                maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
             }
         })
     ],
+    build: {
+        chunkSizeWarningLimit: 2000,
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTaskStore, Task, Subtask, RecurrenceType, NotificationRule } from '../../store/taskStore';
 import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, ArrowLeft, Bell } from 'lucide-react';
 import TaskRichEditor from './TaskRichEditor';
@@ -26,10 +26,22 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
     const [dueTime, setDueTime] = useState(task.dueTime || '');
     const [notifications, setNotifications] = useState<NotificationRule[]>(task.notifications || []);
 
+    // Sync task name to URL
+    useEffect(() => {
+        const originalUrl = window.location.href;
+        if (!task.title) return;
+        const slug = task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('task', slug);
+        window.history.replaceState(null, '', newUrl.toString());
+
+        return () => {
+            window.history.replaceState(null, '', originalUrl);
+        };
+    }, [task.title]);
+
     // New Features state
     const [subtasks, setSubtasks] = useState(task.subtasks || []);
-    const [colSpan, setColSpan] = useState(task.colSpan || 1);
-    const [rowSpan, setRowSpan] = useState(task.rowSpan || 1);
 
     // Existing saved URLs (Storage public URLs)
     const [savedUrls, setSavedUrls] = useState<string[]>(task.attachments ?? []);
@@ -76,14 +88,12 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                     startDate: recurrenceStartDate || undefined,
                     endDate: recurrenceEndDate || undefined,
                 } : undefined,
-                dueDate: !isRecurring && dueDate ? new Date(dueDate).toISOString() : undefined,
-                dueTime: dueTime || undefined,
+                dueDate: !isRecurring ? (dueDate ? `${dueDate}T12:00:00Z` : null) : undefined,
+                dueTime: dueTime ? dueTime : null,
                 notifications,
                 attachments: savedUrls,
                 attachmentFiles: newFiles,
                 subtasks,
-                colSpan,
-                rowSpan,
             } as any);
             newPreviews.forEach(p => URL.revokeObjectURL(p));
             if (isEditing) setIsEditing(false); // Switch back to view mode after save
@@ -265,7 +275,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                         {!isEditing ? (
                                             <div className="text-sm font-bold text-gray-600 flex items-center gap-2">
                                                 <Clock size={16} className="text-gray-400" />
-                                                {isRecurring ? `${recurrenceType} recurrence` : (dueDate ? `${new Date(dueDate).toLocaleDateString()} ${task.dueTime || ''}` : 'No date set')}
+                                                {isRecurring ? `${recurrenceType} recurrence` : (dueDate ? `${new Date(dueDate.includes('T') ? dueDate : `${dueDate}T12:00:00Z`).toLocaleDateString()} ${task.dueTime || ''}` : 'No date set')}
                                             </div>
                                         ) : (
                                             <div className="space-y-3">
@@ -344,23 +354,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                         )}
                                     </div>
 
-                                    {isEditing && (
-                                        <div>
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Card Dimensons</label>
-                                            <div className="flex gap-2">
-                                                <select value={colSpan} onChange={e => setColSpan(Number(e.target.value))} className="flex-1 bg-gray-50 border-none rounded-xl text-[10px] font-bold py-2 focus:ring-2 focus:ring-indigo-100">
-                                                    <option value={1}>Standard Width</option>
-                                                    <option value={2}>Wide (2x)</option>
-                                                    <option value={3}>Full (3x)</option>
-                                                </select>
-                                                <select value={rowSpan} onChange={e => setRowSpan(Number(e.target.value))} className="flex-1 bg-gray-50 border-none rounded-xl text-[10px] font-bold py-2 focus:ring-2 focus:ring-indigo-100">
-                                                    <option value={1}>Standard Height</option>
-                                                    <option value={2}>Tall (2x)</option>
-                                                    <option value={3}>Extra Tall (3x)</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    )}
+
                                 </div>
 
                                 <div className="flex-1"></div>

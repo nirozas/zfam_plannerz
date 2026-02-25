@@ -83,7 +83,7 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
                             </div>
                             {/* Title REMOVED from here */}
                             <div className="cover-footer">
-                                <div className="brand-mark">ZOABI</div>
+                                <div className="brand-mark">NEXUS VAULT</div>
                             </div>
                         </div>
                     </div>

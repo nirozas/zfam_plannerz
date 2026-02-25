@@ -102,7 +102,9 @@ export interface Planner {
     isArchived?: boolean;
     archivedAt?: string;
     createdAt?: string;
-    isFavorite?: boolean; // New property for favorites
+    isFavorite?: boolean;
+    type?: string;
+    structure?: string;
 }
 export interface BulkOptions {
     count: number;

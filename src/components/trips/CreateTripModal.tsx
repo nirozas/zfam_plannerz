@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useNavigate } from 'react-router-dom';
 import { X, MapPin, Calendar, Compass, Hash, Image as ImageIcon, Plus, Loader2, Check } from 'lucide-react';
-import { supabase } from '../../supabase/client';
 
 interface CreateTripModalProps {
     isOpen: boolean;
@@ -82,14 +81,15 @@ const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClose, edit
     const removeParticipant = (name: string) => setParticipants(prev => prev.filter(p => p !== name));
 
     const uploadCover = async (file: File): Promise<string | null> => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-        const ext = file.name.split('.').pop();
-        const path = `trip-covers/${user.id}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('planner-assets').upload(path, file, { upsert: true });
-        if (error) { console.error(error); return null; }
-        const { data } = supabase.storage.from('planner-assets').getPublicUrl(path);
-        return data.publicUrl;
+        try {
+            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+            if (!checkIsSignedIn()) await signIn();
+            const result = await uploadFileToDrive(file, `trip-cover-${Date.now()}`, file.type, true, undefined, 'Trip Covers');
+            return result.url;
+        } catch (err) {
+            console.error('[CreateTripModal] Cover upload error:', err);
+            return null;
+        }
     };
 
     const resetForm = () => {

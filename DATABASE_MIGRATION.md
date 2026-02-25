@@ -16,6 +16,7 @@ The `supabase_migration.sql` script consolidates all your previous database iter
 - ✅ Archive support (`is_archived`, `archived_at`)
 - ✅ Last opened tracking (`last_opened_at`)
 - ✅ Comprehensive `assets` table for templates and stickers
+- ✅ Recursive Cards module (Folders, Lists, Entries)
 - ✅ Production-ready RLS policies
 - ✅ Auto-updating timestamps
 - ✅ CASCADE deletes for data integrity

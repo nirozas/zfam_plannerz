@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePlannerStore, generateUUID } from '../../store/plannerStore';
 import { PAGE_PRESETS } from '../../types/planner';
-import { supabase } from '../../supabase/client';
+// supabase is no longer needed here (uploads go to Google Drive via plannerStore)
 import { X, Upload, FileText, Loader2, CheckCircle, ChevronDown } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -182,6 +182,9 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
         setStep('creating');
 
         try {
+            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+            if (!checkIsSignedIn()) await signIn();
+
             const selectedPages = pages.filter(p => p.isSelected);
             const uploadedPages: { url: string, width: number, height: number, links?: any[] }[] = [];
 
@@ -189,22 +192,19 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
 
             for (let i = 0; i < selectedPages.length; i++) {
                 const page = selectedPages[i];
-                const fileName = `${user.id}/${Date.now()}_p${page.pageNumber}.png`;
 
-                // Upload to 'planner-bg' bucket (or generic 'assets' if cleaner)
-                // Using 'planner-uploads' for now as it seems generic
-                const { error: uploadError } = await supabase.storage
-                    .from('planner-uploads')
-                    .upload(fileName, page.blob);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('planner-uploads')
-                    .getPublicUrl(fileName);
+                // Upload page image to Google Drive
+                const driveResult = await uploadFileToDrive(
+                    page.blob,
+                    `planner-${plannerName}-p${page.pageNumber}-${generateUUID()}.png`,
+                    'image/png',
+                    false,
+                    undefined,
+                    'Planner Pages'
+                );
 
                 uploadedPages.push({
-                    url: publicUrl,
+                    url: driveResult.url,
                     width: page.width,
                     height: page.height,
                     links: page.links

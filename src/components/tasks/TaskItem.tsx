@@ -25,7 +25,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
 
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();
-        const text = `Task: ${task.title}\n${task.description ? `Description: ${task.description}\n` : ''}${task.dueDate ? `Due: ${new Date(task.dueDate).toLocaleDateString()}\n` : ''}`;
+        const text = `Task: ${task.title}\n${task.description ? `Description: ${task.description}\n` : ''}${task.dueDate ? `Due: ${formatDate(task.dueDate)}\n` : ''}`;
 
         if (navigator.share) {
             navigator.share({
@@ -44,7 +44,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
 
     const formatDate = (ds?: string) => {
         if (!ds) return '';
-        return new Date(ds).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const dateStr = ds.includes('T') ? ds : `${ds}T12:00:00Z`;
+        return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     };
 
     // Category color tint for left border

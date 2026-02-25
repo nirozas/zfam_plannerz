@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Hash, Image as ImageIcon, Save, Loader2, Pencil, X, FileText, Plus, Trash2 } from 'lucide-react';
-import { supabase } from '../../supabase/client';
 
 interface TripDetailsTabProps {
     tripId: string;
@@ -61,13 +60,15 @@ const TripDetailsTab: React.FC<TripDetailsTabProps> = ({ tripId }) => {
     };
 
     const uploadCover = async (file: File): Promise<string | null> => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-        const ext = file.name.split('.').pop();
-        const path = `trip-covers/${user.id}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('planner-assets').upload(path, file, { upsert: true });
-        if (error) { console.error(error); return null; }
-        return supabase.storage.from('planner-assets').getPublicUrl(path).data.publicUrl;
+        try {
+            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+            if (!checkIsSignedIn()) await signIn();
+            const result = await uploadFileToDrive(file, `trip-cover-${Date.now()}`, file.type, true, undefined, 'Trip Covers');
+            return result.url;
+        } catch (err) {
+            console.error('[TripDetailsTab] Cover upload error:', err);
+            return null;
+        }
     };
 
     const addTag = () => {

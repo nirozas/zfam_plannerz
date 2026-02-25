@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2 } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
+import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
 import './AppSidebar.css';
 
 export const AppSidebar: React.FC = () => {
     const { user, userProfile } = usePlannerStore();
+    const { signedIn, loading: driveLoading, connect, disconnect } = useGoogleDrive();
     const navigate = useNavigate();
 
     // Determine display name
@@ -23,9 +25,14 @@ export const AppSidebar: React.FC = () => {
         window.location.href = '/auth'; // Hard reload to clear states
     };
 
+    const handleDriveClick = () => {
+        if (signedIn) disconnect();
+        else connect();
+    };
+
     return (
         <aside className="app-sidebar">
-            <div className="brand-logo cursor-pointer" onClick={() => navigate('/')}>ZOABI</div>
+            <div className="brand-logo cursor-pointer" onClick={() => navigate('/')}>NEXUS VAULT</div>
 
             <nav className="nav-menu">
                 <NavLink
@@ -60,7 +67,62 @@ export const AppSidebar: React.FC = () => {
                     <Plane size={22} />
                 </NavLink>
 
-                <div className="mt-auto flex flex-col md:flex-row gap-2 md:gap-0">
+                <NavLink
+                    to="/cards"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Recursive Cards"
+                >
+                    <StickyNote size={22} />
+                </NavLink>
+
+                {/* Google Drive Connection Button */}
+                <div className="relative group/drive mt-auto">
+                    <button
+                        onClick={handleDriveClick}
+                        className="nav-item w-full relative"
+                        style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}
+                        title=""
+                    >
+                        {driveLoading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <div className="relative">
+                                <HardDrive size={20} />
+                                {/* Status dot */}
+                                <span
+                                    className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${!signedIn ? 'drive-dot-pending' : ''}`}
+                                    style={{
+                                        background: signedIn ? '#22c55e' : '#f59e0b',
+                                        boxShadow: signedIn ? '0 0 6px #22c55e88' : '0 0 6px #f59e0b88'
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </button>
+                    {/* Hover tooltip */}
+                    <div className="pointer-events-none absolute left-[78px] bottom-0 z-[2001] opacity-0 group-hover/drive:opacity-100 translate-x-1 group-hover/drive:translate-x-0 transition-all duration-200">
+                        <div className="bg-white rounded-xl shadow-xl border border-gray-100 px-4 py-3 whitespace-nowrap min-w-[180px]">
+                            <div className="flex items-center gap-2 mb-1">
+                                <HardDrive size={14} style={{ color: signedIn ? '#16a34a' : '#3b82f6' }} />
+                                <span className="text-xs font-black text-gray-800">Google Drive</span>
+                                <span
+                                    className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                    style={{
+                                        background: signedIn ? '#dcfce7' : '#fef3c7',
+                                        color: signedIn ? '#15803d' : '#b45309'
+                                    }}
+                                >
+                                    {driveLoading ? 'Loading...' : signedIn ? 'Connected' : 'Not connected'}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-gray-400 font-medium">
+                                {signedIn ? 'Click to disconnect Drive' : 'Click to sign in with Google'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-2 md:gap-0">
                     <NavLink
                         to="/settings"
                         className={({ isActive }) => `nav-item md:hidden ${isActive ? 'active' : ''}`}

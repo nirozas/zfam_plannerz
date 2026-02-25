@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useTaskStore, Task } from '../../store/taskStore';
 import { Clock, CheckCircle, Paperclip, ChevronLeft, ChevronRight, Image as ImageIcon, Share2 } from 'lucide-react';
 import { isTaskVisibleOnDate, toDateStr } from '../../utils/recurringUtils';
+import { Resizable } from 're-resizable';
 
 interface TaskMasonryProps {
     searchTerm: string;
@@ -17,7 +18,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
-    const { tasks, categories, selectedCategories, toggleTaskCompletion, activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds, setDayViewBackground, setEditingTaskId } = useTaskStore();
+    const { tasks, categories, selectedCategories, toggleTaskCompletion, activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds, setDayViewBackground, setEditingTaskId, updateTask } = useTaskStore();
     const [isEditingBg, setIsEditingBg] = useState(false);
     const dayBg = dayViewBackgrounds[activeDayDate] || '';
     const [tempBgUrl, setTempBgUrl] = useState(dayBg);
@@ -181,30 +182,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                         <p className="text-sm font-medium">No tasks for this day</p>
                     </div>
                 ) : (
-                    <div className="task-grid flex-1 overflow-y-auto px-1 pb-10">
-                        <style>{`
-                        .task-grid {
-                            display: grid;
-                            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                            grid-auto-rows: 150px; /* Base row height */
-                            grid-gap: 16px;
-                            grid-auto-flow: dense; /* Packs items tightly */
-                        }
-                        .task-card {
-                            grid-column: span 1;
-                            grid-row: span 1;
-                        }
-                        /* Span Utilities */
-                        .col-span-2 { grid-column: span 2; }
-                        .col-span-3 { grid-column: span 3; }
-                        .row-span-2 { grid-row: span 2; }
-                        .row-span-3 { grid-row: span 3; }
-                        
-                        @media (max-width: 640px) {
-                            .task-grid { grid-template-columns: 1fr; }
-                            .col-span-2, .col-span-3 { grid-column: auto; }
-                        }
-                    `}</style>
+                    <div className="flex flex-wrap gap-6 items-start px-4 pb-10 flex-1 overflow-y-auto">
 
                         {relevantTasks.map(task => {
                             const category = categories.find(c => c.id === task.categoryId);
@@ -213,108 +191,127 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                 : task.isCompleted;
                             const catColor = category?.color || '#6366f1';
 
-                            // Calculate Spans
-                            const colClass = task.colSpan > 1 ? `col-span-${Math.min(task.colSpan, 3)}` : '';
-                            const rowClass = task.rowSpan > 1 ? `row-span-${Math.min(task.rowSpan, 3)}` : '';
+                            const widthPixels = task.colSpan && task.colSpan > 10 ? task.colSpan : (task.colSpan && task.colSpan > 1 ? 280 * task.colSpan + 16 * (task.colSpan - 1) : 280);
+                            const heightPixels = task.rowSpan && task.rowSpan > 10 ? task.rowSpan : (task.rowSpan && task.rowSpan > 1 ? 150 * task.rowSpan + 16 * (task.rowSpan - 1) : 150);
 
                             return (
-                                <div
+                                <Resizable
                                     key={task.id}
-                                    onClick={() => setEditingTaskId(task.id)}
-                                    className={`task-card group rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-200 flex flex-col cursor-pointer bg-white relative ${colClass} ${rowClass}`}
-                                    style={{
-                                        borderColor: isCompleted ? '#e5e7eb' : 'transparent',
-                                        outline: isCompleted ? 'none' : `1px solid ${catColor}30`,
+                                    defaultSize={{
+                                        width: widthPixels,
+                                        height: heightPixels
                                     }}
+                                    minWidth={200}
+                                    minHeight={150}
+                                    onResizeStop={(_e, _direction, ref, _d) => {
+                                        updateTask(task.id, { colSpan: ref.offsetWidth, rowSpan: ref.offsetHeight });
+                                    }}
+                                    enable={{
+                                        top: false, right: true, bottom: true, left: false,
+                                        topRight: false, bottomRight: true, bottomLeft: false, topLeft: false
+                                    }}
+                                    handleClasses={{
+                                        bottomRight: 'w-4 h-4 bg-gray-400/20 rounded-full cursor-nwse-resize hover:bg-indigo-500 transition-colors absolute bottom-1 right-1 z-20'
+                                    }}
+                                    className="group"
                                 >
-                                    {/* Left strip indicator */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: catColor }}></div>
+                                    <div
+                                        onClick={() => setEditingTaskId(task.id)}
+                                        className="w-full h-full rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-200 flex flex-col cursor-pointer bg-white relative"
+                                        style={{
+                                            borderColor: isCompleted ? '#e5e7eb' : 'transparent',
+                                            outline: isCompleted ? 'none' : `1px solid ${catColor}30`,
+                                        }}
+                                    >
+                                        {/* Left strip indicator */}
+                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: catColor }}></div>
 
-                                    {/* Content Container - scroll if content exceeds card size (or clip) */}
-                                    <div className={`flex flex-col h-full ${isCompleted ? 'opacity-60 grayscale' : ''}`}>
+                                        {/* Content Container - scroll if content exceeds card size (or clip) */}
+                                        <div className={`flex flex-col h-full ${isCompleted ? 'opacity-60 grayscale' : ''}`}>
 
-                                        {/* Optional Cover Image (only if rowSpan > 1 or colSpan > 1 to assume space, or if standard card has space) */}
-                                        {task.attachments && task.attachments.length > 0 && (
-                                            <div className="h-32 w-full flex-shrink-0 relative bg-gray-100 border-b border-gray-50">
-                                                <img src={task.attachments[0]} alt="cover" className="w-full h-full object-cover" />
-                                                {task.attachments.length > 1 && (
-                                                    <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Paperclip size={10} /> +{task.attachments.length - 1}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="p-4 flex flex-col flex-1 min-h-0">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <h3 className={`font-bold text-gray-800 leading-tight ${isCompleted ? 'line-through text-gray-400' : ''}`}>
-                                                    {task.title}
-                                                </h3>
-                                                <div className="flex items-center gap-1 -mr-2 -mt-2">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const text = `Task: ${task.title}\n${task.description ? `Description: ${task.description}\n` : ''}`;
-                                                            if (navigator.share) {
-                                                                navigator.share({ title: task.title, text }).catch(() => navigator.clipboard.writeText(text));
-                                                            } else {
-                                                                navigator.clipboard.writeText(text);
-                                                            }
-                                                            alert('Task details copied to clipboard!');
-                                                        }}
-                                                        className="flex-shrink-0 text-gray-300 hover:text-indigo-500 transition-colors p-1"
-                                                        title="Share Task"
-                                                    >
-                                                        <Share2 size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => handleToggle(e, task)}
-                                                        className="flex-shrink-0 text-gray-300 hover:text-indigo-500 transition-colors p-1"
-                                                    >
-                                                        <CheckCircle size={20} className={isCompleted ? 'text-green-500 fill-green-50' : ''} />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Rich Text Snippet (stripped HTML) */}
-                                            {task.description && (
-                                                <div
-                                                    className="text-xs text-gray-500 mt-2 line-clamp-3 prose prose-sm max-w-none"
-                                                    dangerouslySetInnerHTML={{ __html: task.description }}
-                                                />
-                                            )}
-
-                                            {/* Subtasks Preview */}
-                                            {task.subtasks && task.subtasks.length > 0 && (
-                                                <div className="mt-3 space-y-1">
-                                                    {task.subtasks.slice(0, 3).map(st => (
-                                                        <div key={st.id} className="flex items-center gap-2 text-xs text-gray-500">
-                                                            <div className={`w-3 h-3 rounded-full border ${st.isCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
-                                                            <span className={st.isCompleted ? 'line-through opacity-70' : ''}>{st.title}</span>
+                                            {/* Optional Cover Image (only if rowSpan > 1 or colSpan > 1 to assume space, or if standard card has space) */}
+                                            {task.attachments && task.attachments.length > 0 && (
+                                                <div className="h-32 w-full flex-shrink-0 relative bg-gray-100 border-b border-gray-50">
+                                                    <img src={task.attachments[0]} alt="cover" className="w-full h-full object-cover" />
+                                                    {task.attachments.length > 1 && (
+                                                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                                            <Paperclip size={10} /> +{task.attachments.length - 1}
                                                         </div>
-                                                    ))}
-                                                    {task.subtasks.length > 3 && (
-                                                        <div className="text-[10px] text-gray-400 pl-5">+{task.subtasks.length - 3} more</div>
                                                     )}
                                                 </div>
                                             )}
 
-                                            <div className="flex-1"></div>
+                                            <div className="p-4 flex flex-col flex-1 min-h-0">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <h3 className={`font-bold text-gray-800 leading-tight ${isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                                        {task.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-1 -mr-2 -mt-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const text = `Task: ${task.title}\n${task.description ? `Description: ${task.description}\n` : ''}`;
+                                                                if (navigator.share) {
+                                                                    navigator.share({ title: task.title, text }).catch(() => navigator.clipboard.writeText(text));
+                                                                } else {
+                                                                    navigator.clipboard.writeText(text);
+                                                                }
+                                                                alert('Task details copied to clipboard!');
+                                                            }}
+                                                            className="flex-shrink-0 text-gray-300 hover:text-indigo-500 transition-colors p-1"
+                                                            title="Share Task"
+                                                        >
+                                                            <Share2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleToggle(e, task)}
+                                                            className="flex-shrink-0 text-gray-300 hover:text-indigo-500 transition-colors p-1"
+                                                        >
+                                                            <CheckCircle size={20} className={isCompleted ? 'text-green-500 fill-green-50' : ''} />
+                                                        </button>
+                                                    </div>
+                                                </div>
 
-                                            {/* Tags Footer */}
-                                            <div className="flex flex-wrap gap-2 text-[10px] mt-3 items-center opacity-80">
-                                                {category && (
-                                                    <span className="font-bold uppercase tracking-wider" style={{ color: catColor }}>{category.name}</span>
+                                                {/* Rich Text Snippet (stripped HTML) */}
+                                                {task.description && (
+                                                    <div
+                                                        className="text-xs text-gray-500 mt-2 line-clamp-3 prose prose-sm max-w-none"
+                                                        dangerouslySetInnerHTML={{ __html: task.description }}
+                                                    />
                                                 )}
-                                                {task.isRecurring && (
-                                                    <span className="flex items-center gap-1 text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
-                                                        <Clock size={10} /> {task.recurrence?.type}
-                                                    </span>
+
+                                                {/* Subtasks Preview */}
+                                                {task.subtasks && task.subtasks.length > 0 && (
+                                                    <div className="mt-3 space-y-1">
+                                                        {task.subtasks.slice(0, 3).map(st => (
+                                                            <div key={st.id} className="flex items-center gap-2 text-xs text-gray-500">
+                                                                <div className={`w-3 h-3 rounded-full border ${st.isCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
+                                                                <span className={st.isCompleted ? 'line-through opacity-70' : ''}>{st.title}</span>
+                                                            </div>
+                                                        ))}
+                                                        {task.subtasks.length > 3 && (
+                                                            <div className="text-[10px] text-gray-400 pl-5">+{task.subtasks.length - 3} more</div>
+                                                        )}
+                                                    </div>
                                                 )}
+
+                                                <div className="flex-1"></div>
+
+                                                {/* Tags Footer */}
+                                                <div className="flex flex-wrap gap-2 text-[10px] mt-3 items-center opacity-80">
+                                                    {category && (
+                                                        <span className="font-bold uppercase tracking-wider" style={{ color: catColor }}>{category.name}</span>
+                                                    )}
+                                                    {task.isRecurring && (
+                                                        <span className="flex items-center gap-1 text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
+                                                            <Clock size={10} /> {task.recurrence?.type}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </Resizable>
                             );
                         })}
                     </div>

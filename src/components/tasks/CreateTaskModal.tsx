@@ -106,7 +106,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                     startDate: recurrenceStartDate || undefined,
                     endDate: recurrenceEndDate || undefined,
                 } : undefined,
-                dueDate: !isRecurring && dueDate ? new Date(dueDate).toISOString() : undefined,
+                dueDate: !isRecurring ? (dueDate ? `${dueDate}T12:00:00Z` : null) : undefined,
             } as any);
             resetForm();
             onClose();

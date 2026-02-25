@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '@/supabase/client'
 import { usePlannerStore } from '@/store/plannerStore'
+import { useCardStore } from '@/store/cardStore'
 import HomePage from '@/components/home/HomePage'
 import PlannersPage from '@/components/dashboard/PlannersPage'
 import { CanvasWorkspace } from '@/components/canvas/CanvasWorkspace'
@@ -14,9 +15,11 @@ import TasksPage from '@/components/tasks/TasksPage'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import TripsPage from '@/components/trips/TripsPage'
 import TripMasterPage from '@/components/trips/TripMasterPage'
+import CardsPage from '@/components/dashboard/CardsPage'
 
 function App() {
     const { setUser, fetchPlanners, fetchUserProfile } = usePlannerStore()
+    const { fetchCards } = useCardStore()
 
     useEffect(() => {
         // 1. Check active session on mount
@@ -27,6 +30,7 @@ function App() {
                 // Load these in background
                 fetchUserProfile()
                 fetchPlanners()
+                fetchCards()
             }
             // Mark auth as officially checked
             usePlannerStore.getState().setAuthInitialized(true)
@@ -42,6 +46,7 @@ function App() {
             if (session?.user) {
                 fetchUserProfile()
                 fetchPlanners()
+                fetchCards()
             }
         })
 
@@ -67,6 +72,8 @@ function App() {
                     <Route path="/tasks" element={<TasksPage />} />
                     <Route path="/trips" element={<TripsPage />} />
                     <Route path="/trips/:tripSlug" element={<TripMasterPage />} />
+                    <Route path="/cards" element={<CardsPage />} />
+                    <Route path="/cards/:folderId" element={<CardsPage />} />
                 </Route>
 
                 {/* Standalone Pages */}

@@ -54,14 +54,15 @@ export function PlannerCard({ planner, index }: PlannerCardProps) {
             {/* 3D Card Effect */}
             <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                 {/* Cover Image */}
-                <div
-                    className="h-56 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden"
-                    style={{
-                        backgroundImage: planner.cover_url ? `url(${planner.cover_url})` : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                >
+                <div className="h-56 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                    {planner.cover_url && (
+                        <img
+                            src={planner.cover_url}
+                            alt={planner.name}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                        />
+                    )}
                     {/* Overlay */}
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
 

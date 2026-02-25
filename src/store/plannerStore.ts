@@ -2,10 +2,9 @@ import { create } from 'zustand';
 import type { Planner, PlannerPage, PlannerElement, InkPath } from '../types/planner';
 import { PAGE_PRESETS } from '../types/planner';
 import { supabase } from '../supabase/client';
-import { performOCR } from '../utils/ocr'; // Fixed Import
-
-// ... (keep helper functions same)
-
+import { performOCR } from '../utils/ocr';
+import { uploadFileToDrive, signIn, checkIsSignedIn } from '../lib/googleDrive';
+import { repairDriveUrl } from '../utils/urlUtils';
 
 
 export const generateUUID = () => {
@@ -118,8 +117,6 @@ interface PlannerState {
     acceptConnection: (connectionId: string) => Promise<void>;
     updateConnectionType: (connectionId: string, connectionType: 'family' | 'work') => Promise<void>;
     removeConnection: (connectionId: string) => Promise<void>;
-    // ...
-
     // Search Action
     globalSearch: (query: string) => Promise<void>;
 
@@ -158,6 +155,7 @@ interface PlannerState {
     libraryAssets: any[];
     libraryCategories: string[];
     isLoadingAssets: boolean;
+    uploadProgress: number | null;
 
     // State Variables
     currentYear: number | null;
@@ -170,12 +168,14 @@ interface PlannerState {
     // Actions - Assets
     saveEditedAsset: (id: string, blob: Blob) => Promise<void>;
     deleteAsset: (id: string) => Promise<void>;
+    deleteAssets: (ids: string[]) => Promise<void>;
     fetchLibraryAssets: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtag?: string, viewMode?: 'mine' | 'all') => Promise<void>;
     fetchMultipleLibraryAssets: (types: string[], viewMode?: 'mine' | 'all') => Promise<void>;
     fetchLibraryCategories: (type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', viewMode?: 'mine' | 'all') => Promise<void>;
     uploadAsset: (file: File, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], thumbnailUrl?: string, isPublic?: boolean) => Promise<string>;
     addAssetByUrl: (url: string, title: string, type: 'sticker' | 'template' | 'cover' | 'image' | 'voice' | 'planner', category?: string, hashtags?: string[], isPublic?: boolean) => Promise<string>;
     updateAssetMetadata: (id: string, data: { title?: string, category?: string, hashtags?: string[], user_id?: string | null }) => Promise<void>;
+    syncGoogleDriveAssets: () => Promise<void>;
 
     // Actions - User
     fetchUserProfile: () => Promise<void>;
@@ -239,6 +239,8 @@ interface PlannerState {
     createNewPlanner: (name: string, category: string, color: string, options?: {
         dimensions?: { width: number; height: number; layout: string };
         coverAssetId?: string;
+        type?: string;
+        structure?: string;
         initialTemplates?: { assetId: string, count: number, section: string, frequency: 'once' | 'monthly' | 'weekly' | 'daily' }[];
     }) => Promise<any>;
     duplicatePlanner: (id: string, customName?: string) => Promise<void>;
@@ -313,6 +315,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     isVoiceListening: false,
     isReadOnly: false,
     saveStatus: 'idle',
+    isLoadingAssets: false,
+    uploadProgress: null,
     isFetchingPlanners: false,
     isAuthInitialized: false, // Start false
     userProfile: null,
@@ -347,7 +351,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     // Asset Hub Initial State
     libraryAssets: [],
     libraryCategories: [],
-    isLoadingAssets: false,
 
     showGrid: true,
 
@@ -1059,6 +1062,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 user_id: user.id,
                 name,
                 category,
+                type: options?.type || category,
+                structure: options?.structure || 'custom',
                 cover_color: color || '#6366f1'
             });
 
@@ -1099,6 +1104,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             id,
             name,
             category,
+            type: options?.type || category,
+            structure: options?.structure || 'custom',
             coverColor: color || '#6366f1',
             currentPageIndex: 0,
             pages: initialPages.map(p => ({
@@ -1853,16 +1860,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 console.log('FIRST ITEM PRE-MAP:', data[0]);
             }
 
-            const mapPlanners = (data: any[]) => data.map((p: any) => ({
+            const mapPlanners = (data: any[]) => data.map((p: any) => repairDriveUrl({
                 id: p.id,
                 name: p.name,
                 category: p.category,
+                type: p.type,
+                structure: p.structure,
                 coverColor: p.cover_color,
                 isArchived: !!p.is_archived,
                 archivedAt: p.archived_at,
                 createdAt: p.created_at,
                 isFavorite: !!p.is_favorite,
                 cover_url: p.cover_url,
+                external_id: p.cover_external_id, // Ensure external_id is passed for repair
+                source: p.cover_source,           // Ensure source is passed
                 pages: [],
                 currentPageIndex: 0
             }));
@@ -1870,11 +1881,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             set({ availablePlanners: mapPlanners(data || []), isFetchingPlanners: false });
 
             // We only set up ONE subscription for the planner table for this user
-            // In a real app, you might want to manage this more carefully to avoid duplicates
-            // For now, we'll check if a channel already exists or just use a unique name
             const channelId = `user-planners-${user.id}`;
             const existingChannels = supabase.getChannels();
-            const alreadySubscribed = existingChannels.some(c => c.topic === `realtime:public:planners`);
+            const alreadySubscribed = existingChannels.some(c => c.topic === `realtime:public:planners` || c.topic === `realtime:public:planners:user_id=eq.${user.id}`);
 
             if (!alreadySubscribed) {
                 supabase
@@ -1904,43 +1913,42 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             const user = get().user;
             if (!user) throw new Error("User not authenticated");
 
-            const fileName = `${user.id}/${id}-${Date.now()}.png`;
+            if (!checkIsSignedIn()) await signIn();
 
-            // 1. Upload to Supabase Storage
-            const { error: uploadError } = await supabase.storage
-                .from('covers')
-                .upload(fileName, blob, {
-                    contentType: 'image/png',
-                    upsert: true
-                });
+            // Upload cover to Google Drive
+            const result = await uploadFileToDrive(
+                blob,
+                `cover-${id}-${Date.now()}.png`,
+                'image/png',
+                false,
+                undefined,
+                'Planner Covers'
+            );
 
-            if (uploadError) throw uploadError;
-
-            // 2. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('covers')
-                .getPublicUrl(fileName);
-
-            // 3. Update Planner Record
+            // Update Planner Record
             const { error: updateError } = await supabase
                 .from('planners')
-                .update({ cover_url: publicUrl, updated_at: new Date().toISOString() })
+                .update({
+                    cover_url: result.url,
+                    cover_source: 'google_drive',
+                    cover_external_id: result.externalId,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('id', id);
 
             if (updateError) throw updateError;
 
-            // 4. Update Local State
+            // Update Local State
             set(state => ({
                 availablePlanners: state.availablePlanners.map(p =>
-                    p.id === id ? { ...p, cover_url: publicUrl } : p
+                    p.id === id ? { ...p, cover_url: result.url } : p
                 ),
                 activePlanner: state.activePlanner?.id === id
-                    ? { ...state.activePlanner, cover_url: publicUrl }
+                    ? { ...state.activePlanner, cover_url: result.url }
                     : state.activePlanner
             }));
-
         } catch (error) {
-            console.error('Error updating cover:', error);
+            console.error('Error updating planner cover:', error);
             throw error;
         }
     },
@@ -1959,7 +1967,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set(state => ({
             availablePlanners: state.availablePlanners.map(p =>
                 p.id === id ? { ...p, isArchived: true, archivedAt: new Date().toISOString() } : p
-            )
+            ),
+            activePlanner: state.activePlanner?.id === id
+                ? { ...state.activePlanner, isArchived: true, archivedAt: new Date().toISOString() } as Planner
+                : state.activePlanner
         }));
     },
 
@@ -1974,7 +1985,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set(state => ({
             availablePlanners: state.availablePlanners.map(p =>
                 p.id === id ? { ...p, isArchived: false, archivedAt: undefined } : p
-            )
+            ),
+            activePlanner: state.activePlanner?.id === id
+                ? { ...state.activePlanner, isArchived: false, archivedAt: undefined } as Planner
+                : state.activePlanner
         }));
     },
 
@@ -2004,7 +2018,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set(state => ({
             availablePlanners: state.availablePlanners.map(p =>
                 p.id === id ? { ...p, isFavorite: newFavoriteStatus } : p
-            )
+            ),
+            activePlanner: state.activePlanner?.id === id
+                ? { ...state.activePlanner, isFavorite: newFavoriteStatus } as Planner
+                : state.activePlanner
         }));
 
         const { error } = await supabase
@@ -2050,7 +2067,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
 
         console.log(`Fetched ${data?.length || 0} ${type}s`);
-        set({ libraryAssets: data || [], isLoadingAssets: false });
+        set({ libraryAssets: (data || []).map(repairDriveUrl), isLoadingAssets: false });
     },
 
     fetchMultipleLibraryAssets: async (types, viewMode = 'all') => {
@@ -2076,7 +2093,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             return;
         }
 
-        set({ libraryAssets: data || [], isLoadingAssets: false });
+        set({ libraryAssets: (data || []).map(repairDriveUrl), isLoadingAssets: false });
     },
 
     fetchLibraryCategories: async (type, viewMode = 'all') => {
@@ -2103,71 +2120,58 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         set({ libraryCategories: uniqueCategories });
     },
 
-    uploadAsset: async (file, type, category = 'Personal', hashtags = [], thumbnailUrl?: string, isPublic = false) => {
+    uploadAsset: async (file, type, category = 'Personal', hashtags = [], thumbnailUrl?: string, isPublic = true) => {
         const { user } = get();
-        if (!user) {
-            throw new Error('User must be logged in to upload assets');
-        }
+        if (!user) throw new Error('User must be logged in to upload assets');
 
         set({ isLoadingAssets: true });
 
         try {
-            // 1. Upload to Supabase Storage
-            let bucketName = 'stickers';
-            if (type === 'template') bucketName = 'templates';
-            else if (type === 'cover') bucketName = 'covers';
-            else if (type === 'image') bucketName = 'planner-uploads'; // Unified bucket for user uploads
-            else if (type === 'voice') bucketName = 'voice-notes';
-            else if (type === 'planner') bucketName = 'planner-uploads';
+            // Ensure Google Drive is connected
+            if (!checkIsSignedIn()) await signIn();
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}/${generateUUID()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            set({ uploadProgress: 0 });
 
-            const { error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(filePath, file, { upsert: true });
+            // Calculate subfolder name (e.g., 'Library Stickers')
+            const subfolderName = `Library ${type.charAt(0).toUpperCase() + type.slice(1)}s`;
 
-            if (uploadError) {
-                console.error(`STORAGE UPLOAD ERROR in bucket [${bucketName}]:`, uploadError);
-                throw uploadError;
-            }
+            // Upload to Google Drive
+            const result = await uploadFileToDrive(
+                file,
+                file.name,
+                file.type || 'application/octet-stream',
+                isPublic, // Public assets get "anyone with link" permission on Drive
+                (progress) => set({ uploadProgress: progress }),
+                subfolderName
+            );
 
-            // 2. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from(bucketName)
-                .getPublicUrl(filePath);
-
-            // 3. Save to Assets table
             const { error: dbError } = await supabase
                 .from('assets')
                 .insert({
-                    user_id: isPublic ? null : user.id, // Associate with user or make public
+                    user_id: isPublic ? null : user.id,
                     title: file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name,
                     type: type,
-                    url: publicUrl,
+                    url: result.url,
+                    thumbnail_url: result.source === 'google_drive' ? null : (thumbnailUrl || result.thumbnailUrl || null),
                     category: category,
                     hashtags: hashtags,
-                    thumbnail_url: thumbnailUrl || null
-                });
+                    source: 'google_drive',
+                    external_id: result.externalId,
+                })
+                .select()
+                .single();
 
-            if (dbError) {
-                console.error('Database insertion error:', dbError);
-                throw dbError;
-            }
+            if (dbError) throw dbError;
 
-            console.log('Asset successfully saved to database:', publicUrl);
-
-            // 4. Refresh assets
             await get().fetchLibraryAssets(type);
             await get().fetchLibraryCategories(type);
 
-            return publicUrl;
+            return result.url;
         } catch (error) {
             console.error('Error uploading asset:', error);
             throw error;
         } finally {
-            set({ isLoadingAssets: false });
+            set({ isLoadingAssets: false, uploadProgress: null });
         }
     },
 
@@ -2231,35 +2235,40 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         set({ isLoadingAssets: true });
         try {
-            // 1. Identify bucket and path from URL
-            const urlParts = asset.url.split('/');
-            const bucket = urlParts[urlParts.indexOf('public') + 1];
-            const path = urlParts.slice(urlParts.indexOf(bucket) + 1).join('/');
+            if (!checkIsSignedIn()) await signIn();
 
-            // 2. Re-upload (overwrite)
-            const { error: uploadError } = await supabase.storage
-                .from(bucket)
-                .upload(path, blob, { upsert: true });
+            set({ uploadProgress: 0 });
+            // Calculate same subfolder for edited asset
+            const subfolderName = `Library ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)}s`;
 
-            if (uploadError) throw uploadError;
+            // Re-upload to Google Drive (new file to avoid cache issues)
+            const result = await uploadFileToDrive(
+                blob,
+                asset.title + '-edited',
+                'image/png',
+                asset.user_id === null, // public if it's a public asset
+                (progress) => set({ uploadProgress: progress }),
+                subfolderName
+            );
 
-            // 3. Clear cache by appending version or using fresh URL
-            // Supabase public URLs are predictable. To force browser refresh:
-            const freshUrl = asset.url.split('?')[0] + '?v=' + Date.now();
+            // Update DB with new Drive URL (thumbnail_url set to null as it's computed dynamically)
+            await supabase.from('assets').update({
+                url: result.url,
+                thumbnail_url: null,
+                external_id: result.externalId,
+                source: 'google_drive',
+            }).eq('id', id);
 
-            // 4. Update local state
             set(state => ({
-                libraryAssets: state.libraryAssets.map(a => a.id === id ? { ...a, url: freshUrl } : a)
+                libraryAssets: state.libraryAssets.map(a =>
+                    a.id === id ? { ...a, url: result.url, thumbnail_url: result.thumbnailUrl } : a
+                )
             }));
-
-            // 5. Update DB (even if URL didn't change, we might want to store the version or just trigger update)
-            await supabase.from('assets').update({ url: freshUrl }).eq('id', id);
-
         } catch (error) {
             console.error('Error saving edited asset:', error);
             throw error;
         } finally {
-            set({ isLoadingAssets: false });
+            set({ isLoadingAssets: false, uploadProgress: null });
         }
     },
 
@@ -2269,31 +2278,128 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         if (!asset) return;
 
         try {
-            // 1. Delete from Storage if it's a Supabase URL
-            if (asset.url.includes('supabase.co/storage/v1/object/public/')) {
-                const parts = asset.url.split('/');
-                const bucket = parts[parts.indexOf('public') + 1];
-                const path = parts.slice(parts.indexOf(bucket) + 1).join('/');
-
-                await supabase.storage.from(bucket).remove([path]);
+            if (asset.source === 'google_drive' && asset.external_id) {
+                try {
+                    const { deleteFileFromDrive, checkIsSignedIn } = await import('../lib/googleDrive');
+                    if (checkIsSignedIn()) {
+                        await deleteFileFromDrive(asset.external_id);
+                    }
+                } catch (e) {
+                    console.error('Failed to delete file from Google Drive. Continuing with DB deletion.', e);
+                }
             }
 
-            // 2. Delete from Database
-            const { error } = await supabase
-                .from('assets')
-                .delete()
-                .eq('id', id);
-
+            const { error } = await supabase.from('assets').delete().eq('id', id);
             if (error) throw error;
 
-            // 3. Update local state
-            set(state => ({
-                libraryAssets: state.libraryAssets.filter(a => a.id !== id)
-            }));
-
+            set(state => ({ libraryAssets: state.libraryAssets.filter(a => a.id !== id) }));
         } catch (error) {
             console.error('Error deleting asset:', error);
             throw error;
+        }
+    },
+
+    deleteAssets: async (ids) => {
+        if (!ids || ids.length === 0) return;
+
+        const { libraryAssets } = get();
+        const assetsToDelete = libraryAssets.filter(a => ids.includes(a.id));
+
+        try {
+            const { deleteFileFromDrive, checkIsSignedIn } = await import('../lib/googleDrive');
+            const isSignedIn = checkIsSignedIn();
+
+            for (const asset of assetsToDelete) {
+                if (asset.source === 'google_drive' && asset.external_id && isSignedIn) {
+                    try {
+                        await deleteFileFromDrive(asset.external_id);
+                    } catch (e) {
+                        console.error(`Could not delete from Drive: ${asset.external_id}`, e);
+                    }
+                }
+            }
+
+            const { error } = await supabase.from('assets').delete().in('id', ids);
+            if (error) throw error;
+
+            set(state => ({
+                libraryAssets: state.libraryAssets.filter(a => !ids.includes(a.id))
+            }));
+        } catch (error) {
+            console.error('Error deleting assets:', error);
+            throw error;
+        }
+    },
+
+    syncGoogleDriveAssets: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        set({ isLoadingAssets: true });
+        try {
+            const { listFilesInAppFolder } = await import('../lib/googleDrive');
+            const driveFiles = await listFilesInAppFolder();
+
+            // 1. Identify new and deleted files
+            const { data: existingAssets } = await supabase
+                .from('assets')
+                .select('id, external_id')
+                .eq('source', 'google_drive')
+                .not('external_id', 'is', null);
+
+            const existingIds = new Set((existingAssets || []).map(a => a.external_id));
+            const driveIds = new Set(driveFiles.map(f => f.externalId));
+
+            const newFiles = driveFiles.filter(f => !existingIds.has(f.externalId));
+            const deletedAssetIds = (existingAssets || [])
+                .filter(a => !driveIds.has(a.external_id))
+                .map(a => a.id);
+
+            // 2. Handle Deletions
+            if (deletedAssetIds.length > 0) {
+                console.log(`Removing ${deletedAssetIds.length} assets that no longer exist on Drive...`);
+                const { error: deleteError } = await supabase.from('assets').delete().in('id', deletedAssetIds);
+                if (deleteError) throw deleteError;
+            }
+
+            // 3. Handle Additions
+            if (newFiles.length > 0) {
+                console.log(`Syncing ${newFiles.length} new assets from Drive...`);
+                const insertData = newFiles.map(f => {
+                    let type: any = 'image';
+                    const lowerName = f.name.toLowerCase();
+                    if (lowerName.endsWith('.pdf')) type = 'planner';
+                    else if (f.mimeType.startsWith('image/')) type = 'sticker';
+
+                    return {
+                        user_id: user.id,
+                        title: f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name,
+                        type: type,
+                        url: f.url,
+                        thumbnail_url: null, // Always null for Google Drive, computed in UI
+                        category: 'Imported',
+                        source: 'google_drive',
+                        external_id: f.externalId,
+                    };
+                });
+                const { error: insertError } = await supabase.from('assets').insert(insertData);
+                if (insertError) throw insertError;
+            }
+
+            if (newFiles.length === 0 && deletedAssetIds.length === 0) {
+                console.log('Library is already in sync with Google Drive.');
+            } else {
+                console.log('Sync complete.');
+                await get().fetchLibraryAssets('sticker');
+                await get().fetchLibraryAssets('image');
+                await get().fetchLibraryAssets('cover');
+                await get().fetchLibraryAssets('template');
+                await get().fetchLibraryAssets('planner');
+            }
+        } catch (error) {
+            console.error('Sync failed:', error);
+        } finally {
+            set({ isLoadingAssets: false });
         }
     },
 
@@ -2358,25 +2464,34 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             user = supabaseUser;
         }
 
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+        if (!checkIsSignedIn()) await signIn();
 
-        // 1. Upload
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file, { upsert: true });
+        try {
+            set({ isLoadingAssets: true, uploadProgress: 0 });
+            // Upload avatar to Google Drive (private — only the user sees it)
+            const result = await uploadFileToDrive(
+                file,
+                `avatar-${user.id}`,
+                file.type,
+                false,
+                (progress) => set({ uploadProgress: progress }),
+                'User Media'
+            );
 
-        if (uploadError) throw uploadError;
+            // Update profile with Drive URL and metadata
+            await get().updateProfile({
+                avatar_url: result.url,
+                avatar_source: 'google_drive',
+                avatar_external_id: result.externalId,
+            });
 
-        // 2. Get URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-
-        // 3. Update profile record
-        await get().updateProfile({ avatar_url: publicUrl });
-
-        return publicUrl;
+            return result.url;
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            throw error;
+        } finally {
+            set({ isLoadingAssets: false, uploadProgress: null });
+        }
     },
 
     updateHeroImage: async (page, file) => {
@@ -2387,34 +2502,39 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             user = supabaseUser;
         }
 
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/hero-${page}-${Date.now()}.${fileExt}`;
+        if (!checkIsSignedIn()) await signIn();
 
-        // 1. Upload to 'covers' bucket
-        const { error: uploadError } = await supabase.storage
-            .from('covers')
-            .upload(filePath, file, { upsert: true });
+        try {
+            set({ isLoadingAssets: true, uploadProgress: 0 });
+            // Upload to Google Drive
+            const result = await uploadFileToDrive(
+                file,
+                `hero-${page}-${user.id}`,
+                file.type,
+                true,
+                (progress) => set({ uploadProgress: progress }),
+                'User Media'
+            );
 
-        if (uploadError) throw uploadError;
+            // Update hero_config in profile
+            const currentRaw = userProfile?.hero_config?.[page];
+            const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
+                (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
 
-        // 2. Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('covers')
-            .getPublicUrl(filePath);
+            const newHeroConfig = {
+                ...(userProfile?.hero_config || {}),
+                [page]: { ...currentConfig, imageUrl: result.url }
+            };
+            await updateProfile({ hero_config: newHeroConfig });
+            set({ globalHeroConfig: newHeroConfig });
 
-        // 3. Update hero_config in profile
-        const currentRaw = userProfile?.hero_config?.[page];
-        const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
-            (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
-
-        const newHeroConfig = {
-            ...(userProfile?.hero_config || {}),
-            [page]: { ...currentConfig, imageUrl: publicUrl }
-        };
-        await updateProfile({ hero_config: newHeroConfig });
-        set({ globalHeroConfig: newHeroConfig });
-
-        return publicUrl;
+            return result.url;
+        } catch (error) {
+            console.error('Error updating hero image:', error);
+            throw error;
+        } finally {
+            set({ isLoadingAssets: false, uploadProgress: null });
+        }
     },
 
     updateHeroImageUrl: async (page: string, url: string) => {

@@ -6,16 +6,14 @@
  *   task_categories  → categories per user
  *   tasks            → task rows (one-time + recurring metadata)
  *   task_completions → one row per (task_id, completed_date) for recurring
- *   task_attachments → Supabase Storage URLs per task
+ *   task_attachments → Google Drive URLs per task (metadata only in Supabase)
  *
- * Local Zustand state is kept in sync: every action writes to Supabase
- * first, then updates local state on success.  If the user is offline /
- * not authenticated the store still works locally (no persist middleware
- * needed — data lives in the DB).
+ * Attachments are stored on Google Drive; Supabase holds only the URL.
  */
 
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
+import { repairDriveUrl } from '../utils/urlUtils';
 
 // ─── Type Aliases ────────────────────────────────────────────────────────────
 
@@ -303,7 +301,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 const attachmentMap: Record<string, string[]> = {};
                 for (const row of (attachmentRows ?? [])) {
                     if (!attachmentMap[row.task_id]) attachmentMap[row.task_id] = [];
-                    attachmentMap[row.task_id].push(row.storage_url as string);
+                    // Apply repairDriveUrl to each attachment to ensure stable proxy
+                    attachmentMap[row.task_id].push(repairDriveUrl(row.storage_url as string));
                 }
 
                 const tasks: Task[] = taskRows.map((row: any) =>
@@ -406,8 +405,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         if (rest.rowSpan !== undefined) updateRow.row_span = rest.rowSpan;
         if (rest.dueTime !== undefined) updateRow.due_time = rest.dueTime;
         if (rest.notifications !== undefined) updateRow.notifications = rest.notifications;
-        if (rest.assignedTo !== undefined) {
-            updateRow.assigned_to = rest.assignedTo;
+        if (rest.assigned_to !== undefined) {
+            updateRow.assigned_to = rest.assigned_to;
             updateRow.assigned_by = user.id;
         }
         if (rest.isRecurring !== undefined) {
@@ -433,8 +432,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             const { error } = await supabase
                 .from('tasks')
                 .update(updateRow)
-                .eq('id', id)
-                .eq('user_id', user.id);
+                .eq('id', id);
             if (error) { console.error('[taskStore] updateTask error:', error); return; }
         }
 
@@ -469,13 +467,15 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 const merged: Task = {
                     ...t,
                     title: rest.title ?? t.title,
-                    description: rest.description ?? t.description,
-                    categoryId: rest.categoryId ?? t.categoryId,
+                    description: rest.description !== undefined ? rest.description : t.description,
+                    categoryId: rest.categoryId !== undefined ? rest.categoryId : t.categoryId,
                     priority: rest.priority ?? t.priority,
                     isCompleted: rest.isCompleted ?? t.isCompleted,
-                    dueDate: rest.dueDate ?? t.dueDate,
+                    dueDate: rest.dueDate !== undefined ? rest.dueDate : t.dueDate,
+                    dueTime: rest.dueTime !== undefined ? rest.dueTime : t.dueTime,
+                    notifications: rest.notifications !== undefined ? rest.notifications : t.notifications,
                     isRecurring: rest.isRecurring ?? t.isRecurring,
-                    recurrence: rest.recurrence ?? t.recurrence,
+                    recurrence: rest.recurrence !== undefined ? rest.recurrence : t.recurrence,
                     attachments: finalAttachments ?? t.attachments,
                     subtasks: rest.subtasks ?? t.subtasks,
                     colSpan: rest.colSpan ?? t.colSpan,
@@ -491,7 +491,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Cascades: task_completions and task_attachments are ON DELETE CASCADE
+        // Cascades in DB handle task_completions and task_attachments rows.
+        // Note: We do NOT delete from Google Drive — files remain in user's Drive folder.
         const { error } = await supabase
             .from('tasks')
             .delete()
@@ -499,15 +500,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             .eq('user_id', user.id);
 
         if (error) { console.error('[taskStore] deleteTask error:', error); return; }
-
-        // Also remove Storage objects (best-effort, no await blocking)
-        supabase.storage.from('task-attachments').list(`${user.id}/${id}`)
-            .then(({ data: files }) => {
-                if (files && files.length > 0) {
-                    const paths = files.map(f => `${user.id}/${id}/${f.name}`);
-                    supabase.storage.from('task-attachments').remove(paths);
-                }
-            });
 
         set(state => ({ tasks: state.tasks.filter(t => t.id !== id) }));
     },
@@ -654,36 +646,25 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 // ─── Storage Helper ──────────────────────────────────────────────────────────
 
 /**
- * Upload an array of File objects to Supabase Storage under
- * `task-attachments/{userId}/{taskId}/{uuid}.{ext}`
- * Returns an array of public URLs.
+ * Upload task attachment files to Google Drive.
+ * Returns an array of public view URLs.
  */
 async function uploadAttachmentFiles(
-    userId: string,
-    taskId: string,
+    _userId: string,
+    _taskId: string,
     files: File[]
 ): Promise<string[]> {
+    const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../lib/googleDrive');
+    if (!checkIsSignedIn()) await signIn();
+
     const urls: string[] = [];
-
     for (const file of files) {
-        const ext = file.name.split('.').pop() ?? 'jpg';
-        const path = `${userId}/${taskId}/${crypto.randomUUID()}.${ext}`;
-
-        const { error } = await supabase.storage
-            .from('task-attachments')
-            .upload(path, file, { upsert: false, contentType: file.type });
-
-        if (error) {
-            console.error('[taskStore] uploadAttachmentFiles error:', error);
-            continue;
+        try {
+            const result = await uploadFileToDrive(file, file.name, file.type || 'application/octet-stream', false, undefined, 'Task Attachments');
+            urls.push(result.url);
+        } catch (err) {
+            console.error('[taskStore] uploadAttachmentFiles error:', err);
         }
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('task-attachments')
-            .getPublicUrl(path);
-
-        urls.push(publicUrl);
     }
-
     return urls;
 }

@@ -370,7 +370,7 @@ const HomePage: React.FC = () => {
 
             {/* Footer Insights */}
             <footer className="home-footer">
-                <p>&copy; 2026 ZOABI Digital Planner. Beautifully organized life.</p>
+                <p>&copy; 2026 ZOABI Nexus Vault. Beautifully organized workspace.</p>
             </footer>
         </div>
     );

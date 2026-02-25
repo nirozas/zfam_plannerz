@@ -36,6 +36,7 @@ export function AssetHub({ isOpen, onClose, onSelectAsset, initialTab }: AssetHu
         fetchLibraryCategories,
         isLoadingAssets,
         uploadAsset,
+        uploadProgress,
         addAssetByUrl,
         deleteAsset: deleteAssetFromStore
     } = usePlannerStore();
@@ -504,6 +505,22 @@ export function AssetHub({ isOpen, onClose, onSelectAsset, initialTab }: AssetHu
                                             <p className="text-sm font-bold text-gray-900">Upload {activeTab}s</p>
                                             <p className="text-xs text-gray-500 mt-1">Drag and drop or click to browse</p>
                                         </div>
+
+                                        {isUploading && uploadProgress !== null && (
+                                            <div className="w-48 space-y-2">
+                                                <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${uploadProgress}%` }}
+                                                        className="h-full bg-indigo-500"
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] font-black text-indigo-600 text-center uppercase tracking-widest">
+                                                    Uploading... {uploadProgress}%
+                                                </p>
+                                            </div>
+                                        )}
+
                                         <div className="flex gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                             <span>PNG</span>
                                             <span>JPG</span>

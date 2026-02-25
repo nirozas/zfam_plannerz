@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, FileText, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, UserPlus, Pencil, Home, Briefcase } from 'lucide-react';
+import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, FileText, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, UserPlus, Pencil, Home, Briefcase, Cloud } from 'lucide-react';
 
 import { usePlannerStore } from '../../store/plannerStore';
 import { supabase } from '../../supabase/client';
 import './SettingsPage.css';
 import PageHero from '../ui/PageHero';
+import { GoogleDriveStatus } from '../cloud/GoogleDriveStatus';
+import { StorageMigrationTool } from '../cloud/StorageMigrationTool';
 
 const SettingsPage: React.FC = () => {
     const { user, userProfile, userStats, updateProfile, uploadAvatar, fetchUserStats, fetchUserProfile, connections, fetchConnections, requestConnection, acceptConnection, removeConnection, updateConnectionType } = usePlannerStore();
@@ -258,8 +260,8 @@ const SettingsPage: React.FC = () => {
                                             type="button"
                                             onClick={() => setConnectType('family')}
                                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold text-xs transition-all ${connectType === 'family'
-                                                    ? 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-700'
-                                                    : 'border-gray-200 bg-white text-gray-500 hover:border-fuchsia-200'
+                                                ? 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-700'
+                                                : 'border-gray-200 bg-white text-gray-500 hover:border-fuchsia-200'
                                                 }`}
                                         >
                                             <Home size={14} /> Family
@@ -268,8 +270,8 @@ const SettingsPage: React.FC = () => {
                                             type="button"
                                             onClick={() => setConnectType('work')}
                                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold text-xs transition-all ${connectType === 'work'
-                                                    ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                                                    : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200'
+                                                ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                                                : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200'
                                                 }`}
                                         >
                                             <Briefcase size={14} /> Work
@@ -383,8 +385,8 @@ const SettingsPage: React.FC = () => {
                                                         <button
                                                             onClick={() => setEditingTypeId(editingTypeId === conn.id ? null : conn.id)}
                                                             className={`p-2 rounded-lg transition-colors text-xs flex items-center gap-1 font-bold ${editingTypeId === conn.id
-                                                                    ? 'bg-indigo-100 text-indigo-600'
-                                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                                                ? 'bg-indigo-100 text-indigo-600'
+                                                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                                                                 }`}
                                                             title="Change type"
                                                         >
@@ -403,8 +405,8 @@ const SettingsPage: React.FC = () => {
                                                             type="button"
                                                             onClick={async () => { await updateConnectionType(conn.id, 'family'); setEditingTypeId(null); }}
                                                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 font-bold text-xs transition-all ${conn.connection_type === 'family'
-                                                                    ? 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-700'
-                                                                    : 'border-gray-200 bg-white text-gray-500 hover:border-fuchsia-200'
+                                                                ? 'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-700'
+                                                                : 'border-gray-200 bg-white text-gray-500 hover:border-fuchsia-200'
                                                                 }`}
                                                         >
                                                             <Home size={12} /> Family
@@ -413,8 +415,8 @@ const SettingsPage: React.FC = () => {
                                                             type="button"
                                                             onClick={async () => { await updateConnectionType(conn.id, 'work'); setEditingTypeId(null); }}
                                                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 font-bold text-xs transition-all ${conn.connection_type === 'work'
-                                                                    ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                                                                    : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200'
+                                                                ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                                                                : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200'
                                                                 }`}
                                                         >
                                                             <Briefcase size={12} /> Work
@@ -428,6 +430,29 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Cloud Storage & Migration */}
+                    <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-5 md:p-8 border border-white shadow-xl shadow-slate-200/50 mt-6 md:mt-8">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
+                                    <Cloud size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Cloud Storage</h3>
+                                    <p className="text-xs font-medium text-slate-500">Manage your connected cloud accounts and file migration.</p>
+                                </div>
+                            </div>
+                            <GoogleDriveStatus />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-8">
+                            <div>
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Legacy Data Migration</h4>
+                                <StorageMigrationTool />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -436,8 +461,8 @@ const SettingsPage: React.FC = () => {
 
 const TypeBadge: React.FC<{ type: 'family' | 'work' }> = ({ type }) => (
     <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${type === 'family'
-            ? 'bg-fuchsia-100 text-fuchsia-600'
-            : 'bg-indigo-100 text-indigo-600'
+        ? 'bg-fuchsia-100 text-fuchsia-600'
+        : 'bg-indigo-100 text-indigo-600'
         }`}>
         {type === 'family' ? <Home size={9} /> : <Briefcase size={9} />}
         {type}

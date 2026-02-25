@@ -194,7 +194,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                         {/* Timing Display (readOnly or when not editing) */}
                         {editingTimingId !== subtask.id && (subtask.dueDate || subtask.dueTime) && (
                             <div className="ml-8 flex items-center gap-2 text-[10px] font-bold text-indigo-400">
-                                {subtask.dueDate && <span className="flex items-center gap-1"><CalendarDays size={10} /> {new Date(subtask.dueDate).toLocaleDateString()}</span>}
+                                {subtask.dueDate && <span className="flex items-center gap-1"><CalendarDays size={10} /> {new Date(`${subtask.dueDate}T12:00:00Z`).toLocaleDateString()}</span>}
                                 {subtask.dueTime && <span className="flex items-center gap-1"><Clock size={10} /> {subtask.dueTime}</span>}
                             </div>
                         )}

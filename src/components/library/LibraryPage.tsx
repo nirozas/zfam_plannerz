@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Hash, ChevronRight, Edit, Trash2, Palette, RefreshCcw, Plus, X } from 'lucide-react';
+import { Book, Sticker, FileImage, LayoutTemplate, Search, LayoutGrid, Hash, ChevronRight, Edit, Trash2, Palette, RefreshCcw, Plus, X, CheckSquare, Check, FileText, FileArchive, File as FileIcon, FileCode, FileJson } from 'lucide-react';
 
 import { usePlannerStore } from '../../store/plannerStore';
 import AssetEditor from './AssetEditor';
 import { PDFImportModal } from '../dashboard/PDFImportModal';
-import { PDFThumbnail } from '../ui/PDFThumbnail';
-import * as pdfjsLib from 'pdfjs-dist';
 import { generateUUID } from '../../store/plannerStore';
-import { supabase } from '../../supabase/client';
+import { supabase as _supabase } from '../../supabase/client'; // kept for future use
 import '../dashboard/Dashboard.css';
 import PageHero from '../ui/PageHero';
 import { PlannerTabs } from '../dashboard/PlannerTabs';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// Configure workers if needed for other components
 
 const LibraryPage: React.FC = () => {
     const {
@@ -26,8 +23,10 @@ const LibraryPage: React.FC = () => {
         updateAssetMetadata,
         saveEditedAsset,
         deleteAsset,
+        deleteAssets,
         uploadAsset,
-        addAssetByUrl
+        addAssetByUrl,
+        syncGoogleDriveAssets
     } = usePlannerStore();
 
     const isAdmin = userProfile?.role === 'admin';
@@ -46,7 +45,8 @@ const LibraryPage: React.FC = () => {
     const [inputTitle, setInputTitle] = useState('');
     const [inputCategory, setInputCategory] = useState('');
     const [inputHashtags, setInputHashtags] = useState('');
-    const [isPublicInput, setIsPublicInput] = useState(false);
+    const [isPublicInput, setIsPublicInput] = useState(true);
+    const [previewAsset, setPreviewAsset] = useState<any>(null);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -57,6 +57,10 @@ const LibraryPage: React.FC = () => {
     const [editHashtags, setEditHashtags] = useState('');
     const [editIsPublic, setEditIsPublic] = useState(false);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+    // Bulk Selection State
+    const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
+    const isBulkSelecting = selectedAssetIds.size > 0;
 
     // Painting State
     const [paintingAsset, setPaintingAsset] = useState<any | null>(null);
@@ -84,6 +88,41 @@ const LibraryPage: React.FC = () => {
     const handleHashtagSelect = (tag: string | null) => {
         setActiveHashtag(tag);
         fetchLibraryAssets(activeTab, selectedCategory || undefined, tag || undefined, viewMode);
+    };
+
+    // Handle Bulk Selection
+    const toggleAssetSelection = (id: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setSelectedAssetIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAll = () => {
+        const filteredIds = libraryAssets
+            .filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase()))
+            .map(a => a.id);
+
+        if (selectedAssetIds.size === filteredIds.length) {
+            setSelectedAssetIds(new Set());
+        } else {
+            setSelectedAssetIds(new Set(filteredIds));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedAssetIds.size === 0) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedAssetIds.size} assets?`)) return;
+
+        try {
+            await deleteAssets(Array.from(selectedAssetIds));
+            setSelectedAssetIds(new Set());
+        } catch (error) {
+            alert('Failed to delete assets');
+        }
     };
 
     // Handle Upload
@@ -118,16 +157,21 @@ const LibraryPage: React.FC = () => {
                                     await page.render({ canvasContext: context, viewport }).promise;
                                     const thumbBlob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'));
                                     if (thumbBlob) {
-                                        const thumbFileName = `thumbnails/${userProfile?.id || 'anon'}/${generateUUID()}.png`;
-                                        const { error: thumbUploadError } = await supabase.storage
-                                            .from('planner-uploads')
-                                            .upload(thumbFileName, thumbBlob);
-
-                                        if (!thumbUploadError) {
-                                            const { data: { publicUrl } } = supabase.storage
-                                                .from('planner-uploads')
-                                                .getPublicUrl(thumbFileName);
-                                            thumbnailUrl = publicUrl;
+                                        try {
+                                            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+                                            if (!checkIsSignedIn()) await signIn();
+                                            const subfolderName = `Library ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}s`;
+                                            const thumbResult = await uploadFileToDrive(
+                                                thumbBlob,
+                                                `thumb-${generateUUID()}.png`,
+                                                'image/png',
+                                                true,
+                                                undefined,
+                                                subfolderName
+                                            );
+                                            thumbnailUrl = thumbResult.thumbnailUrl;
+                                        } catch (thumbDriveErr) {
+                                            console.warn('Failed to upload PDF thumbnail to Drive:', thumbDriveErr);
                                         }
                                     }
                                 }
@@ -297,14 +341,17 @@ const LibraryPage: React.FC = () => {
                         </div>
 
                         <button
-                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                            onClick={() => {
-                                fetchLibraryCategories(activeTab, viewMode);
-                                fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined, viewMode);
+                            className={`p-2 hover:text-indigo-600 transition-all ${isLoadingAssets ? 'animate-spin text-indigo-500' : 'text-gray-400'}`}
+                            onClick={async () => {
+                                // First refresh existing categories and assets
+                                await fetchLibraryCategories(activeTab, viewMode);
+                                await fetchLibraryAssets(activeTab, selectedCategory || undefined, activeHashtag || undefined, viewMode);
+                                // Then perform deep sync with Google Drive
+                                await syncGoogleDriveAssets();
                             }}
-                            title="Refresh"
+                            title="Sync with Google Drive"
                         >
-                            <RefreshCcw size={18} className={isLoadingAssets ? 'animate-spin' : ''} />
+                            <RefreshCcw size={20} />
                         </button>
                     </div>
                 </div>
@@ -379,28 +426,48 @@ const LibraryPage: React.FC = () => {
                                     </button>
                                 </div>
 
+                                {/* SELECTION CHECKBOX */}
+                                <button
+                                    onClick={(e) => toggleAssetSelection(asset.id, e)}
+                                    className={`absolute top-4 left-4 z-20 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selectedAssetIds.has(asset.id)
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
+                                        : 'bg-white/40 backdrop-blur-sm border-white/60 text-transparent opacity-0 group-hover:opacity-100 hover:border-white'
+                                        }`}
+                                >
+                                    <Check size={14} strokeWidth={4} />
+                                </button>
+
                                 <div className="aspect-square relative overflow-hidden bg-gray-50 flex items-center justify-center">
-                                    {asset.thumbnail_url ? (
-                                        <img src={asset.thumbnail_url} alt={asset.title} className="w-full h-full object-cover" />
-                                    ) : asset.url.toLowerCase().endsWith('.pdf') ? (
-                                        <div className="scale-75"><PDFThumbnail url={asset.url} /></div>
-                                    ) : (
-                                        <img
-                                            src={asset.url}
-                                            alt={asset.title}
-                                            className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                                            onError={(e) => {
-                                                e.currentTarget.onerror = null;
-                                                e.currentTarget.src = 'https://placehold.co/400x400/f1f5f9/94a3b8?text=Error';
-                                            }}
-                                        />
-                                    )}
+                                    <AssetThumbnail
+                                        asset={asset}
+                                        onClick={() => {
+                                            if (asset.url.toLowerCase().endsWith('.pdf')) return;
+                                            setPreviewAsset(asset);
+                                        }}
+                                    />
                                 </div>
 
                                 <div className="p-4 flex-1 flex flex-col justify-between">
                                     <div>
                                         <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{asset.category || 'Uncategorized'}</div>
-                                        <div className="text-sm font-bold text-gray-800 line-clamp-1">{asset.title}</div>
+                                        <div className="text-sm font-bold text-gray-800 line-clamp-1" title={asset.title}>{asset.title}</div>
+                                    </div>
+
+                                    {/* ASSET METADATA */}
+                                    <div className="mt-3 text-[9px] text-gray-400 font-medium space-y-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex justify-between"><span>Type:</span> <span className="text-gray-600 capitalize">{asset.type}</span></div>
+                                        <div className="flex justify-between"><span>Added:</span> <span className="text-gray-600">{new Date(asset.created_at).toLocaleDateString()}</span></div>
+                                        {asset.hashtags && asset.hashtags.length > 0 && (
+                                            <div className="flex justify-between items-start gap-2">
+                                                <span>Tags:</span>
+                                                <span className="text-gray-600 text-right line-clamp-2">
+                                                    {asset.hashtags.map((h: string) => `#${h}`).join(' ')}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {asset.is_public && (
+                                            <div className="flex justify-between text-indigo-500 font-bold mt-1"><span>Visibility:</span> <span>Public</span></div>
+                                        )}
                                     </div>
 
                                     {activeTab === 'planner' && (
@@ -430,6 +497,50 @@ const LibraryPage: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* BULK ACTIONS FLOATING TOOLBAR */}
+            {isBulkSelecting && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white px-8 py-5 rounded-[28px] shadow-2xl z-[90] flex items-center gap-10 animate-in slide-in-from-bottom-10 fade-in duration-500 ring-4 ring-white/10">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Selected Assets</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl font-black text-white">{selectedAssetIds.size}</span>
+                            <span className="text-xs font-bold text-slate-500">Items marked</span>
+                        </div>
+                    </div>
+
+                    <div className="h-10 w-px bg-slate-800" />
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleSelectAll}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl transition-all font-bold text-xs uppercase tracking-wider ${selectedAssetIds.size === libraryAssets.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase())).length
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                }`}
+                        >
+                            <CheckSquare size={16} />
+                            {selectedAssetIds.size === libraryAssets.length ? 'Deselect All' : 'Select All'}
+                        </button>
+
+                        <button
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl transition-all font-bold text-xs uppercase tracking-wider group"
+                        >
+                            <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
+                            Bulk Delete
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedAssetIds(new Set())}
+                            className="p-2.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-2xl transition-all"
+                            title="Clear Selection"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Modals */}
             {isUploadModalOpen && (
@@ -540,6 +651,23 @@ const LibraryPage: React.FC = () => {
                 <AssetEditor imageUrl={paintingAsset.url} onSave={handleSavePainting} onClose={() => setPaintingAsset(null)} />
             )}
 
+            {previewAsset && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setPreviewAsset(null)}>
+                    <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 transition-all" onClick={() => setPreviewAsset(null)}>
+                        <X size={24} />
+                    </button>
+                    <img
+                        src={previewAsset.source === 'google_drive' && previewAsset.external_id
+                            ? `https://drive.google.com/thumbnail?id=${previewAsset.external_id}&sz=s1000`
+                            : (previewAsset.thumbnail_url?.includes('googleusercontent.com') ? previewAsset.thumbnail_url.replace(/=s\d+/, '=s2048') : previewAsset.thumbnail_url) || previewAsset.url}
+                        alt={previewAsset.title}
+                        referrerPolicy="no-referrer"
+                        className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl z-[201] cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
+
             <PDFImportModal isOpen={isPDFModalOpen} onClose={() => { setIsPDFModalOpen(false); setPdfSourceUrl(undefined); }} sourceUrl={pdfSourceUrl} />
         </div >
     );
@@ -564,5 +692,50 @@ const CategoryButton: React.FC<{ active: boolean; onClick: () => void; label: st
         {active && showChevron && <ChevronRight size={14} />}
     </button>
 );
+
+const AssetThumbnail: React.FC<{ asset: any; onClick: () => void }> = ({ asset, onClick }) => {
+    const [hasError, setHasError] = useState(false);
+
+    // Fallback Icons based on MimeType / Extension
+    const renderFallback = () => {
+        const iconProps = { size: 64, strokeWidth: 1.5, className: "text-gray-300 group-hover:text-indigo-300 transition-colors" };
+        const ext = asset.url?.split('.').pop()?.toLowerCase();
+        const mime = asset.mimeType?.toLowerCase() || '';
+
+        if (mime.includes('zip') || mime.includes('archive') || ext === 'zip' || ext === 'rar' || ext === '7z')
+            return <FileArchive {...iconProps} />;
+        if (mime.includes('json') || ext === 'json')
+            return <FileJson {...iconProps} />;
+        if (mime.includes('text') || ext === 'txt' || ext === 'md')
+            return <FileText {...iconProps} />;
+        if (ext === 'js' || ext === 'ts' || ext === 'tsx' || ext === 'html' || ext === 'css' || mime.includes('javascript'))
+            return <FileCode {...iconProps} />;
+        if (mime.includes('pdf') || ext === 'pdf')
+            return <FileText {...iconProps} className="text-red-300 group-hover:text-red-400 transition-colors" />;
+
+        return <FileIcon {...iconProps} />;
+    };
+
+    if (hasError || (!asset.thumbnail_url && !asset.url)) {
+        return <div className="flex flex-col items-center gap-2">{renderFallback()}</div>;
+    }
+
+    const isDrive = asset.source === 'google_drive' || asset.url?.includes('drive.google.com');
+    // For Google Drive assets, we prioritize the dynamic stable thumbnail URL
+    const src = (isDrive && asset.external_id)
+        ? `https://drive.google.com/thumbnail?id=${asset.external_id}&sz=w400`
+        : (asset.thumbnail_url || asset.url);
+
+    return (
+        <img
+            src={src}
+            alt={asset.title}
+            referrerPolicy="no-referrer"
+            className={`w-full h-full cursor-pointer transition-all duration-500 ${isDrive ? 'object-cover' : 'object-contain p-4 group-hover:scale-110'}`}
+            onClick={onClick}
+            onError={() => setHasError(true)}
+        />
+    );
+};
 
 export default LibraryPage;

@@ -146,45 +146,37 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
 
         setIsUploading(true);
         try {
+            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+            if (!checkIsSignedIn()) await signIn();
+
             const selectedPages = pdfPages.filter(p => selectedPageIds.has(p.id));
 
             for (const page of selectedPages) {
                 const blob = await (await fetch(page.preview)).blob();
-                const fileName = `pdf-template-${generateUUID()}.png`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from('templates')
-                    .upload(fileName, blob);
+                // Upload page image to Google Drive
+                const driveResult = await uploadFileToDrive(
+                    blob,
+                    `pdf-template-page-${page.pageNumber}-${generateUUID()}.png`,
+                    'image/png',
+                    true,
+                    undefined,
+                    'Library Templates'
+                );
 
-                if (uploadError) throw uploadError;
+                if (!user?.id) throw new Error('User ID missing');
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('templates')
-                    .getPublicUrl(fileName);
-
-                console.log("Attempting to insert template:", {
-                    user_id: user?.id,
-                    title: `PDF Template Page ${page.pageNumber}`,
-                    category: page.category
-                });
-
-                if (!user?.id) {
-                    console.error("User ID is missing! cannot upload.");
-                    alert("User not logged in. Cannot save template.");
-                    throw new Error("User ID missing");
-                }
-
-                const payload = {
+                await supabase.from('assets').insert({
                     user_id: user?.id,
                     title: `PDF Template Page ${page.pageNumber}`,
                     type: 'template',
                     category: page.category,
                     hashtags: page.hashtags,
-                    url: publicUrl
-                };
-                console.log("Payload:", payload);
-
-                await supabase.from('assets').insert(payload);
+                    url: driveResult.url,
+                    thumbnail_url: driveResult.thumbnailUrl,
+                    source: 'google_drive',
+                    external_id: driveResult.externalId,
+                });
             }
 
             if (onSuccess) onSuccess();
@@ -201,27 +193,27 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
 
         setIsUploading(true);
         try {
+            const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
+            if (!checkIsSignedIn()) await signIn();
+
             const selectedPages = pdfPages.filter(p => selectedPageIds.has(p.id));
             const formattedPages = [];
 
             for (const page of selectedPages) {
-                // Convert base64 to blob
                 const blob = await (await fetch(page.preview)).blob();
-                const fileName = `${user.id}/${Date.now()}_page_${generateUUID()}.png`;
 
-                // Upload to storage
-                const { error: uploadError } = await supabase.storage
-                    .from('planner-uploads')
-                    .upload(fileName, blob);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('planner-uploads')
-                    .getPublicUrl(fileName);
+                // Upload page image to Google Drive (these are the individual page images, not the full PDF)
+                const driveResult = await uploadFileToDrive(
+                    blob,
+                    `planner-page-${Date.now()}-${generateUUID()}.png`,
+                    'image/png',
+                    false,
+                    undefined,
+                    'Library Planners' // Store individual planner pages in 'Library Planners' too
+                );
 
                 formattedPages.push({
-                    dataUrl: publicUrl,
+                    dataUrl: driveResult.url,
                     width: page.width,
                     height: page.height,
                     links: page.links
@@ -229,7 +221,7 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
             }
 
             usePlannerStore.getState().addPagesFromPdf(formattedPages);
-            await usePlannerStore.getState().savePlanner(); // Save immediately
+            await usePlannerStore.getState().savePlanner();
 
             if (onSuccess) onSuccess();
             onClose();

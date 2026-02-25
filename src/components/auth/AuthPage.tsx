@@ -53,6 +53,7 @@ const AuthPage: React.FC = () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
+                    scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',

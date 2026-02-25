@@ -34,7 +34,9 @@ export const AppSidebar: React.FC = () => {
 
     return (
         <aside className="app-sidebar">
-            <div className="brand-logo cursor-pointer" onClick={() => navigate('/')}>NEXUS VAULT</div>
+            <div className="brand-logo-container cursor-pointer" onClick={() => navigate('/')}>
+                <img src="/logo.png" alt="Logo" className="logo-img" />
+            </div>
 
             <nav className="nav-menu">
                 <NavLink

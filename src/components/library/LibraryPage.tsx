@@ -10,7 +10,9 @@ import '../dashboard/Dashboard.css';
 import PageHero from '../ui/PageHero';
 import { PlannerTabs } from '../dashboard/PlannerTabs';
 
-// Configure workers if needed for other components
+// Configure PDF.js worker
+import * as pdfjsLib from 'pdfjs-dist';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const LibraryPage: React.FC = () => {
     const {

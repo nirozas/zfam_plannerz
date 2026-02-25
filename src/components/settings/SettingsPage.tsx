@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, FileText, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, Home, Briefcase, Cloud } from 'lucide-react';
+import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, Home, Briefcase, Cloud } from 'lucide-react';
 
 import { usePlannerStore } from '../../store/plannerStore';
 import { supabase } from '../../supabase/client';

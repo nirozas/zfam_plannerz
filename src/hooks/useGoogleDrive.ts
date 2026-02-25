@@ -47,8 +47,7 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
         let cancelled = false;
         const init = async () => {
             try {
-                await initGapi();
-                await initGoogleAuth();
+                await Promise.all([initGapi(), initGoogleAuth()]);
                 const token = loadToken();
                 if (!cancelled) setSignedIn(token !== null);
             } catch (e) {

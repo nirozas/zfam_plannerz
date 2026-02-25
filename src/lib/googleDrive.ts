@@ -141,11 +141,20 @@ export function signIn(): Promise<void> {
 
     return new Promise((resolve, reject) => {
         if (!tokenClient) {
-            reject(new Error('Google Auth not initialized. Please try again in a moment.'));
-            return;
+            // Try fallback synchronous initialization if script is loaded
+            if (typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {
+                tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: '',
+                });
+            } else {
+                reject(new Error('Google Auth not initialized yet. The page might still be loading. Please try again in a few seconds.'));
+                return;
+            }
         }
         tokenClient.callback = (response: any) => {
-            if (response.error) { reject(response); return; }
+            if (response.error) { reject(new Error(response.error)); return; }
             saveToken(response);
             resolve();
         };

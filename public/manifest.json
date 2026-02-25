@@ -1,0 +1,30 @@
+{
+    "name": "Zoabi Planner",
+    "short_name": "Zoabi",
+    "description": "Premium Digital Planner & Vault",
+    "theme_color": "#fafbff",
+    "background_color": "#fafbff",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/",
+    "icons": [
+        {
+            "src": "pwa-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pwa-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

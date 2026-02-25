@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlannerStore } from '../../store/plannerStore';
-import { CheckSquare, Plane, Sparkles, BookOpen, Clock, Image as ImageIcon, Edit3, Check, X, Link as LinkIcon } from 'lucide-react';
+import { CheckSquare, Plane, Sparkles, BookOpen, Clock, Image as ImageIcon, Edit3, Check, X, Link as LinkIcon, StickyNote } from 'lucide-react';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -122,6 +122,15 @@ const HomePage: React.FC = () => {
             icon: <Plane size={32} />,
             color: 'from-emerald-500 to-teal-600',
             path: '/trips',
+            active: true
+        },
+        {
+            id: 'cards',
+            title: 'Recursive Cards',
+            description: 'Capture, link, and nest your ideas in a recursive knowledge base.',
+            icon: <StickyNote size={32} />,
+            color: 'from-amber-400 to-orange-500',
+            path: '/cards',
             active: true
         }
     ];

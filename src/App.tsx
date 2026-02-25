@@ -16,6 +16,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import TripsPage from '@/components/trips/TripsPage'
 import TripMasterPage from '@/components/trips/TripMasterPage'
 import CardsPage from '@/components/dashboard/CardsPage'
+import PWABadge from '@/components/pwa/PWABadge'
 
 function App() {
     const { setUser, fetchPlanners, fetchUserProfile } = usePlannerStore()
@@ -55,6 +56,7 @@ function App() {
 
     return (
         <BrowserRouter>
+            <PWABadge />
             <Routes>
                 {/* Public / Auth */}
                 <Route path="/auth" element={<AuthPage />} />

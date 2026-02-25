@@ -42,6 +42,20 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow: hidden;
+  /* PWA Optimizations */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent selection on app layout elements to feel more native */
+.sidebar,
+.navigation-bars,
+button,
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #root {

@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { usePlannerStore } from '../../store/plannerStore';
 import { AppSidebar } from './AppSidebar';
-import { Loader2, Users, X } from 'lucide-react';
 import { supabase } from '../../supabase/client';
+import { Loader2, Users, X, Bug } from 'lucide-react';
+import BugReportModal from '../modals/BugReportModal';
 
 const DashboardLayout: React.FC = () => {
     const { user, isAuthInitialized, fetchConnections, connections } = usePlannerStore();
+    const location = useLocation();
     const [dismissedRequests, setDismissedRequests] = useState<string[]>([]);
+    const [adminBugs, setAdminBugs] = useState<any[]>([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -52,6 +55,27 @@ const DashboardLayout: React.FC = () => {
         };
     }, [user, fetchConnections]);
 
+    useEffect(() => {
+        if (!user || usePlannerStore.getState().userProfile?.role !== 'admin') return;
+
+        const channel = supabase
+            .channel('admin-bugs')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'bug_reports' },
+                (payload) => {
+                    setAdminBugs(prev => [payload.new, ...prev]);
+                    // Play a subtle sound or trigger toast
+                    console.log('New bug reported!', payload.new);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user]);
+
     if (!isAuthInitialized) {
         return (
             <div className="flex items-center justify-center h-screen w-screen bg-gray-50">
@@ -60,7 +84,7 @@ const DashboardLayout: React.FC = () => {
         );
     }
 
-    if (!user) {
+    if (!user && location.pathname !== '/') {
         return <Navigate to="/auth" replace />;
     }
 
@@ -118,11 +142,48 @@ const DashboardLayout: React.FC = () => {
                 </div>
             )}
 
+            {/* Admin Bug Notification */}
+            {adminBugs.length > 0 && (
+                <div className="absolute top-20 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full animate-in fade-in duration-500">
+                    {adminBugs.map(bug => (
+                        <div key={bug.id} className="bg-slate-900 text-white border border-slate-700 rounded-2xl shadow-2xl p-4 flex flex-col gap-3">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-red-500/20 text-red-500 rounded-xl">
+                                        <Bug size={18} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-white leading-tight">New Bug Reported</h4>
+                                        <p className="text-[10px] text-slate-400 font-medium">By: {bug.user_id?.slice(0, 8)}...</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setAdminBugs(prev => prev.filter(b => b.id !== bug.id))}
+                                    className="text-slate-500 hover:text-white transition-colors"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-300 line-clamp-3 bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 italic">
+                                "{bug.description}"
+                            </p>
+                            <button
+                                onClick={() => setAdminBugs(prev => prev.filter(b => b.id !== bug.id))}
+                                className="w-full bg-slate-800 hover:bg-slate-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg transition-all"
+                            >
+                                Acknowledge
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* On desktop the sidebar sits in the normal flow (left).
                 On mobile the CSS makes it fixed to the bottom. */}
             <AppSidebar />
             <main className="flex-1 overflow-hidden relative flex flex-col pb-[65px] md:pb-0">
                 <Outlet />
+                <BugReportModal />
             </main>
         </div>
     );

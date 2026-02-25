@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useTripStore } from '../../store/tripStore';
-import { MapPin, Clock, Plus, Compass, Trash2, ChevronDown, ChevronRight, Calendar, Pencil, Utensils, Bed, Landmark, Car, Ticket, ShoppingBag, MoreHorizontal } from 'lucide-react';
+import { MapPin, Clock, Plus, Compass, Trash2, ChevronDown, ChevronRight, Calendar, Pencil, Utensils, Bed, Landmark, Car, Ticket, ShoppingBag, MoreHorizontal, Upload } from 'lucide-react';
 import TripMapView from './TripMapView';
 import AddStopModal from './AddStopModal';
+import BulkTripUploadModal from './BulkTripUploadModal';
 import TripFullMapView from './TripFullMapView';
 import { Maximize2 } from 'lucide-react';
 
@@ -29,6 +30,7 @@ const ItineraryView: React.FC<ItineraryViewProps> = () => {
     const isViewer = userRole === 'viewer';
     const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
     const [isAddStopOpen, setIsAddStopOpen] = useState(false);
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [editingStop, setEditingStop] = useState<any | null>(null);
     const [defaultDay, setDefaultDay] = useState(1);
     const [isFullMapOpen, setIsFullMapOpen] = useState(false);
@@ -134,13 +136,22 @@ const ItineraryView: React.FC<ItineraryViewProps> = () => {
                                     </button>
                                 ))}
                                 {!isViewer && (
-                                    <button
-                                        className="flex-shrink-0 w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 transition-all ml-2"
-                                        onClick={() => openAddStop()}
-                                        title="Add Stop"
-                                    >
-                                        <Plus size={16} />
-                                    </button>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <button
+                                            className="flex-shrink-0 w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 transition-all"
+                                            onClick={() => openAddStop()}
+                                            title="Add Stop"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                        <button
+                                            className="flex-shrink-0 w-8 h-8 bg-slate-50 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all border border-slate-100"
+                                            onClick={() => setIsBulkUploadOpen(true)}
+                                            title="Bulk Upload Trip Logs"
+                                        >
+                                            <Upload size={14} />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -425,6 +436,13 @@ const ItineraryView: React.FC<ItineraryViewProps> = () => {
                 <TripFullMapView
                     isOpen={isFullMapOpen}
                     onClose={() => setIsFullMapOpen(false)}
+                />
+            )}
+            {isBulkUploadOpen && activeTrip && (
+                <BulkTripUploadModal
+                    isOpen={isBulkUploadOpen}
+                    onClose={() => setIsBulkUploadOpen(false)}
+                    tripId={activeTrip.id}
                 />
             )}
         </>

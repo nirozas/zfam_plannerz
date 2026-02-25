@@ -5,6 +5,7 @@ import { supabase } from '../supabase/client';
 import { performOCR } from '../utils/ocr';
 import { uploadFileToDrive, signIn, checkIsSignedIn } from '../lib/googleDrive';
 import { repairDriveUrl } from '../utils/urlUtils';
+import { sendEmail, createInvitationEmail } from '../utils/mailer';
 
 
 export const generateUUID = () => {
@@ -107,7 +108,7 @@ interface PlannerState {
     isAuthInitialized: boolean; // New: tracks if we've checked Supabase session
     userProfile: { id: string; role: string; full_name?: string; username?: string; avatar_url?: string; hero_config?: Record<string, { imageUrl?: string; title?: string; subtitle?: string }> } | null;
     globalHeroConfig: Record<string, { imageUrl?: string; title?: string; subtitle?: string }>;
-    userStats: { totalPlanners: number; totalPages: number; totalAssets: number; totalTasks: number; totalTrips: number } | null;
+    userStats: { totalPlanners: number; totalPages: number; totalAssets: number; totalTasks: number; totalTrips: number; totalSize: number } | null;
     highlightedElementId: string | null;
     setHighlightedElementId: (id: string | null) => void;
     // Connections
@@ -300,6 +301,10 @@ interface PlannerState {
     undo: () => void;
     redo: () => void;
     updatePageTranscription: (pageId: string, text: string) => Promise<void>;
+    isBugModalOpen: boolean;
+    setBugModalOpen: (open: boolean) => void;
+    bugReports: any[];
+    fetchBugReports: () => Promise<void>;
 }
 
 export const usePlannerStore = create<PlannerState>((set, get) => ({
@@ -309,6 +314,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     activePlannerId: null,
     availablePlanners: [],
     searchResults: [],
+    isBugModalOpen: false,
+    setBugModalOpen: (open) => set({ isBugModalOpen: open }),
+    bugReports: [],
+    fetchBugReports: async () => {
+        const { userProfile } = get();
+        if (userProfile?.role !== 'admin') return;
+
+        const { data, error } = await supabase
+            .from('bug_reports')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (!error) set({ bugReports: data });
+    },
     isSearching: false,
     currentPageIndex: 0,
     exportTriggered: 0,
@@ -2640,13 +2659,22 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id);
 
+            // 6. Total Files Size (from assets)
+            const { data: assetsSizes } = await supabase
+                .from('assets')
+                .select('size')
+                .eq('user_id', user.id);
+
+            const totalSize = assetsSizes?.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0) || 0;
+
             set({
                 userStats: {
                     totalPlanners: plannersCount || 0,
                     totalPages: totalPages,
                     totalAssets: assetsCount || 0,
                     totalTasks: tasksCount || 0,
-                    totalTrips: tripsCount || 0
+                    totalTrips: tripsCount || 0,
+                    totalSize: totalSize
                 }
             });
 
@@ -2675,10 +2703,15 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             return;
         }
 
-        // Collect all peer IDs we need profile info for
-        const peerIds = data.map((c: any) =>
-            c.requester_id === user.id ? c.receiver_id : c.requester_id
-        );
+        // Collect all peer IDs we need profile info for (filter out nulls/invalid)
+        const peerIds = data
+            .map((c: any) => (c.requester_id === user.id ? c.receiver_id : c.requester_id))
+            .filter((id): id is string => !!id);
+
+        if (peerIds.length === 0) {
+            set({ connections: [] });
+            return;
+        }
 
         // Fetch profiles for those peers (profiles has full_name + avatar_url)
         const { data: profiles } = await supabase
@@ -2686,9 +2719,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             .select('id, full_name, avatar_url')
             .in('id', peerIds);
 
-        // Fetch emails via RPC (profiles table does NOT store email — only auth.users does)
-        const { data: emailRows } = await supabase
+        // Fetch emails via RPC
+        const { data: emailRows, error: rpcError } = await supabase
             .rpc('get_emails_for_users', { user_ids: peerIds });
+
+        if (rpcError) {
+            console.warn('RPC get_emails_for_users failed (likely missing or permission issue):', rpcError);
+        }
 
         const profileMap: Record<string, any> = {};
         (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
@@ -2740,6 +2777,19 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         if (error) throw new Error(error.message);
         await fetchConnections();
+
+        // Send email notification (optional/background)
+        const { userProfile } = get();
+        const mailerHtml = createInvitationEmail(
+            userProfile?.full_name || user.email || 'Someone',
+            'Connection',
+            'connection'
+        );
+        sendEmail({
+            to: email,
+            subject: `${userProfile?.full_name || 'A user'} wants to connect on Zoabi Planner`,
+            html: mailerHtml
+        }).catch(err => console.error('Silent mailer error:', err));
     },
 
     acceptConnection: async (connectionId: string) => {

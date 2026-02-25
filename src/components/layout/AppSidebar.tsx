@@ -4,14 +4,12 @@ import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDri
 import { usePlannerStore } from '../../store/plannerStore';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
-import BugReportModal from '../modals/BugReportModal';
 import './AppSidebar.css';
 
 export const AppSidebar: React.FC = () => {
-    const { user, userProfile } = usePlannerStore();
+    const { user, userProfile, setBugModalOpen } = usePlannerStore();
     const { signedIn, loading: driveLoading, connect, disconnect } = useGoogleDrive();
     const navigate = useNavigate();
-    const [isBugModalOpen, setIsBugModalOpen] = React.useState(false);
 
     // Determine display name
     const displayName = userProfile?.full_name
@@ -35,7 +33,7 @@ export const AppSidebar: React.FC = () => {
     return (
         <aside className="app-sidebar">
             <div className="brand-logo-container cursor-pointer" onClick={() => navigate('/')}>
-                <img src="/logo.png" alt="Logo" className="logo-img" />
+                <img src="/nexus_logo.png" alt="Logo" className="logo-img" />
             </div>
 
             <nav className="nav-menu">
@@ -64,14 +62,6 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
-                    to="/trips"
-                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Adventure Trips"
-                >
-                    <Plane size={22} />
-                </NavLink>
-
-                <NavLink
                     to="/cards"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     title="Recursive Cards"
@@ -79,9 +69,17 @@ export const AppSidebar: React.FC = () => {
                     <StickyNote size={22} />
                 </NavLink>
 
+                <NavLink
+                    to="/trips"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Adventure Trips"
+                >
+                    <Plane size={22} />
+                </NavLink>
+
                 {/* Bug Report Button */}
                 <button
-                    onClick={() => setIsBugModalOpen(true)}
+                    onClick={() => setBugModalOpen(true)}
                     className="nav-item text-rose-400 hover:text-rose-600 transition-colors"
                     title="Report a Bug"
                 >
@@ -143,39 +141,58 @@ export const AppSidebar: React.FC = () => {
                     >
                         <User size={22} />
                     </NavLink>
-                    <button
-                        onClick={handleSignOut}
-                        className="nav-item logout text-gray-400 hidden md:flex"
-                        title="Sign Out"
-                    >
-                        <LogOut size={22} />
-                    </button>
+                    {user ? (
+                        <button
+                            onClick={handleSignOut}
+                            className="nav-item logout text-gray-400 hidden md:flex"
+                            title="Sign Out"
+                        >
+                            <LogOut size={22} />
+                        </button>
+                    ) : (
+                        <NavLink
+                            to="/auth"
+                            className="nav-item text-indigo-500 hidden md:flex"
+                            title="Sign In"
+                        >
+                            <User size={22} />
+                        </NavLink>
+                    )}
                 </div>
             </nav>
 
-            <BugReportModal
-                isOpen={isBugModalOpen}
-                onClose={() => setIsBugModalOpen(false)}
-            />
 
             <div className="sidebar-footer">
-                <div className="user-mini-profile" title={user?.email || 'User'}>
+                <div className="user-mini-profile" title={user?.email || 'Guest User'}>
                     <div
                         className="avatar-circle cursor-pointer"
-                        onClick={() => navigate('/settings')}
+                        onClick={() => navigate(user ? '/settings' : '/auth')}
                     >
-                        {initial}
+                        {user ? initial : '?'}
                     </div>
-                    <div className="user-info-popover">
-                        <div className="font-bold text-sm truncate">{displayName}</div>
-                        <div className="text-xs text-gray-500 truncate">{user?.email}</div>
-                        <button
-                            onClick={handleSignOut}
-                            className="text-xs text-red-500 hover:text-red-700 mt-2 flex items-center gap-1"
-                        >
-                            <LogOut size={12} /> Sign Out
-                        </button>
-                    </div>
+                    {user ? (
+                        <div className="user-info-popover">
+                            <div className="font-bold text-sm truncate">{displayName}</div>
+                            <div className="text-xs text-gray-500 truncate">{user?.email}</div>
+                            <button
+                                onClick={handleSignOut}
+                                className="text-xs text-red-500 hover:text-red-700 mt-2 flex items-center gap-1"
+                            >
+                                <LogOut size={12} /> Sign Out
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="user-info-popover">
+                            <div className="font-bold text-sm truncate">Hello guest!</div>
+                            <div className="text-xs text-gray-500 truncate">Sign in to sync your data</div>
+                            <button
+                                onClick={() => navigate('/auth')}
+                                className="text-xs text-indigo-500 hover:text-indigo-700 mt-2 flex items-center gap-1 font-black uppercase"
+                            >
+                                <User size={12} /> Sign In
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </aside>

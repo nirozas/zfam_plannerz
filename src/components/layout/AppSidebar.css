@@ -34,7 +34,7 @@
     width: 44px;
     height: 44px;
     object-fit: contain;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 
 .nav-menu {
@@ -78,12 +78,23 @@ button.nav-item {
 
 /* Google Drive status dot pulse when not connected */
 @keyframes drive-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
 }
+
 .drive-dot-pending {
     animation: drive-pulse 2s ease-in-out infinite;
 }
+
 .sidebar-footer {
     padding-top: 1.5rem;
     border-top: 1px solid rgba(226, 232, 240, 0.8);
@@ -167,7 +178,7 @@ button.nav-item {
         z-index: 9999;
     }
 
-    .brand-logo {
+    .brand-logo-container {
         display: none;
     }
 

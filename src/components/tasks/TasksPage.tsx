@@ -20,6 +20,7 @@ import CreateTaskModal from './CreateTaskModal';
 import { toDateStr } from '../../utils/recurringUtils';
 import PageHero from '../ui/PageHero';
 import EditTaskModal from './EditTaskModal';
+import BulkTaskUploadModal from './BulkTaskUploadModal';
 
 const TasksPage: React.FC = () => {
 
@@ -38,6 +39,7 @@ const TasksPage: React.FC = () => {
         setViewMode('day');
     };
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     // One-time cleanup: remove old localStorage persist keys from previous store versions
@@ -178,8 +180,15 @@ const TasksPage: React.FC = () => {
                     </div>
 
                     <button
+                        onClick={() => setIsBulkModalOpen(true)}
+                        className="bg-white border-2 border-slate-100 hover:border-indigo-100 text-slate-600 hover:text-indigo-600 px-3 py-2.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ml-auto md:ml-0"
+                    >
+                        <ListTodo size={14} /> Bulk
+                    </button>
+
+                    <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-indigo-100 ml-auto md:ml-2"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-indigo-100 md:ml-2"
                     >
                         <Plus size={16} /> <span className="hidden sm:inline">New</span>
                     </button>
@@ -198,6 +207,12 @@ const TasksPage: React.FC = () => {
                     {renderContent()}
                 </div>
             </div>
+
+            {/* Bulk Upload Modal */}
+            <BulkTaskUploadModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+            />
 
             {/* Create Task Modal */}
             <CreateTaskModal

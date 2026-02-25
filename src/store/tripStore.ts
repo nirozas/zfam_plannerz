@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 import { Trip, TripStop, TripExpense, TripPackingItem } from '../types/trip';
+import { sendEmail, createInvitationEmail } from '../utils/mailer';
 
 interface TripState {
     trips: Trip[];
@@ -28,6 +29,7 @@ interface TripState {
     // Stop Actions
     fetchStops: (tripId: string) => Promise<void>;
     addStop: (stop: Partial<TripStop>) => Promise<void>;
+    bulkAddStops: (stops: (Partial<TripStop> & { expense?: Partial<TripExpense> })[]) => Promise<void>;
     updateStop: (stopId: string, updates: Partial<TripStop>) => Promise<void>;
     deleteStop: (stopId: string) => Promise<void>;
 
@@ -48,7 +50,7 @@ interface TripState {
     searchUsers: (query: string) => Promise<any[]>;
 }
 
-export const useTripStore = create<TripState>((set) => ({
+export const useTripStore = create<TripState>((set, get) => ({
     trips: [],
     activeTrip: null,
     activeTripStops: [],
@@ -236,6 +238,39 @@ export const useTripStore = create<TripState>((set) => ({
         set(state => ({ activeTripStops: [...state.activeTripStops, data] }));
     },
 
+    bulkAddStops: async (stopsData) => {
+        // 1. Separate stops and expenses
+        const stopsToInsert = stopsData.map(({ expense, ...stop }) => stop);
+        const expensesToInsert = stopsData
+            .filter(s => s.expense && s.expense.amount)
+            .map(s => s.expense!);
+
+        // 2. Batch insert stops
+        const { data: newStops, error: stopsError } = await supabase
+            .from('trip_stops')
+            .insert(stopsToInsert)
+            .select();
+
+        if (stopsError) throw stopsError;
+
+        // 3. Batch insert expenses if any
+        let newExpenses: TripExpense[] = [];
+        if (expensesToInsert.length > 0) {
+            const { data: expenses, error: expensesError } = await supabase
+                .from('trip_expenses')
+                .insert(expensesToInsert)
+                .select();
+            if (expensesError) console.error('Bulk expenses insert failed:', expensesError);
+            else newExpenses = expenses || [];
+        }
+
+        // 4. Update local state
+        set(state => ({
+            activeTripStops: [...state.activeTripStops, ...(newStops || [])],
+            activeTripExpenses: [...(newExpenses || []), ...state.activeTripExpenses]
+        }));
+    },
+
     updateStop: async (stopId, updates) => {
         const { error } = await supabase
             .from('trip_stops')
@@ -376,6 +411,34 @@ export const useTripStore = create<TripState>((set) => ({
 
         if (error) throw error;
         set(state => ({ collaborators: [...state.collaborators, data] }));
+
+        // Trigger email notification
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { activeTrip } = get();
+
+            // Get recipient email
+            const { data: emailRows } = await supabase.rpc('get_emails_for_users', { user_ids: [userId] });
+            const recipientEmail = emailRows?.[0]?.email;
+
+            if (recipientEmail && activeTrip && user) {
+                // Get sender name from profiles
+                const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+
+                const mailerHtml = createInvitationEmail(
+                    profile?.full_name || user.email || 'Someone',
+                    activeTrip.title,
+                    'trip'
+                );
+                sendEmail({
+                    to: recipientEmail,
+                    subject: `${profile?.full_name || 'A user'} invited you to a trip!`,
+                    html: mailerHtml
+                });
+            }
+        } catch (e) {
+            console.warn('Post-collaboration email failed:', e);
+        }
     },
 
     removeCollaborator: async (collaboratorId) => {
@@ -393,13 +456,30 @@ export const useTripStore = create<TripState>((set) => ({
     searchUsers: async (query) => {
         if (!query || query.length < 2) return [];
 
-        const { data, error } = await supabase
+        // 1. Search by Profile (username/name)
+        const { data: profileResults, error } = await supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url')
             .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
             .limit(10);
 
         if (error) throw error;
-        return data || [];
+
+        let results = [...(profileResults || [])];
+
+        // 2. If it looks like an email, try direct lookup via RPC
+        if (query.includes('@')) {
+            const { data: userId } = await supabase.rpc('get_user_id_by_email', { p_email: query });
+            if (userId && !results.find(r => r.id === userId)) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id, username, full_name, avatar_url')
+                    .eq('id', userId)
+                    .single();
+                if (profile) results.unshift(profile);
+            }
+        }
+
+        return results;
     },
 }));

@@ -183,10 +183,10 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({ tripId, onClose }) => {
                                                 )}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-black text-slate-900">{collab.profile?.username || 'Unknown User'}</div>
+                                                <div className="text-sm font-black text-slate-900">{collab.profile?.full_name || collab.profile?.username || 'Unknown User'}</div>
                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                     <Shield size={10} className={collab.role === 'editor' ? 'text-teal-500' : 'text-indigo-500'} />
-                                                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{collab.role}</span>
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{collab.role} • @{collab.profile?.username}</span>
                                                 </div>
                                             </div>
                                         </div>

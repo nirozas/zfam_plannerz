@@ -295,7 +295,7 @@ const LibraryPage: React.FC = () => {
                     <div className="flex-shrink-0 flex items-center gap-4">
                         <button
                             onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors hidden xl:block"
+                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
                             title="Toggle Categories"
                         >
                             <LayoutGrid size={20} />
@@ -359,9 +359,13 @@ const LibraryPage: React.FC = () => {
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden relative">
                 {/* SIDEBAR */}
-                <aside className={`bg-gray-50/50 border-r border-gray-100 overflow-y-auto transition-all duration-300 ${isCategoriesExpanded ? 'w-64' : 'w-0 opacity-0'}`}>
+                <aside className={`
+                    bg-white lg:bg-gray-50/50 border-r border-gray-100 overflow-y-auto transition-all duration-300 z-30
+                    ${isCategoriesExpanded ? 'w-64 translate-x-0' : 'w-0 -translate-x-full lg:translate-x-0 lg:opacity-0'}
+                    lg:relative absolute inset-y-0 left-0 shadow-2xl lg:shadow-none
+                `}>
                     <div className="p-6">
                         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Categories</h3>
                         <div className="flex flex-col gap-1">
@@ -384,8 +388,16 @@ const LibraryPage: React.FC = () => {
                     </div>
                 </aside>
 
+                {/* Mobile Backdrop for Sidebar */}
+                {isCategoriesExpanded && (
+                    <div
+                        className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-20"
+                        onClick={() => setIsCategoriesExpanded(false)}
+                    />
+                )}
+
                 {/* CONTENT AREA */}
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50/20">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/20">
                     {activeHashtag && (
                         <div className="mb-6">
                             <button
@@ -397,7 +409,7 @@ const LibraryPage: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-6">
                         {/* Add Asset Button Card - Only for Admin */}
                         {isAdmin && (
                             <button

@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlannerStore } from '../../store/plannerStore';
-import { CheckSquare, Plane, Sparkles, BookOpen, Clock, Image as ImageIcon, Edit3, Check, X, Link as LinkIcon, StickyNote } from 'lucide-react';
+import { CheckSquare, Plane, Sparkles, BookOpen, Clock, Image as ImageIcon, Edit3, Check, X, Link as LinkIcon, StickyNote, AlertTriangle } from 'lucide-react';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const { userProfile, globalHeroConfig, updateHeroImage, updateHeroImageUrl, updateHeroText, updateHomeBoxImageUrl } = usePlannerStore();
+    const { userProfile, globalHeroConfig, updateHeroImage, updateHeroImageUrl, updateHeroText, updateHomeBoxImageUrl, userStats, fetchUserStats } = usePlannerStore();
     const isAdmin = userProfile?.role === 'admin';
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        fetchUserStats();
+    }, [fetchUserStats]);
+
+    // 800MB in bytes
+    const STORAGE_LIMIT = 800 * 1024 * 1024;
+    const isOverStorageLimit = (userStats?.totalSize || 0) > STORAGE_LIMIT;
 
     const firstName = userProfile?.full_name?.split(' ')[0] || 'there';
 
@@ -207,6 +215,13 @@ const HomePage: React.FC = () => {
                         </div>
                     ) : (
                         <>
+                            <div className="flex justify-center mb-8">
+                                <img
+                                    src="/nexus_logo.png"
+                                    alt="Zoabi Nexus Vault"
+                                    className="h-32 md:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700"
+                                />
+                            </div>
                             <div className="welcome-tag">
                                 <Sparkles size={14} className="text-indigo-500" />
                                 <span>Curating your digital path, {firstName}</span>
@@ -286,6 +301,27 @@ const HomePage: React.FC = () => {
                         <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
                     </div>
                 </div>
+
+                {isOverStorageLimit && (
+                    <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="p-2 bg-amber-100 rounded-xl">
+                            <AlertTriangle size={20} className="text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-sm font-black text-amber-900 uppercase tracking-wide mb-1">Storage Warning</h4>
+                            <p className="text-sm text-amber-800 leading-relaxed">
+                                You are using <strong>{(userStats!.totalSize / (1024 * 1024)).toFixed(1)}MB</strong> of storage.
+                                We suggest moving your heavy files (PDFs, Images) to the <strong>Google Drive Vault</strong> to save space and keep the app fast.
+                            </p>
+                            <button
+                                onClick={() => navigate('/settings')}
+                                className="mt-3 text-xs font-bold text-amber-900 underline underline-offset-4 hover:text-amber-700 transition-colors"
+                            >
+                                Open Storage Settings →
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="home-nav-grid">
                     {categories.map((cat) => {

@@ -2,20 +2,18 @@ import React, { useState } from 'react';
 import { Bug, Send, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../supabase/client';
 import { usePlannerStore } from '../../store/plannerStore';
+import { sendEmail } from '../../utils/mailer';
 
-interface BugReportModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
 
-const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
-    const { user } = usePlannerStore();
+
+const BugReportModal: React.FC = () => {
+    const { user, userProfile, isBugModalOpen, setBugModalOpen } = usePlannerStore();
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    if (!isOpen) return null;
+    if (!isBugModalOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,13 +31,33 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
                     status: 'pending'
                 });
 
-            if (submitError) throw submitError;
+            if (submitError) {
+                console.error('Supabase Bug Report Error:', submitError);
+                throw submitError;
+            }
+
+            // Optional: Send email notification to admin
+            const displayName = userProfile?.full_name || user.email;
+            sendEmail({
+                to: 'asnir@zoabi.com', // Replace with your admin email
+                subject: `NEW BUG REPORT from ${displayName}`,
+                html: `
+                    <div style="font-family: sans-serif;">
+                        <h2 style="color: #e11d48;">New Bug Reported</h2>
+                        <p><strong>From:</strong> ${displayName} (${user.email})</p>
+                        <p><strong>Description:</strong></p>
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
+                            ${description.trim()}
+                        </div>
+                    </div>
+                `
+            }).catch(err => console.error('Silent bug email error:', err));
 
             setSubmitted(true);
             setDescription('');
             setTimeout(() => {
                 setSubmitted(false);
-                onClose();
+                setBugModalOpen(false);
             }, 2000);
         } catch (err: any) {
             console.error('Error reporting bug:', err);
@@ -50,17 +68,17 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10000] flex items-start sm:items-center justify-center p-4 overflow-y-auto bg-slate-900/40 backdrop-blur-sm pt-12 sm:pt-4">
             <div
-                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-                onClick={onClose}
+                className="fixed inset-0 transition-opacity"
+                onClick={() => setBugModalOpen(false)}
             />
 
-            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[calc(100dvh-2rem)] flex flex-col">
                 {/* Header */}
-                <div className="bg-gradient-to-br from-red-500 to-rose-600 px-6 py-6 text-white relative">
+                <div className="bg-gradient-to-br from-red-500 to-rose-600 px-6 py-4 sm:py-6 text-white relative">
                     <button
-                        onClick={onClose}
+                        onClick={() => setBugModalOpen(false)}
                         className="absolute top-4 right-4 p-1 hover:bg-white/20 rounded-lg transition-colors"
                     >
                         <X size={20} />
@@ -75,7 +93,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
                     <p className="text-rose-100 text-sm font-medium">Something not working? Let us know and we'll squash it.</p>
                 </div>
 
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto">
                     {submitted ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center animate-in fade-in zoom-in-95 duration-300">
                             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">

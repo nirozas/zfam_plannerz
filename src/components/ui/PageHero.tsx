@@ -79,7 +79,7 @@ const PageHero: React.FC<PageHeroProps> = ({ pageKey, title, subtitle, children,
             {/* Overlay for better text readability */}
             {currentHeroUrl && <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] z-0"></div>}
 
-            <div className="relative z-10 text-center px-4 md:px-6 w-full max-w-4xl">
+            <div className="relative z-10 text-center px-4 md:px-6 w-full max-w-7xl">
                 {isEditing ? (
                     <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                         <input

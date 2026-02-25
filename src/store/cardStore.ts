@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Card, CardType } from '../types/cards';
 import { supabase } from '../supabase/client';
+import { sendEmail, createInvitationEmail } from '../utils/mailer';
 
 interface CardState {
     cards: Card[];
@@ -18,6 +19,7 @@ interface CardState {
     setCurrentFolderId: (id: string | null) => void;
     getCardsByParent: (parentId: string | null) => Card[];
     getBreadcrumbs: (folderId: string | null) => { id: string | null; title: string }[];
+    shareCard: (cardId: string, email: string) => Promise<void>;
 }
 
 export const useCardStore = create<CardState>()(
@@ -228,6 +230,52 @@ export const useCardStore = create<CardState>()(
                 }
 
                 return [...breadcrumbs, ...path];
+            },
+
+            shareCard: async (cardId, email) => {
+                const { cards, updateCard } = get();
+                const card = cards.find(c => c.id === cardId);
+                if (!card) throw new Error("Card not found");
+
+                // 1. Find user ID by email via RPC
+                const { data: receiverId, error: rpcError } = await supabase
+                    .rpc('get_user_id_by_email', { p_email: email });
+
+                if (rpcError || !receiverId) {
+                    throw new Error('User not found with that email. They must have an account first.');
+                }
+
+                // 2. Avoid sharing with self
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user?.id === receiverId) {
+                    throw new Error('You cannot share a card with yourself.');
+                }
+
+                // 3. Update shared_with array
+                const sharedWith = [...(card.sharedWith || [])];
+                if (!sharedWith.includes(receiverId)) {
+                    sharedWith.push(receiverId);
+                    await updateCard(cardId, { sharedWith });
+
+                    // Send notification
+                    if (session?.user) {
+                        try {
+                            const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', session.user.id).single();
+                            const mailerHtml = createInvitationEmail(
+                                profile?.full_name || session.user.email || 'Someone',
+                                card.title,
+                                'card'
+                            );
+                            sendEmail({
+                                to: email,
+                                subject: `${profile?.full_name || 'A user'} shared a vault entry with you`,
+                                html: mailerHtml
+                            });
+                        } catch (e) {
+                            console.warn('Card share email failed:', e);
+                        }
+                    }
+                }
             },
         }),
         {

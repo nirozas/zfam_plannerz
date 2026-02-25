@@ -149,6 +149,7 @@ interface TaskState {
     addTask: (task: Omit<Task, 'id' | 'dateAdded' | 'completedDates' | 'isCompleted' | 'attachments' | 'assigned_user' | 'assigner'> & { attachmentFiles?: File[] }) => Promise<void>;
     updateTask: (id: string, updates: Partial<Omit<Task, 'id'>> & { attachmentFiles?: File[] }) => Promise<void>;
     deleteTask: (id: string) => Promise<void>;
+    bulkAddTasks: (tasks: any[]) => Promise<void>;
     toggleTaskCompletion: (id: string, date: string) => Promise<void>;
 
     addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
@@ -384,6 +385,61 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
         const task = rowToTask(newRow, [], storageUrls);
         set(state => ({ tasks: [task, ...state.tasks] }));
+    },
+
+    bulkAddTasks: async (tasksData) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const insertRows = tasksData.map(t => ({
+            user_id: user.id,
+            title: t.title,
+            description: t.description || null,
+            category_id: t.categoryId || null,
+            priority: t.priority || 'medium',
+            is_recurring: false,
+            date_added: new Date().toISOString(),
+            subtasks: t.subtasks || [],
+            notifications: [],
+        }));
+
+        const { data: newRows, error } = await supabase
+            .from('tasks')
+            .insert(insertRows)
+            .select();
+
+        if (error) {
+            console.error('[taskStore] bulkAddTasks error:', error);
+            throw error;
+        }
+
+        // Handle attachments if present in the data (URLs)
+        const attachmentInserts: any[] = [];
+        newRows?.forEach((row: any, index: number) => {
+            const original = tasksData[index];
+            if (original.attachments && Array.isArray(original.attachments)) {
+                original.attachments.forEach((url: string, i: number) => {
+                    attachmentInserts.push({
+                        task_id: row.id,
+                        user_id: user.id,
+                        storage_url: url,
+                        sort_order: i
+                    });
+                });
+            }
+        });
+
+        if (attachmentInserts.length > 0) {
+            await supabase.from('task_attachments').insert(attachmentInserts);
+        }
+
+        // Map back to models
+        const newTasks = (newRows || []).map((row, index) => {
+            const original = tasksData[index];
+            return rowToTask(row, [], original.attachments || []);
+        });
+
+        set(state => ({ tasks: [...newTasks, ...state.tasks] }));
     },
 
     // ── updateTask ───────────────────────────────────────────────────────────

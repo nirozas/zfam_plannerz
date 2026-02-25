@@ -322,10 +322,14 @@ const CardsPage: React.FC = () => {
                 <ShareModal
                     card={activeShareCard}
                     onClose={() => setActiveShareCard(null)}
-                    onShare={(email) => {
-                        console.log('Sharing with:', email);
-                        // Future: trigger Supabase RPC to add user by email
-                        alert(`Sharing invitation sent to: ${email}`);
+                    onShare={async (email) => {
+                        try {
+                            await useCardStore.getState().shareCard(activeShareCard.id, email);
+                            alert(`Entry shared successfully with ${email}`);
+                            setActiveShareCard(null);
+                        } catch (err: any) {
+                            alert(err.message || "Failed to share entry");
+                        }
                     }}
                 />
             )}

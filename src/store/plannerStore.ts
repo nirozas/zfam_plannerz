@@ -1851,32 +1851,22 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     fetchPlanners: async () => {
         const { user } = get();
-        if (!user) return;
+        // Guard: user.id must be a non-empty string to avoid sending a
+        // malformed "user_id=eq.undefined" query that returns HTTP 400.
+        if (!user || typeof user.id !== 'string' || !user.id) return;
 
-        console.log('--- DEBUG START: fetchPlanners ---');
-        console.log('Current Auth User ID:', user.id);
         set({ isFetchingPlanners: true });
 
         try {
-            // FORCE FETCH ALL AVAILABLE TO THIS USER (RLS handled)
-            const { data, error, status, statusText } = await supabase
+            const { data, error } = await supabase
                 .from('planners')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            console.log('Supabase Status:', status, statusText);
-
             if (error) {
                 console.error('CRITICAL DATABASE ERROR:', error);
                 throw error;
-            }
-
-            console.log('RAW DATA RECEIVED:', data);
-            console.log('DATA LENGTH:', data?.length || 0);
-
-            if (data && data.length > 0) {
-                console.log('FIRST ITEM PRE-MAP:', data[0]);
             }
 
             const mapPlanners = (data: any[]) => data.map((p: any) => repairDriveUrl({

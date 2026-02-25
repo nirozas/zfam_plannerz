@@ -388,7 +388,7 @@ const HomePage: React.FC = () => {
                                 <div className="card-visual">
                                     <div className={`visual-surface ${boxImg ? 'has-image' : `bg-gradient-to-br ${cat.color}`}`}>
                                         {boxImg ? (
-                                            <img src={boxImg} alt={cat.title} className="card-main-image" />
+                                            <img src={boxImg} alt={cat.title} referrerPolicy="no-referrer" className="card-main-image" />
                                         ) : (
                                             <div className="icon-wrapper">
                                                 {cat.icon}

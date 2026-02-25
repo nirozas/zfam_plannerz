@@ -122,7 +122,7 @@ const SettingsPage: React.FC = () => {
                                     <div className="relative group">
                                         <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-indigo-50 shadow-inner">
                                             {userProfile?.avatar_url ? (
-                                                <img src={userProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                                <img src={userProfile.avatar_url} alt="Avatar" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full bg-gradient-to-tr from-indigo-600 to-fuchsia-500 flex items-center justify-center text-3xl font-black text-white shadow-inner">
                                                     {formData.full_name?.charAt(0) || user?.email?.charAt(0) || '?'}
@@ -275,7 +275,7 @@ const SettingsPage: React.FC = () => {
                                                     <div key={conn.id} className="flex items-center justify-between p-3 bg-fuchsia-50/30 rounded-xl border border-fuchsia-100/50">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-8 h-8 rounded-full bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center font-bold text-xs">
-                                                                {conn.peer_avatar ? <img src={conn.peer_avatar} alt="peer" className="w-full h-full object-cover rounded-full" /> : (conn.peer_name || conn.peer_email)?.charAt(0)}
+                                                                {conn.peer_avatar ? <img src={conn.peer_avatar} alt="peer" referrerPolicy="no-referrer" className="w-full h-full object-cover rounded-full" /> : (conn.peer_name || conn.peer_email)?.charAt(0)}
                                                             </div>
                                                             <div className="text-xs font-bold truncate max-w-[120px]">{conn.peer_name || conn.peer_email}</div>
                                                         </div>
@@ -296,7 +296,7 @@ const SettingsPage: React.FC = () => {
                                                     <div key={conn.id} className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm group relative">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs ring-2 ring-white">
-                                                                {conn.peer_avatar ? <img src={conn.peer_avatar} alt="peer" className="w-full h-full object-cover rounded-full" /> : (conn.peer_name || conn.peer_email)?.charAt(0)}
+                                                                {conn.peer_avatar ? <img src={conn.peer_avatar} alt="peer" referrerPolicy="no-referrer" className="w-full h-full object-cover rounded-full" /> : (conn.peer_name || conn.peer_email)?.charAt(0)}
                                                             </div>
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="text-xs font-bold text-slate-900 truncate">{conn.peer_name || 'User'}</div>

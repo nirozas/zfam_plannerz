@@ -55,14 +55,12 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
                 <div className="planner-book w-full h-full">
                     <div className="book-cover" style={{ backgroundColor: color }}>
                         {coverUrl && (
-                            <div
-                                className="absolute inset-0 z-0"
-                                style={{
-                                    backgroundImage: `url(${coverUrl})`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
-                                    opacity: 1
-                                }}
+                            <img
+                                src={coverUrl}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                className="absolute inset-0 w-full h-full object-cover z-0"
+                                onError={(e) => (e.currentTarget.style.display = 'none')}
                             />
                         )}
                         <div className="cover-texture" />

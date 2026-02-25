@@ -25,9 +25,13 @@ export const AppSidebar: React.FC = () => {
         window.location.href = '/auth'; // Hard reload to clear states
     };
 
-    const handleDriveClick = () => {
-        if (signedIn) disconnect();
-        else connect();
+    const handleDriveClick = async () => {
+        try {
+            if (signedIn) await disconnect();
+            else await connect();
+        } catch (e: any) {
+            alert(e.message || 'Google Drive connection failed');
+        }
     };
 
     return (

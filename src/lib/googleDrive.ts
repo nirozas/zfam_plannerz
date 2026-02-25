@@ -136,12 +136,14 @@ export function checkIsSignedIn(): boolean {
 
 // ─── Sign In / Out ─────────────────────────────────────────────────────────
 
-export async function signIn(): Promise<void> {
-    await initGapi();
-    await initGoogleAuth();
-    if (loadToken()) return;
+export function signIn(): Promise<void> {
+    if (loadToken()) return Promise.resolve();
 
     return new Promise((resolve, reject) => {
+        if (!tokenClient) {
+            reject(new Error('Google Auth not initialized. Please try again in a moment.'));
+            return;
+        }
         tokenClient.callback = (response: any) => {
             if (response.error) { reject(response); return; }
             saveToken(response);

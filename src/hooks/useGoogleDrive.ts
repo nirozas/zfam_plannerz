@@ -67,6 +67,7 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
             setSignedIn(true);
         } catch (e: any) {
             setError(e?.message || 'Google sign-in failed');
+            throw e;
         } finally {
             setLoading(false);
         }

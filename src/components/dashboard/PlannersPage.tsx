@@ -134,7 +134,7 @@ const PlannersPage: React.FC = () => {
 
                         <button
                             className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                            onClick={() => fetchPlanners()}
+                            onClick={() => fetchPlanners(true)}
                             title="Refresh"
                         >
                             <RefreshCcw size={18} className={isFetchingPlanners ? 'animate-spin' : ''} />

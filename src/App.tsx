@@ -26,13 +26,18 @@ function App() {
         // 1. Check active session on mount
         const initAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession()
-            setUser(session?.user ?? null)
-            if (session?.user) {
-                // Load these in background
-                fetchUserProfile()
-                fetchPlanners()
-                fetchCards()
+            const user = session?.user ?? null;
+            setUser(user)
+
+            if (user) {
+                // Load critical data in parallel
+                await Promise.all([
+                    fetchUserProfile(),
+                    fetchPlanners(),
+                    fetchCards()
+                ]).catch(err => console.error("Initial data fetch error:", err));
             }
+
             // Mark auth as officially checked
             usePlannerStore.getState().setAuthInitialized(true)
         }
@@ -42,17 +47,24 @@ function App() {
         // 2. Listen for auth changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null)
-            if (session?.user) {
-                fetchUserProfile()
-                fetchPlanners()
-                fetchCards()
+        } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            const user = session?.user ?? null;
+            const currentUser = usePlannerStore.getState().user;
+
+            setUser(user)
+
+            // Only re-fetch if the user actually changed/signed in
+            if (user && user.id !== currentUser?.id) {
+                await Promise.all([
+                    fetchUserProfile(),
+                    fetchPlanners(),
+                    fetchCards()
+                ]).catch(err => console.error("Auth change data fetch error:", err));
             }
         })
 
         return () => subscription.unsubscribe()
-    }, [setUser, fetchPlanners, fetchUserProfile])
+    }, [setUser, fetchPlanners, fetchUserProfile, fetchCards])
 
     return (
         <BrowserRouter>

@@ -17,15 +17,15 @@ export const repairDriveUrl = (asset: any) => {
             else if (url.includes('/d/')) id = url.split('/d/')[1].split('/')[0];
 
             if (id) {
-                // Return the stable high-res proxy (standard size)
-                return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+                // Use direct lh3 proxy to bypass drive.google.com 302 redirects
+                return `https://lh3.googleusercontent.com/d/${id}=w400`;
             }
         }
         return url;
     }
 
     // If it's an asset object
-    const fixUrl = (u?: string | null, isThumbnail = false, type?: string) => {
+    const fixUrl = (u?: string | null, isThumbnail = false, _type?: string) => {
         if (!u) return u;
 
         // If it's a data URL, return it immediately
@@ -34,14 +34,14 @@ export const repairDriveUrl = (asset: any) => {
         // If it's already a high-quality Google Content link, don't break it
         if (typeof u === 'string' && u.includes('googleusercontent.com')) return u;
 
-        // If it's a Drive asset and we have an ID, we can force the stable format
+        // If it's a Drive asset and we have an ID, we can force the direct format
         const id = asset.external_id || asset.externalId;
-        const isDriveSource = asset.source === 'google_drive' || u.includes('drive.google.com');
+        const isDriveSource = asset.source === 'google_drive' || (typeof u === 'string' && u.includes('drive.google.com'));
 
         if (id && isDriveSource) {
-            // Use high-res thumbnail proxy for all views - much more reliable than uc?id
-            const size = isThumbnail ? 'sz=w400' : 'sz=s2000';
-            return `https://drive.google.com/thumbnail?id=${id}&${size}`;
+            // Bypass redirects by using the direct lh3 content proxy
+            const size = isThumbnail ? 'w400' : 's2000';
+            return `https://lh3.googleusercontent.com/d/${id}=${size}`;
         }
 
         return u;

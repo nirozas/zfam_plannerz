@@ -232,7 +232,8 @@ interface PlannerState {
     openPlanner: (idOrName: string) => Promise<void>;
     closePlanner: () => void;
     savePlanner: () => Promise<void>;
-    fetchPlanners: () => Promise<void>;
+    fetchPlanners: (force?: boolean) => Promise<void>;
+    lastPlannersFetch?: number;
     archivePlanner: (id: string) => Promise<void>;
     unarchivePlanner: (id: string) => Promise<void>;
     deletePlanner: (id: string) => Promise<void>;
@@ -337,6 +338,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     isLoadingAssets: false,
     uploadProgress: null,
     isFetchingPlanners: false,
+    lastPlannersFetch: 0,
     isAuthInitialized: false, // Start false
     userProfile: null,
     globalHeroConfig: {},
@@ -1849,11 +1851,17 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         await savePlanner();
     },
 
-    fetchPlanners: async () => {
-        const { user } = get();
-        // Guard: user.id must be a non-empty string to avoid sending a
-        // malformed "user_id=eq.undefined" query that returns HTTP 400.
+    fetchPlanners: async (force = false) => {
+        const { user, availablePlanners, lastPlannersFetch } = get();
         if (!user || typeof user.id !== 'string' || !user.id) return;
+
+        // Smart cache: avoid re-fetching if data is fresh (within 30s)
+        const now = Date.now();
+        if (!force && availablePlanners.length > 0 && lastPlannersFetch && (now - lastPlannersFetch < 30000)) {
+            return;
+        }
+
+        if (get().isFetchingPlanners && !force) return;
 
         set({ isFetchingPlanners: true });
 
@@ -1891,7 +1899,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 });
             });
 
-            set({ availablePlanners: mapPlanners(data || []), isFetchingPlanners: false });
+            set({
+                availablePlanners: mapPlanners(data || []),
+                isFetchingPlanners: false,
+                lastPlannersFetch: Date.now()
+            });
 
             // We only set up ONE subscription for the planner table for this user
             const channelId = `user-planners-${user.id}`;
@@ -2420,29 +2432,19 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         const { user } = get();
         if (!user) return;
 
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+        try {
+            const [profileResult, adminResult] = await Promise.all([
+                supabase.from('profiles').select('*').eq('id', user.id).single(),
+                supabase.from('profiles').select('hero_config').eq('role', 'admin').limit(1).maybeSingle()
+            ]);
 
-        if (error) {
-            console.error('Error fetching user profile:', error);
-            // Optionally fetch admin config even if user fetch fails
+            set({
+                userProfile: profileResult.data || null,
+                globalHeroConfig: adminResult.data?.hero_config || {}
+            });
+        } catch (error) {
+            console.error('Error in fetchUserProfile:', error);
         }
-
-        // Fetch the global admin config for hero covers
-        const { data: adminData } = await supabase
-            .from('profiles')
-            .select('hero_config')
-            .eq('role', 'admin')
-            .limit(1)
-            .single();
-
-        set({
-            userProfile: data || null,
-            globalHeroConfig: adminData?.hero_config || {}
-        });
     },
 
     updateProfile: async (updates) => {

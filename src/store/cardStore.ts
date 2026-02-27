@@ -11,7 +11,8 @@ interface CardState {
     rootBackground: string | null;
     rootBackgroundType: 'color' | 'image';
     rootBackgroundOpacity: number;
-    fetchCards: () => Promise<void>;
+    fetchCards: (force?: boolean) => Promise<void>;
+    lastCardsFetch?: number;
     addCard: (type: CardType, title: string, parentId: string | null, category?: string, rating?: number, coverImage?: string, description?: string, url?: string, hasBody?: boolean) => Promise<void>;
     updateCard: (id: string, updates: Partial<Card>) => Promise<void>;
     setRootBackground: (type: 'color' | 'image', value: string | null, opacity?: number) => void;
@@ -31,10 +32,21 @@ export const useCardStore = create<CardState>()(
             rootBackground: localStorage.getItem('root_background'),
             rootBackgroundType: (localStorage.getItem('root_background_type') as 'color' | 'image') || 'color',
             rootBackgroundOpacity: parseInt(localStorage.getItem('root_background_opacity') || '100'),
+            lastCardsFetch: 0,
 
-            fetchCards: async () => {
+
+            fetchCards: async (force = false) => {
+                const { cards, lastCardsFetch } = get();
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session?.user) return;
+
+                // Simple cache: data is fresh for 30s
+                const now = Date.now();
+                if (!force && cards.length > 0 && lastCardsFetch && (now - lastCardsFetch < 30000)) {
+                    return;
+                }
+
+                if (get().isFetching && !force) return;
 
                 set({ isFetching: true });
                 const { data, error } = await supabase
@@ -70,7 +82,10 @@ export const useCardStore = create<CardState>()(
                         canvasData: c.canvas_data,
                         groups: c.groups || []
                     }));
-                    set({ cards: mappedCards });
+                    set({
+                        cards: mappedCards,
+                        lastCardsFetch: Date.now()
+                    });
                 }
                 set({ isFetching: false });
             },

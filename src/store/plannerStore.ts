@@ -1860,7 +1860,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         try {
             const { data, error } = await supabase
                 .from('planners')
-                .select('*')
+                .select('*, pages(thumbnail)')
+                .eq('pages.page_number', 0)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
@@ -1869,23 +1870,26 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 throw error;
             }
 
-            const mapPlanners = (data: any[]) => data.map((p: any) => repairDriveUrl({
-                id: p.id,
-                name: p.name,
-                category: p.category,
-                type: p.type,
-                structure: p.structure,
-                coverColor: p.cover_color,
-                isArchived: !!p.is_archived,
-                archivedAt: p.archived_at,
-                createdAt: p.created_at,
-                isFavorite: !!p.is_favorite,
-                cover_url: p.cover_url,
-                external_id: p.cover_external_id, // Ensure external_id is passed for repair
-                source: p.cover_source,           // Ensure source is passed
-                pages: [],
-                currentPageIndex: 0
-            }));
+            const mapPlanners = (data: any[]) => data.map((p: any) => {
+                const firstPageThumbnail = p.pages?.[0]?.thumbnail;
+                return repairDriveUrl({
+                    id: p.id,
+                    name: p.name,
+                    category: p.category,
+                    type: p.type,
+                    structure: p.structure,
+                    coverColor: p.cover_color,
+                    isArchived: !!p.is_archived,
+                    archivedAt: p.archived_at,
+                    createdAt: p.created_at,
+                    isFavorite: !!p.is_favorite,
+                    cover_url: p.cover_url || firstPageThumbnail, // Fallback to first page thumbnail
+                    external_id: p.cover_external_id,
+                    source: p.cover_source,
+                    pages: [],
+                    currentPageIndex: 0
+                });
+            });
 
             set({ availablePlanners: mapPlanners(data || []), isFetchingPlanners: false });
 

@@ -81,6 +81,14 @@ export const AppSidebar: React.FC = () => {
                     <Plane size={22} />
                 </NavLink>
 
+                <NavLink
+                    to={user ? "/settings" : "/auth"}
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Workspace Settings"
+                >
+                    <Settings size={22} />
+                </NavLink>
+
                 {/* Bug Report Button */}
                 <button
                     onClick={() => setBugModalOpen(true)}
@@ -137,33 +145,24 @@ export const AppSidebar: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-2 md:gap-0">
-                    <NavLink
-                        to={user ? "/settings" : "/auth"}
-                        className={({ isActive }) => `nav-item md:hidden ${isActive ? 'active' : ''}`}
-                        title="Workspace Settings"
+                {user ? (
+                    <button
+                        onClick={handleSignOut}
+                        className="nav-item logout text-gray-400 hidden md:flex"
+                        title="Sign Out"
                     >
-                        <Settings size={22} />
+                        <LogOut size={22} />
+                    </button>
+                ) : (
+                    <NavLink
+                        to="/auth"
+                        className="nav-item text-indigo-500 hidden md:flex"
+                        title="Sign In"
+                    >
+                        <User size={22} />
                     </NavLink>
-                    {user ? (
-                        <button
-                            onClick={handleSignOut}
-                            className="nav-item logout text-gray-400 hidden md:flex"
-                            title="Sign Out"
-                        >
-                            <LogOut size={22} />
-                        </button>
-                    ) : (
-                        <NavLink
-                            to="/auth"
-                            className="nav-item text-indigo-500 hidden md:flex"
-                            title="Sign In"
-                        >
-                            <User size={22} />
-                        </NavLink>
-                    )}
-                </div>
-            </nav>
+                )}
+            </nav >
 
 
             <div className="sidebar-footer">
@@ -199,6 +198,6 @@ export const AppSidebar: React.FC = () => {
                     )}
                 </div>
             </div>
-        </aside>
+        </aside >
     );
 };

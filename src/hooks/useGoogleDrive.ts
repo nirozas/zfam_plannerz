@@ -42,26 +42,38 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Initialize on mount — load scripts and restore session
+    // Initialize on mount — load GIS for auth check, but defer GAPI (Drive API)
     useEffect(() => {
         let cancelled = false;
         const init = async () => {
             try {
-                await Promise.all([initGapi(), initGoogleAuth()]);
+                // Initialize Auth check - this is lightweight
+                await initGoogleAuth();
                 const token = loadToken();
                 if (!cancelled) setSignedIn(token !== null);
             } catch (e) {
-                if (!cancelled) setError('Failed to initialize Google Drive');
+                // Ignore initialization errors on mount to prevent noisy UI errors
+                console.warn('Google Auth initialization deferred');
             }
         };
         init();
         return () => { cancelled = true; };
     }, []);
 
+    const ensureGapi = async () => {
+        try {
+            await initGapi();
+        } catch (e) {
+            console.error('Failed to initialize Google Drive API (GAPI):', e);
+            throw new Error('Google Drive API is currently unavailable. Please check your connection.');
+        }
+    };
+
     const connect = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
+            await ensureGapi(); // Initialize GAPI only when user tries to connect
             await signIn();
             setSignedIn(true);
         } catch (e: any) {

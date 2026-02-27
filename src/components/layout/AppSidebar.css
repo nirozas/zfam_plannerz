@@ -189,10 +189,26 @@ button.nav-item {
         width: 100%;
         margin: 0;
         gap: 0;
+        flex-wrap: nowrap;
+    }
+
+    .nav-menu>* {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        justify-content: center;
     }
 
     .nav-item {
         padding: 0.5rem;
+        width: 100% !important;
+        /* Take full width of the parent flex:1 container */
+        display: flex;
+        justify-content: center;
+    }
+
+    button.nav-item {
+        width: 100% !important;
     }
 
     .nav-item svg {

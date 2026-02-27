@@ -26,24 +26,23 @@ export const repairDriveUrl = (asset: any) => {
 
     // If it's an asset object
     const fixUrl = (u?: string | null, isThumbnail = false, type?: string) => {
-        // If it's a Drive asset and we have an ID, we can force the stable format
-        const id = asset.external_id;
-        const isDriveSource = asset.source === 'google_drive' || (u && u.includes('drive.google.com'));
-
-        if (id && isDriveSource) {
-            if (isThumbnail) {
-                return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
-            }
-            // For main URL, uc?id= is usually fine for images
-            if (type === 'sticker' || type === 'image' || type === 'cover' || asset.type === 'sticker' || asset.type === 'image') {
-                return `https://drive.google.com/uc?id=${id}&export=view`;
-            }
-        }
-
         if (!u) return u;
 
+        // If it's a data URL, return it immediately
+        if (typeof u === 'string' && u.startsWith('data:')) return u;
+
         // If it's already a high-quality Google Content link, don't break it
-        if (u.includes('googleusercontent.com')) return u;
+        if (typeof u === 'string' && u.includes('googleusercontent.com')) return u;
+
+        // If it's a Drive asset and we have an ID, we can force the stable format
+        const id = asset.external_id || asset.externalId;
+        const isDriveSource = asset.source === 'google_drive' || u.includes('drive.google.com');
+
+        if (id && isDriveSource) {
+            // Use high-res thumbnail proxy for all views - much more reliable than uc?id
+            const size = isThumbnail ? 'sz=w400' : 'sz=s2000';
+            return `https://drive.google.com/thumbnail?id=${id}&${size}`;
+        }
 
         return u;
     };

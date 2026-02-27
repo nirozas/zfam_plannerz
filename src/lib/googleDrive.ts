@@ -425,8 +425,9 @@ export async function openGooglePicker(
 // ─── URL Helpers ───────────────────────────────────────────────────────────
 
 export function getDirectImageUrl(fileId: string): string {
-    // The uc endpoint is the most universal way to proxy Drive images into <img> tags
-    return `https://drive.google.com/uc?id=${fileId}&export=view`;
+    // We use the thumbnail proxy with high resolution because it is more reliable than uc?id
+    // for embedding in <img> tags without triggering 403 Forbidden errors or downloads.
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=s2048`;
 }
 
 export function getStableThumbnailUrl(fileId: string): string {

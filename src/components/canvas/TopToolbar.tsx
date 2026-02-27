@@ -30,8 +30,11 @@ import {
     CalendarDays,
     Filter,
     XCircle,
-    Scissors
+    Scissors,
+    Settings,
+    Archive
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { PlannerSettingsModal } from '../modals/PlannerSettingsModal';
@@ -110,6 +113,7 @@ export function TopToolbar({
     pageSection,
     onUpdateMetadata
 }: TopToolbarProps) {
+    const navigate = useNavigate();
     const [showMenu, setShowMenu] = React.useState(false);
     const [showPlannerSettings, setShowPlannerSettings] = React.useState(false);
     const {
@@ -262,9 +266,18 @@ export function TopToolbar({
                         </button>
                         {showMenu && (
                             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-[100]">
-                                <button onClick={() => { setShowMenu(false); if (confirm('Duplicate?')) usePlannerStore.getState().duplicatePlanner(activePlanner?.id || ''); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">Duplicate Planner</button>
-                                <button onClick={() => { setShowMenu(false); setShowPlannerSettings(true); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">Settings</button>
-                                <button onClick={() => { usePlannerStore.getState().archivePlanner(activePlanner?.id || ''); setShowMenu(false); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">Archive</button>
+                                <button onClick={() => { setShowMenu(false); if (confirm('Duplicate?')) usePlannerStore.getState().duplicatePlanner(activePlanner?.id || ''); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">
+                                    <Layout size={14} className="text-gray-400" /> Duplicate Planner
+                                </button>
+                                <button onClick={() => { setShowMenu(false); setShowPlannerSettings(true); }} className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">
+                                    <Layout size={14} className="text-gray-400" /> Planner Settings
+                                </button>
+                                <button onClick={() => { setShowMenu(false); navigate('/settings'); }} className="w-full text-left px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-2">
+                                    <Settings size={14} /> Workspace Settings
+                                </button>
+                                <button onClick={() => { usePlannerStore.getState().archivePlanner(activePlanner?.id || ''); setShowMenu(false); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">
+                                    <Archive size={14} /> Archive
+                                </button>
                             </div>
                         )}
                     </div>

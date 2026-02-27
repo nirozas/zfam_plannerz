@@ -45,29 +45,29 @@ function PWABadge() {
         setNeedRefresh(false)
     }
 
+    if (!(offlineReady || needRefresh)) return null;
+
     return (
         <div className="pwa-badge" role="alert" aria-labelledby="toast-label">
-            {(offlineReady || needRefresh) && (
-                <div className="pwa-toast">
-                    <div className="pwa-message">
-                        {offlineReady ? (
-                            <span id="toast-label">App ready to work offline</span>
-                        ) : (
-                            <span id="toast-label">New content available, click on reload button to update.</span>
-                        )}
-                    </div>
-                    <div className="pwa-buttons">
-                        {needRefresh && (
-                            <button className="pwa-toast-button" onClick={() => updateServiceWorker(true)}>
-                                Reload
-                            </button>
-                        )}
-                        <button className="pwa-toast-button" onClick={() => close()}>
-                            Close
-                        </button>
-                    </div>
+            <div className="pwa-toast">
+                <div className="pwa-message">
+                    {offlineReady ? (
+                        <span id="toast-label">App ready to work offline</span>
+                    ) : (
+                        <span id="toast-label">New content available, click on reload button to update.</span>
+                    )}
                 </div>
-            )}
+                <div className="pwa-buttons">
+                    {needRefresh && (
+                        <button className="pwa-toast-button" onClick={() => updateServiceWorker(true)}>
+                            Reload
+                        </button>
+                    )}
+                    <button className="pwa-toast-button" onClick={() => close()}>
+                        Close
+                    </button>
+                </div>
+            </div>
         </div>
     )
 }

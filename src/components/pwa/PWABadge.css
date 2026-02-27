@@ -34,3 +34,12 @@
     border-radius: 2px;
     padding: 3px 10px;
 }
+
+@media (max-width: 768px) {
+    .pwa-badge {
+        top: 0;
+        bottom: auto;
+        right: 0;
+        margin: 10px;
+    }
+}

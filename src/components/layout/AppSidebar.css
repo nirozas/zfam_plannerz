@@ -176,6 +176,8 @@ button.nav-item {
         border-top: 1px solid rgba(226, 232, 240, 0.8);
         box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
         z-index: 9999;
+        overflow: visible;
+        /* Allow tooltips if needed, but we'll prune them */
     }
 
     .brand-logo-container {
@@ -184,36 +186,47 @@ button.nav-item {
 
     .nav-menu {
         flex-direction: row;
-        justify-content: space-around;
+        justify-content: space-evenly;
         align-items: center;
         width: 100%;
         margin: 0;
         gap: 0;
         flex-wrap: nowrap;
+        padding: 0 4px;
     }
 
     .nav-menu>* {
-        flex: 1;
+        flex: 1 1 0%;
         min-width: 0;
         display: flex;
         justify-content: center;
     }
 
     .nav-item {
-        padding: 0.5rem;
+        padding: 0.5rem 0.25rem;
         width: 100% !important;
-        /* Take full width of the parent flex:1 container */
         display: flex;
         justify-content: center;
     }
 
     button.nav-item {
-        width: 100% !important;
+        width: auto !important;
+        min-width: 40px;
     }
 
     .nav-item svg {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Hide bug button on very small screens to save space, or just make it small */
+    .nav-item[title="Report a Bug"] {
+        display: none !important;
+    }
+
+    /* Prevent tooltips from blowing up the layout on mobile */
+    .group\/drive:hover .pointer-events-none {
+        display: none !important;
     }
 
     .sidebar-footer {

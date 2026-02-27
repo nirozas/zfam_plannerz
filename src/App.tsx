@@ -19,27 +19,48 @@ import CardsPage from '@/components/dashboard/CardsPage'
 import PWABadge from '@/components/pwa/PWABadge'
 
 function App() {
-    const { setUser, fetchPlanners, fetchUserProfile } = usePlannerStore()
+    const { setUser, fetchPlanners, fetchUserProfile, fetchGlobalHeroConfig } = usePlannerStore()
     const { fetchCards } = useCardStore()
 
     useEffect(() => {
         // 1. Check active session on mount
         const initAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            const user = session?.user ?? null;
-            setUser(user)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Auth initialization timeout")), 12000)
+            );
 
-            if (user) {
-                // Load critical data in parallel
-                await Promise.all([
-                    fetchUserProfile(),
-                    fetchPlanners(),
-                    fetchCards()
-                ]).catch(err => console.error("Initial data fetch error:", err));
+            try {
+                const authCheckPromise = (async () => {
+                    // Always fetch global configuration (Hero images, etc.) for everyone
+                    const globalConfigPromise = fetchGlobalHeroConfig();
+
+                    // Check active session
+                    const { data: { session } } = await supabase.auth.getSession()
+                    const user = session?.user ?? null;
+                    setUser(user)
+
+                    if (user) {
+                        // Load critical user data in parallel with global config
+                        await Promise.all([
+                            globalConfigPromise,
+                            fetchUserProfile(),
+                            fetchPlanners(),
+                            fetchCards()
+                        ]);
+                    } else {
+                        // Just wait for global config if not logged in
+                        await globalConfigPromise;
+                    }
+                })();
+
+                await Promise.race([authCheckPromise, timeoutPromise]);
+            } catch (err) {
+                console.error("Auth initialization error (could be timeout):", err);
+            } finally {
+                // Mark auth as officially checked - MUST happen so the loader disappears
+                usePlannerStore.getState().setAuthInitialized(true)
+                console.log("App auth initialization sequence finished");
             }
-
-            // Mark auth as officially checked
-            usePlannerStore.getState().setAuthInitialized(true)
         }
 
         initAuth()
@@ -64,7 +85,7 @@ function App() {
         })
 
         return () => subscription.unsubscribe()
-    }, [setUser, fetchPlanners, fetchUserProfile, fetchCards])
+    }, [setUser, fetchPlanners, fetchUserProfile, fetchGlobalHeroConfig, fetchCards])
 
     return (
         <BrowserRouter>

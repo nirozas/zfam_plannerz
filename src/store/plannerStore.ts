@@ -187,6 +187,7 @@ interface PlannerState {
     updateHeroImageUrl: (page: string, url: string) => Promise<void>;
     updateHeroText: (page: string, data: { title?: string; subtitle?: string }) => Promise<void>;
     updateHomeBoxImageUrl: (boxId: string, url: string | null) => Promise<void>;
+    fetchGlobalHeroConfig: () => Promise<void>;
 
     // Actions - PDF
     createPlannerFromPDF: (name: string, pdfPages: { url: string, width: number, height: number, links?: any[] }[], options?: { presetName?: string; section?: string }) => Promise<void>;
@@ -2433,17 +2434,30 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         if (!user) return;
 
         try {
-            const [profileResult, adminResult] = await Promise.all([
-                supabase.from('profiles').select('*').eq('id', user.id).single(),
-                supabase.from('profiles').select('hero_config').eq('role', 'admin').limit(1).maybeSingle()
-            ]);
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            set({ userProfile: profile || null });
 
-            set({
-                userProfile: profileResult.data || null,
-                globalHeroConfig: adminResult.data?.hero_config || {}
-            });
+            // Also ensure global config is fetched (this might have already run in App initialization)
+            await get().fetchGlobalHeroConfig();
         } catch (error) {
             console.error('Error in fetchUserProfile:', error);
+        }
+    },
+
+    fetchGlobalHeroConfig: async () => {
+        try {
+            const { data: adminProfile } = await supabase
+                .from('profiles')
+                .select('hero_config')
+                .eq('role', 'admin')
+                .limit(1)
+                .maybeSingle();
+
+            if (adminProfile?.hero_config) {
+                set({ globalHeroConfig: adminProfile.hero_config });
+            }
+        } catch (error) {
+            console.error('Error in fetchGlobalHeroConfig:', error);
         }
     },
 
@@ -2517,6 +2531,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             user = supabaseUser;
         }
 
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can change hero images');
+        }
+
         if (!checkIsSignedIn()) await signIn();
 
         try {
@@ -2560,6 +2578,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             user = supabaseUser;
         }
 
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can change hero URLs');
+        }
+
         const currentRaw = userProfile?.hero_config?.[page];
         const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
             (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
@@ -2580,6 +2602,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             user = supabaseUser;
         }
 
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can change hero text');
+        }
+
         const currentRaw = userProfile?.hero_config?.[page];
         const currentConfig = (currentRaw && typeof currentRaw === 'object') ? currentRaw :
             (typeof currentRaw === 'string' ? { imageUrl: currentRaw } : {});
@@ -2598,6 +2624,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             const { data: { user: supabaseUser } } = await supabase.auth.getUser();
             if (!supabaseUser) throw new Error('Not logged in');
             user = supabaseUser;
+        }
+
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can change homepage card images');
         }
 
         const currentRaw = userProfile?.hero_config || {};

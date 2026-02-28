@@ -6,7 +6,14 @@ import './HomePage.css';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const { userProfile, globalHeroConfig, updateHeroImage, updateHeroImageUrl, updateHeroText, updateHomeBoxImageUrl, userStats, fetchUserStats } = usePlannerStore();
+    const userProfile = usePlannerStore(state => state.userProfile);
+    const globalHeroConfig = usePlannerStore(state => state.globalHeroConfig);
+    const updateHeroImage = usePlannerStore(state => state.updateHeroImage);
+    const updateHeroImageUrl = usePlannerStore(state => state.updateHeroImageUrl);
+    const updateHeroText = usePlannerStore(state => state.updateHeroText);
+    const updateHomeBoxImageUrl = usePlannerStore(state => state.updateHomeBoxImageUrl);
+    const userStats = usePlannerStore(state => state.userStats);
+    const fetchUserStats = usePlannerStore(state => state.fetchUserStats);
     const isAdmin = userProfile?.role === 'admin';
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -18,7 +25,7 @@ const HomePage: React.FC = () => {
     const STORAGE_LIMIT = 800 * 1024 * 1024;
     const isOverStorageLimit = (userStats?.totalSize || 0) > STORAGE_LIMIT;
 
-    const firstName = userProfile?.full_name?.split(' ')[0] || 'there';
+    const firstName = userProfile?.full_name?.split(' ')[0] || '';
 
     // Hero Data from store (using globally applied config)
     const heroData = globalHeroConfig?.['home'];
@@ -220,12 +227,12 @@ const HomePage: React.FC = () => {
                                 <img
                                     src="/nexus_logo.png"
                                     alt="Zoabi Nexus Vault"
-                                    className="h-32 md:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700"
+                                    className="h-32 md:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-3xl"
                                 />
                             </div>
                             <div className="welcome-tag">
                                 <Sparkles size={14} className="text-indigo-500" />
-                                <span>Curating your digital path, {firstName}</span>
+                                <span>Curating your digital path{firstName ? `, ${firstName}` : ''}</span>
                             </div>
                             <h1 className="hero-title">
                                 {displayTitle.split(' ').map((word, i) => (

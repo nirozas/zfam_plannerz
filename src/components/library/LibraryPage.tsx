@@ -15,21 +15,19 @@ import * as pdfjsLib from 'pdfjs-dist';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const LibraryPage: React.FC = () => {
-    const {
-        libraryAssets,
-        libraryCategories,
-        fetchLibraryAssets,
-        fetchLibraryCategories,
-        isLoadingAssets,
-        userProfile,
-        updateAssetMetadata,
-        saveEditedAsset,
-        deleteAsset,
-        deleteAssets,
-        uploadAsset,
-        addAssetByUrl,
-        syncGoogleDriveAssets
-    } = usePlannerStore();
+    const libraryAssets = usePlannerStore(state => state.libraryAssets);
+    const libraryCategories = usePlannerStore(state => state.libraryCategories);
+    const fetchLibraryAssets = usePlannerStore(state => state.fetchLibraryAssets);
+    const fetchLibraryCategories = usePlannerStore(state => state.fetchLibraryCategories);
+    const isLoadingAssets = usePlannerStore(state => state.isLoadingAssets);
+    const userProfile = usePlannerStore(state => state.userProfile);
+    const updateAssetMetadata = usePlannerStore(state => state.updateAssetMetadata);
+    const saveEditedAsset = usePlannerStore(state => state.saveEditedAsset);
+    const deleteAsset = usePlannerStore(state => state.deleteAsset);
+    const deleteAssets = usePlannerStore(state => state.deleteAssets);
+    const uploadAsset = usePlannerStore(state => state.uploadAsset);
+    const addAssetByUrl = usePlannerStore(state => state.addAssetByUrl);
+    const syncGoogleDriveAssets = usePlannerStore(state => state.syncGoogleDriveAssets);
 
     const isAdmin = userProfile?.role === 'admin';
 
@@ -70,6 +68,8 @@ const LibraryPage: React.FC = () => {
     // PDF Import Modal State
     const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
     const [pdfSourceUrl, setPdfSourceUrl] = useState<string | undefined>(undefined);
+    const [pdfExternalId, setPdfExternalId] = useState<string | undefined>(undefined);
+    const [pdfTitle, setPdfTitle] = useState<string | undefined>(undefined);
 
     // Sidebar Visibility
     const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
@@ -489,6 +489,8 @@ const LibraryPage: React.FC = () => {
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setPdfSourceUrl(asset.url);
+                                                setPdfExternalId(asset.external_id);
+                                                setPdfTitle(asset.title);
                                                 setIsPDFModalOpen(true);
                                             }}
                                             className="mt-4 w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-all"
@@ -676,13 +678,15 @@ const LibraryPage: React.FC = () => {
                             : (previewAsset.thumbnail_url?.includes('googleusercontent.com') ? previewAsset.thumbnail_url.replace(/=s\d+/, '=s2048') : previewAsset.thumbnail_url) || previewAsset.url}
                         alt={previewAsset.title}
                         referrerPolicy="no-referrer"
+                        loading="lazy"
+                        decoding="async"
                         className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl z-[201] cursor-default"
                         onClick={(e) => e.stopPropagation()}
                     />
                 </div>
             )}
 
-            <PDFImportModal isOpen={isPDFModalOpen} onClose={() => { setIsPDFModalOpen(false); setPdfSourceUrl(undefined); }} sourceUrl={pdfSourceUrl} />
+            <PDFImportModal isOpen={isPDFModalOpen} onClose={() => { setIsPDFModalOpen(false); setPdfSourceUrl(undefined); setPdfExternalId(undefined); setPdfTitle(undefined); }} sourceUrl={pdfSourceUrl} externalId={pdfExternalId} pdfTitle={pdfTitle} />
         </div >
     );
 };
@@ -745,6 +749,8 @@ const AssetThumbnail: React.FC<{ asset: any; onClick: () => void }> = ({ asset, 
             src={src}
             alt={asset.title}
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full cursor-pointer transition-all duration-500 ${isDrive ? 'object-cover' : 'object-contain p-4 group-hover:scale-110'}`}
             onClick={onClick}
             onError={() => setHasError(true)}

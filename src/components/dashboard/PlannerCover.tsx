@@ -59,6 +59,8 @@ const PlannerCover: React.FC<PlannerCoverProps> = ({
                                 src={coverUrl}
                                 alt=""
                                 referrerPolicy="no-referrer"
+                                loading="lazy"
+                                decoding="async"
                                 className="absolute inset-0 w-full h-full object-cover z-0"
                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                             />

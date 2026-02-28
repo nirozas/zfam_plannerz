@@ -233,40 +233,23 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
             // 2. Tasks
             try {
-                // Try complex join first (requires correct FKEY names)
+                // Currently bypassing complex assignments join due to 'tasks_assigned_to_fkey' schema missing
                 let { data: taskRows, error: taskErr } = await supabase
                     .from('tasks')
-                    .select(`
-                        *,
-                        assigned_user:profiles!tasks_assigned_to_fkey(full_name, avatar_url),
-                        assigner:profiles!tasks_assigned_by_fkey(full_name, avatar_url)
-                    `)
+                    .select('*')
                     .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
                     .order('date_added', { ascending: false });
 
-                // Fallback: If join fails (e.g. FKEY names mismatch), try a simple select
                 if (taskErr) {
-                    console.warn('[taskStore] Complex join failed, trying simple select:', taskErr.message);
-                    const { data: simpleRows, error: simpleErr } = await supabase
+                    // Fallback to basic if assigned_to column is entirely missing
+                    const { data: basicRows, error: basicErr } = await supabase
                         .from('tasks')
                         .select('*')
-                        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+                        .eq('user_id', user.id)
                         .order('date_added', { ascending: false });
 
-                    if (simpleErr) {
-                        // If even simple select fails, maybe assigned_to column is missing
-                        console.warn('[taskStore] Simple select with OR failed, trying basic user_id query:', simpleErr.message);
-                        const { data: basicRows, error: basicErr } = await supabase
-                            .from('tasks')
-                            .select('*')
-                            .eq('user_id', user.id)
-                            .order('date_added', { ascending: false });
-
-                        if (basicErr) throw basicErr;
-                        taskRows = basicRows;
-                    } else {
-                        taskRows = simpleRows;
-                    }
+                    if (basicErr) throw basicErr;
+                    taskRows = basicRows;
                 }
 
 

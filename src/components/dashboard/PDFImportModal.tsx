@@ -12,6 +12,8 @@ interface PDFImportModalProps {
     isOpen: boolean;
     onClose: () => void;
     sourceUrl?: string; // New: optional URL to load PDF from
+    externalId?: string; // Google Drive file id
+    pdfTitle?: string; // PDF title preset
 }
 
 interface AnalyzedPage {
@@ -24,7 +26,7 @@ interface AnalyzedPage {
     links?: any[];
 }
 
-export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalProps) {
+export function PDFImportModal({ isOpen, onClose, sourceUrl, externalId, pdfTitle }: PDFImportModalProps) {
     const [step, setStep] = useState<'upload' | 'preview' | 'creating'>('upload');
     const [plannerName, setPlannerName] = useState('');
     const [pages, setPages] = useState<AnalyzedPage[]>([]);
@@ -43,16 +45,34 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl }: PDFImportModalPro
         };
     }, [pages]);
 
-    // Load from sourceUrl if provided
+    // Load from sourceUrl or externalId if provided
     useEffect(() => {
-        if (isOpen && sourceUrl) {
+        if (isOpen && externalId) {
+            setPlannerName(pdfTitle || 'imported_planner');
+            loadPDFFromDrive(externalId);
+        } else if (isOpen && sourceUrl) {
             const fileName = sourceUrl.split('/').pop() || 'imported_planner.pdf';
-            setPlannerName(fileName.split('?')[0].replace('.pdf', ''));
+            setPlannerName(pdfTitle || fileName.split('?')[0].replace('.pdf', ''));
             loadPDFFromUrl(sourceUrl);
         }
-    }, [isOpen, sourceUrl]);
+    }, [isOpen, sourceUrl, externalId, pdfTitle]);
 
     if (!isOpen) return null;
+
+    const loadPDFFromDrive = async (fileId: string) => {
+        setStep('preview');
+        setStatusMessage('Downloading PDF from Drive...');
+        try {
+            const { downloadFileFromDrive } = await import('../../lib/googleDrive');
+            const blob = await downloadFileFromDrive(fileId);
+            const file = new File([blob], "asset.pdf", { type: 'application/pdf' });
+            analyzePDF(file);
+        } catch (error) {
+            console.error('Error loading PDF from Drive:', error);
+            alert('Failed to load PDF from Google Drive.');
+            setStep('upload');
+        }
+    };
 
     const loadPDFFromUrl = async (url: string) => {
         setStep('preview');

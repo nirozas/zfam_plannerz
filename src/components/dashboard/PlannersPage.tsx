@@ -12,10 +12,15 @@ import PageHero from '../ui/PageHero';
 import { PlannerTabs } from './PlannerTabs';
 
 const PlannersPage: React.FC = () => {
-    const {
-        openPlanner, availablePlanners, fetchPlanners, archivePlanner, unarchivePlanner,
-        deletePlanner, toggleFavorite, updatePlannerCover, isFetchingPlanners
-    } = usePlannerStore();
+    const openPlanner = usePlannerStore(state => state.openPlanner);
+    const availablePlanners = usePlannerStore(state => state.availablePlanners);
+    const fetchPlanners = usePlannerStore(state => state.fetchPlanners);
+    const archivePlanner = usePlannerStore(state => state.archivePlanner);
+    const unarchivePlanner = usePlannerStore(state => state.unarchivePlanner);
+    const deletePlanner = usePlannerStore(state => state.deletePlanner);
+    const toggleFavorite = usePlannerStore(state => state.toggleFavorite);
+    const updatePlannerCover = usePlannerStore(state => state.updatePlannerCover);
+    const isFetchingPlanners = usePlannerStore(state => state.isFetchingPlanners);
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showPDFModal, setShowPDFModal] = useState(false);

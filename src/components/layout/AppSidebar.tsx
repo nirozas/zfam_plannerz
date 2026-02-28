@@ -92,14 +92,14 @@ export const AppSidebar: React.FC = () => {
                 {/* Bug Report Button */}
                 <button
                     onClick={() => setBugModalOpen(true)}
-                    className="nav-item text-rose-400 hover:text-rose-600 transition-colors"
+                    className="nav-item text-rose-400 hover:text-rose-600 transition-colors mt-auto mb-2"
                     title="Report a Bug"
                 >
                     <Bug size={22} />
                 </button>
 
                 {/* Google Drive Connection Button */}
-                <div className="relative group/drive mt-auto">
+                <div className="relative group/drive">
                     <button
                         onClick={handleDriveClick}
                         className="nav-item w-full relative"

@@ -104,19 +104,19 @@ const TOKEN_EXPIRY_KEY = 'google_drive_token_expiry';
 
 export function saveToken(token: any): void {
     const expiry = Date.now() + (token.expires_in - 60) * 1000;
-    sessionStorage.setItem(TOKEN_KEY, JSON.stringify(token));
-    sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(expiry));
+    localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
+    localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiry));
     (window as any).gapi?.client?.setToken(token);
 }
 
 export function loadToken(): any | null {
-    const expiry = Number(sessionStorage.getItem(TOKEN_EXPIRY_KEY) || 0);
+    const expiry = Number(localStorage.getItem(TOKEN_EXPIRY_KEY) || 0);
     if (Date.now() > expiry) {
-        sessionStorage.removeItem(TOKEN_KEY);
-        sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(TOKEN_EXPIRY_KEY);
         return null;
     }
-    const raw = sessionStorage.getItem(TOKEN_KEY);
+    const raw = localStorage.getItem(TOKEN_KEY);
     const token = raw ? JSON.parse(raw) : null;
     if (token) (window as any).gapi?.client?.setToken(token);
     return token;
@@ -125,8 +125,8 @@ export function loadToken(): any | null {
 export function clearToken(): void {
     const token = loadToken();
     if (token) (window as any).google?.accounts?.oauth2?.revoke(token.access_token, () => { });
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
     appFolderId = null;
 }
 
@@ -179,6 +179,11 @@ export async function getOrCreateAppFolder(): Promise<string> {
         }
     }
 
+    if (!(window as any).gapi?.client?.drive) {
+        await initGapi();
+        loadToken(); // Ensure token is applied to the newly initialized client
+    }
+
     const gapi = (window as any).gapi;
     const response = await gapi.client.drive.files.list({
         q: `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
@@ -201,6 +206,10 @@ export async function getOrCreateAppFolder(): Promise<string> {
 }
 
 export async function getOrCreateSubfolder(parentFolderId: string, folderName: string): Promise<string> {
+    if (!(window as any).gapi?.client?.drive) {
+        await initGapi();
+        loadToken();
+    }
     const gapi = (window as any).gapi;
     const response = await gapi.client.drive.files.list({
         q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
@@ -247,6 +256,18 @@ export async function listFilesInAppFolder(): Promise<CloudStorageResult[]> {
             source: 'google_drive' as const
         };
     });
+}
+
+// ─── File Download ─────────────────────────────────────────────────────────
+
+export async function downloadFileFromDrive(fileId: string): Promise<Blob> {
+    if (!checkIsSignedIn()) await signIn();
+    const token = loadToken();
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${token.access_token}` }
+    });
+    if (!res.ok) throw new Error(`Drive download failed: ${res.statusText}`);
+    return await res.blob();
 }
 
 // ─── File Upload ───────────────────────────────────────────────────────────

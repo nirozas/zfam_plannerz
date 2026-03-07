@@ -144,11 +144,26 @@ button.nav-item {
     z-index: 2000;
 }
 
-.user-mini-profile:hover .user-info-popover {
+.user-mini-profile:hover .user-info-popover,
+.user-info-popover.mobile-show {
     display: flex;
     flex-direction: column;
     opacity: 1;
     transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .user-info-popover {
+        bottom: 75px;
+        right: 0;
+        left: auto;
+        transform: translateY(10px);
+        width: 200px;
+    }
+
+    .user-info-popover.mobile-show {
+        transform: translateY(0);
+    }
 }
 
 /* --- Mobile Responsive: Fixed Bottom Navigation Bar --- */

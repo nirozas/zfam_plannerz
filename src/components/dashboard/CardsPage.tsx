@@ -12,8 +12,28 @@ import { ListEditor } from './ListEditor';
 import { MetadataModal, ShareModal } from './CardModals';
 import { BackgroundSettings } from './BackgroundSettings';
 import { Resizable } from 're-resizable';
+import { motion } from 'framer-motion';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay,
+    defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const CardsPage: React.FC = () => {
+    const [layoutMode, setLayoutMode] = useState<'grid' | 'free'>(() => (localStorage.getItem('card_layout_mode') as any) || 'grid');
     const {
         currentFolderId,
         setCurrentFolderId,
@@ -26,8 +46,24 @@ const CardsPage: React.FC = () => {
         rootBackgroundType,
         rootBackgroundOpacity,
         setRootBackground,
-        isFetching
+        gridGap,
+        setGridGap,
+        isFetching,
+        reorderCards
     } = useCardStore();
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const { folderId } = useParams();
     const navigate = useNavigate();
 
@@ -69,7 +105,13 @@ const CardsPage: React.FC = () => {
     const [activeShareCard, setActiveShareCard] = useState<CardType | null>(null);
     const [isBackgroundSettingsOpen, setIsBackgroundSettingsOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
-    const [sortBy, setSortBy] = useState<'name' | 'recent' | 'group'>('recent');
+    const [sortBy, setSortBy] = useState<'name' | 'recent' | 'group' | 'manual'>('recent');
+
+    const toggleLayoutMode = () => {
+        const next = layoutMode === 'grid' ? 'free' : 'grid';
+        setLayoutMode(next);
+        localStorage.setItem('card_layout_mode', next);
+    };
 
     const currentCards = getCardsByParent(currentFolderId);
     const breadcrumbs = getBreadcrumbs(currentFolderId);
@@ -91,6 +133,7 @@ const CardsPage: React.FC = () => {
 
         // 2. Sorting
         items.sort((a, b) => {
+            if (sortBy === 'manual') return (a.sortOrder || 0) - (b.sortOrder || 0);
             if (sortBy === 'name') return a.title.localeCompare(b.title);
             if (sortBy === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             if (sortBy === 'group') return (a.category || '').localeCompare(b.category || '');
@@ -173,6 +216,26 @@ const CardsPage: React.FC = () => {
         return <ListEditor key={editingList.id} card={editingList} onBack={() => navigateToFolder(editingList.parentId)} />;
     }
 
+    const activeCard = activeDragId ? cards.find(c => c.id === activeDragId) : null;
+
+    const handleDragStart = (event: any) => {
+        setActiveDragId(event.active.id as string);
+    };
+
+    const handleDragEnd = (event: any) => {
+        setActiveDragId(null);
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = displayedCards.findIndex(c => c.id === active.id);
+        const newIndex = displayedCards.findIndex(c => c.id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrderIds = arrayMove(displayedCards, oldIndex, newIndex).map(c => c.id);
+            reorderCards(newOrderIds.filter(Boolean) as string[]);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full overflow-hidden transition-all duration-500" style={backgroundStyle}>
             {/* Header / Breadcrumbs */}
@@ -199,6 +262,13 @@ const CardsPage: React.FC = () => {
                         title="Page Background"
                     >
                         <Palette size={20} />
+                    </button>
+                    <button
+                        onClick={toggleLayoutMode}
+                        className={`p-2 rounded-xl transition-all ${layoutMode === 'free' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                        title={layoutMode === 'grid' ? "Switch to Freeboard" : "Switch to Grid"}
+                    >
+                        {layoutMode === 'grid' ? <Plus size={20} /> : <Home size={20} />}
                     </button>
                     {currentFolder && (
                         <button
@@ -241,6 +311,23 @@ const CardsPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end sm:pl-4 sm:border-l border-slate-200">
+                    {/* Dynamic Spacing Control */}
+                    <div className="flex items-center gap-2 group/gap">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Spacing:</span>
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white/50 rounded-lg border border-slate-100 hover:border-slate-200 transition-all">
+                            <input
+                                type="range"
+                                min="0"
+                                max="40"
+                                step="2"
+                                value={gridGap}
+                                onChange={(e) => setGridGap(parseInt(e.target.value))}
+                                className="w-16 h-1 accent-indigo-500 cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+                            />
+                            <span className="text-[9px] font-black text-slate-500 w-4 text-center">{gridGap}</span>
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Sort:</span>
                         <select
@@ -251,13 +338,13 @@ const CardsPage: React.FC = () => {
                             <option value="recent">Recent</option>
                             <option value="name">Name</option>
                             <option value="group">Group</option>
+                            <option value="manual">Manual</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content - Resizable Grid */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <main className={`flex-1 overflow-auto p-4 md:p-6 relative ${layoutMode === 'free' ? 'overflow-both' : ''}`} style={{ minHeight: 'calc(100vh - 120px)' }}>
                 {currentCards.length === 0 ? (
                     <div className={`flex flex-col items-center justify-center h-full rounded-2xl md:rounded-3xl ${backgroundStyle.backgroundImage ? 'bg-white/40 backdrop-blur-sm' : 'text-slate-400'}`}>
                         <div className="w-16 h-16 md:w-24 md:h-24 bg-white/80 rounded-full flex items-center justify-center mb-4 shadow-sm">
@@ -267,23 +354,72 @@ const CardsPage: React.FC = () => {
                         <p className="text-xs md:text-sm text-slate-500 text-center px-4">Click the "Add Item" button to organize your thoughts</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 items-start">
-                        {displayedCards.map((card) => (
-                            <CardItem
-                                key={card.id}
-                                card={card}
-                                onClick={() => handleCardClick(card)}
-                                onDelete={() => handleDelete(card)}
-                                onEdit={() => {
-                                    setEditingCard(card);
-                                    setIsModalOpen(true);
-                                }}
-                                onMetadata={() => setActiveMetadataCard(card)}
-                                onShare={() => setActiveShareCard(card)}
-                                onResize={(w, h) => updateCard(card.id, { width: w, height: h })}
-                            />
-                        ))}
-                    </div>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        modifiers={layoutMode === 'grid' ? [] : []}
+                    >
+                        <SortableContext
+                            items={displayedCards.map(c => c.id)}
+                            strategy={layoutMode === 'grid' ? rectSortingStrategy : undefined}
+                        >
+                            <div
+                                className={layoutMode === 'grid' ? "flex flex-wrap items-start" : "relative w-full h-full min-h-[500px]"}
+                                style={{ gap: layoutMode === 'grid' ? `${gridGap}px` : '0' }}
+                            >
+                                {displayedCards.map((card) => (
+                                    <SortableCard
+                                        key={card.id}
+                                        card={card}
+                                        layoutMode={layoutMode}
+                                        gridGap={gridGap}
+                                        onCardClick={() => handleCardClick(card)}
+                                        onDelete={() => handleDelete(card)}
+                                        onEdit={() => {
+                                            setEditingCard(card);
+                                            setIsModalOpen(true);
+                                        }}
+                                        onMetadata={() => setActiveMetadataCard(card)}
+                                        onShare={() => setActiveShareCard(card)}
+                                        onResize={(w: number, h: number) => updateCard(card.id, { width: w, height: h })}
+                                        onMove={(pid: string) => updateCard(card.id, { parentId: pid })}
+                                        allFolders={cards.filter(c => c.type === 'folder' && c.id !== card.id).map(f => ({ id: f.id, title: f.title }))}
+                                        updateCard={updateCard}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+
+                        <DragOverlay adjustScale={true} dropAnimation={{
+                            duration: 250,
+                            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+                            sideEffects: defaultDropAnimationSideEffects({
+                                styles: {
+                                    active: {
+                                        opacity: '0.5',
+                                    },
+                                },
+                            }),
+                        }}>
+                            {activeDragId && activeCard ? (
+                                <div style={{ width: activeCard.width || 280, opacity: 0.8 }}>
+                                    <CardItem
+                                        card={activeCard}
+                                        onClick={() => { }}
+                                        onDelete={() => { }}
+                                        onEdit={() => { }}
+                                        onMetadata={() => { }}
+                                        onShare={() => { }}
+                                        onResize={() => { }}
+                                        onMove={() => { }}
+                                        allFolders={[]}
+                                    />
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
                 )}
             </main>
 
@@ -337,6 +473,62 @@ const CardsPage: React.FC = () => {
     );
 };
 
+const SortableCard = ({ card, layoutMode, gridGap, updateCard, onCardClick, ...props }: any) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: card.id });
+
+    if (layoutMode === 'free') {
+        return (
+            <motion.div
+                key={card.id}
+                layout
+                drag
+                dragMomentum={false}
+                dragElastic={0.1}
+                whileDrag={{
+                    scale: 1.05,
+                    zIndex: 50,
+                    boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+                }}
+                onDragEnd={(_, info) => {
+                    updateCard(card.id, { x: (card.x || 0) + info.offset.x, y: (card.y || 0) + info.offset.y });
+                }}
+                style={{
+                    position: 'absolute',
+                    left: card.x || 0,
+                    top: card.y || 0,
+                }}
+            >
+                <div data-folder-id={card.type === 'folder' ? card.id : undefined} className="h-full">
+                    <CardItem card={card} onClick={onCardClick} {...props} />
+                </div>
+            </motion.div>
+        );
+    }
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+        // we add touchAction: 'none' to allow mouse dragging on touch devices if needed
+        touchAction: 'none'
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+            <div data-folder-id={card.type === 'folder' ? card.id : undefined} className="h-full">
+                <CardItem card={card} onClick={onCardClick} {...props} />
+            </div>
+        </div>
+    );
+};
+
 const CardItem: React.FC<{
     card: CardType;
     onClick: () => void;
@@ -345,13 +537,15 @@ const CardItem: React.FC<{
     onMetadata: () => void;
     onShare: () => void;
     onResize: (width: number, height: number) => void;
-}> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize }) => {
+    onMove: (newParentId: string | null) => void;
+    allFolders: { id: string; title: string }[];
+}> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize, onMove, allFolders }) => {
     const [showMenu, setShowMenu] = useState(false);
     const isMobile = window.innerWidth < 640;
 
     const cardContent = (
         <div
-            className="h-full w-full relative rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-default flex flex-col overflow-hidden"
+            className="h-full w-full relative rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-default flex flex-col"
         >
             {/* Clickable Overlay - Sits above content but below handles and menu */}
             <div
@@ -451,6 +645,25 @@ const CardItem: React.FC<{
                                     <Info size={16} /> Entry Metadata
                                 </button>
                                 <div className="h-px bg-slate-100 my-1" />
+                                <div className="px-4 py-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">Move to Folder</div>
+                                <div className="max-h-32 overflow-y-auto">
+                                    <button
+                                        className="w-full px-4 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 text-left font-bold"
+                                        onClick={(e) => { e.stopPropagation(); onMove(null); setShowMenu(false); }}
+                                    >
+                                        Root Home
+                                    </button>
+                                    {allFolders.filter(f => f.id !== card.id).map(f => (
+                                        <button
+                                            key={f.id}
+                                            className="w-full px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-50 text-left truncate"
+                                            onClick={(e) => { e.stopPropagation(); onMove(f.id); setShowMenu(false); }}
+                                        >
+                                            {f.title}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="h-px bg-slate-100 my-1" />
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -501,7 +714,7 @@ const CardItem: React.FC<{
     return (
         <Resizable
             defaultSize={{
-                width: card.width || '100%',
+                width: card.width || 280,
                 height: card.height || 'auto'
             }}
             minWidth={200}

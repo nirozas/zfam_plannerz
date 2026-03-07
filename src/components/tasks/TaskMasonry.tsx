@@ -18,7 +18,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
-    const { tasks, categories, selectedCategories, toggleTaskCompletion, activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds, setDayViewBackground, setEditingTaskId, updateTask } = useTaskStore();
+    const { tasks, categories, selectedCategories, toggleTaskCompletion, activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds, setDayViewBackground, setEditingTaskId, updateTask, taskGap } = useTaskStore();
     const [isEditingBg, setIsEditingBg] = useState(false);
     const dayBg = dayViewBackgrounds[activeDayDate] || '';
     const [tempBgUrl, setTempBgUrl] = useState(dayBg);
@@ -181,7 +181,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                         <p className="text-sm font-medium">No tasks for this day</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 items-start px-4 pb-10 flex-1 overflow-y-auto">
+                    <div className="flex flex-wrap items-start px-4 pb-10 flex-1 overflow-y-auto" style={{ gap: `${taskGap}px` }}>
 
                         {relevantTasks.map(task => {
                             const category = categories.find(c => c.id === task.categoryId);
@@ -277,16 +277,34 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
 
                                             <div className="flex-1"></div>
 
-                                            {/* Tags Footer */}
-                                            <div className="flex flex-wrap gap-2 text-[9px] md:text-[10px] mt-2 md:mt-3 items-center opacity-80">
-                                                {category && (
-                                                    <span className="font-bold uppercase tracking-wider" style={{ color: catColor }}>{category.name}</span>
-                                                )}
-                                                {task.isRecurring && (
-                                                    <span className="flex items-center gap-1 text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">
-                                                        <Clock size={10} /> {task.recurrence?.type}
+                                            {/* Tags & Timestamps Footer */}
+                                            <div className="flex flex-col gap-2 mt-auto pt-3">
+                                                <div className="flex flex-wrap gap-2 text-[10px] items-center opacity-80">
+                                                    {category && (
+                                                        <span className="font-bold uppercase tracking-wider" style={{ color: catColor }}>{category.name}</span>
+                                                    )}
+                                                    {task.isRecurring && (
+                                                        <span className="flex items-center gap-1 text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                                            <Clock size={10} /> {task.recurrence?.type}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60 uppercase tracking-tighter">
+                                                    <span className="flex items-center gap-1">
+                                                        Added: {new Date(task.dateAdded).toLocaleDateString()}
                                                     </span>
-                                                )}
+                                                    {task.dueDate && !task.isRecurring && (
+                                                        <span className="flex items-center gap-1">
+                                                            Due: {new Date(task.dueDate.includes('T') ? task.dueDate : `${task.dueDate}T12:00:00Z`).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                    {isCompleted && (task.completedAt || (task.isRecurring && activeDayDate)) && (
+                                                        <span className="flex items-center gap-1 text-green-600">
+                                                            Done: {task.isRecurring ? activeDayDate : new Date(task.completedAt!).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -36,6 +36,8 @@ export interface Subtask {
     imageHeight?: number;   // Height for resizing
     dueDate?: string;
     dueTime?: string;
+    createdAt?: string;     // ISO string
+    completedAt?: string;   // ISO string
 }
 
 export interface Task {
@@ -50,6 +52,7 @@ export interface Task {
     dueTime?: string;            // Time string (HH:mm)
     completedDates: string[];    // YYYY-MM-DD strings (recurring)
     isCompleted: boolean;        // one-time tasks
+    completedAt?: string;        // ISO string (one-time tasks)
     priority: 'low' | 'medium' | 'high';
     attachments: string[];       // Storage public URLs
     subtasks: Subtask[];         // New: Subtasks list
@@ -100,6 +103,7 @@ const rowToTask = (row: any, completedDates: string[] = [], attachments: string[
     dueTime: row.due_time ?? undefined,
     completedDates,
     isCompleted: row.is_completed ?? false,
+    completedAt: row.completed_at ?? undefined,
     priority: (row.priority as Task['priority']) ?? 'medium',
     attachments,
     subtasks: row.subtasks ?? [],  // Map JSONB subtasks
@@ -136,6 +140,7 @@ interface TaskState {
     startDate: string | null;                      // New
     endDate: string | null;                        // New
     sortBy: TaskSortBy;                            // New
+    taskGap: number;                               // New
     activeDayDate: string;          // YYYY-MM-DD
     dayViewBackgrounds: Record<string, string>;  // dateStr -> url
 
@@ -162,6 +167,7 @@ interface TaskState {
     setStatusFilter: (status: 'all' | 'completed' | 'active') => void;
     setDateRange: (start: string | null, end: string | null) => void;
     setSortBy: (sort: TaskSortBy) => void;         // New
+    setTaskGap: (gap: number) => void;             // New
     setSelectedCategories: (ids: string[]) => void;
     toggleSelectedCategory: (id: string) => void;
     setActiveDayDate: (date: string) => void;
@@ -185,12 +191,17 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
     startDate: null,
     endDate: null,
     sortBy: 'dueDate',
+    taskGap: parseInt(localStorage.getItem('task_gap') || '4'),
     activeDayDate: toDateStr(new Date()),
     dayViewBackgrounds: JSON.parse(localStorage.getItem('tasks-day-view-bgs') || '{}'),
     isLoading: false,
     error: null,
     editingTaskId: null,
 
+    setTaskGap: (gap: number) => {
+        localStorage.setItem('task_gap', gap.toString());
+        set({ taskGap: gap });
+    },
     setEditingTaskId: (id) => set({ editingTaskId: id }),
 
     // ── loadAll ──────────────────────────────────────────────────────────────
@@ -437,7 +448,10 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         if (rest.description !== undefined) updateRow.description = rest.description ?? null;
         if (rest.categoryId !== undefined) updateRow.category_id = rest.categoryId ?? null;
         if (rest.priority !== undefined) updateRow.priority = rest.priority;
-        if (rest.isCompleted !== undefined) updateRow.is_completed = rest.isCompleted;
+        if (rest.isCompleted !== undefined) {
+            updateRow.is_completed = rest.isCompleted;
+            updateRow.completed_at = rest.isCompleted ? new Date().toISOString() : null;
+        }
         if (rest.dueDate !== undefined) updateRow.due_date = rest.dueDate ?? null;
         if (rest.subtasks !== undefined) updateRow.subtasks = rest.subtasks;
         if (rest.colSpan !== undefined) updateRow.col_span = rest.colSpan;
@@ -554,16 +568,20 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         if (!task.isRecurring) {
             // One-time task: toggle is_completed in DB
             const newCompleted = !task.isCompleted;
+            const completedAt = newCompleted ? new Date().toISOString() : null;
             const { error } = await supabase
                 .from('tasks')
-                .update({ is_completed: newCompleted })
+                .update({
+                    is_completed: newCompleted,
+                    completed_at: completedAt
+                })
                 .eq('id', id)
                 .eq('user_id', user.id);
             if (error) { console.error('[taskStore] toggle one-time error:', error); return; }
 
             set(state => ({
                 tasks: state.tasks.map(t =>
-                    t.id === id ? { ...t, isCompleted: newCompleted } : t
+                    t.id === id ? { ...t, isCompleted: newCompleted, completedAt: completedAt ?? undefined } : t
                 )
             }));
         } else {

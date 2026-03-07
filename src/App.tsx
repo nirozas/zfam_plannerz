@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '@/supabase/client'
 import { usePlannerStore } from '@/store/plannerStore'
 import { useCardStore } from '@/store/cardStore'
+import { useTaskStore } from '@/store/taskStore'
 import { Loader2 } from 'lucide-react'
 import PWABadge from '@/components/pwa/PWABadge'
 import DashboardLayout from '@/components/layout/DashboardLayout'
@@ -31,45 +32,46 @@ const PageLoader = () => (
 function App() {
     const { setUser, fetchPlanners, fetchUserProfile, fetchGlobalHeroConfig } = usePlannerStore()
     const { fetchCards } = useCardStore()
+    const { loadAll: loadTasks } = useTaskStore()
 
     useEffect(() => {
         // 1. Check active session on mount
         const initAuth = async () => {
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Auth initialization timeout")), 12000)
-            );
+            const unlock = () => {
+                usePlannerStore.getState().setAuthInitialized(true)
+            };
+
+            // FAILSAFE: If auth doesn't resolve in 1.5s, just show the UI as guest.
+            // This prevents the "white screen of death" on slow connections.
+            const failsafe = setTimeout(() => {
+                console.warn("Auth initialization taking too long, failsafe triggered.");
+                unlock();
+            }, 1500);
 
             try {
-                const authCheckPromise = (async () => {
-                    // Always fetch global configuration (Hero images, etc.) for everyone
-                    const globalConfigPromise = fetchGlobalHeroConfig();
+                // start global config in background
+                fetchGlobalHeroConfig();
 
-                    // Check active session
-                    const { data: { session } } = await supabase.auth.getSession()
-                    const user = session?.user ?? null;
-                    setUser(user)
+                // 1. Fast local session check
+                const { data: { session } } = await supabase.auth.getSession()
+                const user = session?.user ?? null;
+                setUser(user)
 
-                    if (user) {
-                        // Load critical user data in parallel with global config
-                        await Promise.all([
-                            globalConfigPromise,
-                            fetchUserProfile(),
-                            fetchPlanners(),
-                            fetchCards()
-                        ]);
-                    } else {
-                        // Just wait for global config if not logged in
-                        await globalConfigPromise;
-                    }
-                })();
-
-                await Promise.race([authCheckPromise, timeoutPromise]);
+                if (user) {
+                    // 2. Trigger data fetches in background (don't await them)
+                    Promise.allSettled([
+                        fetchUserProfile(),
+                        fetchPlanners(),
+                        fetchCards(),
+                        loadTasks()
+                    ]).catch(e => console.error("Background fetch error", e));
+                }
             } catch (err) {
-                console.error("Auth initialization error (could be timeout):", err);
+                console.error("Auth initialization fatal error:", err);
             } finally {
-                // Mark auth as officially checked - MUST happen so the loader disappears
-                usePlannerStore.getState().setAuthInitialized(true)
-                console.log("App auth initialization sequence finished");
+                clearTimeout(failsafe);
+                unlock();
+                console.log("App initialization sequence finished");
             }
         }
 
@@ -78,19 +80,19 @@ function App() {
         // 2. Listen for auth changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
             const user = session?.user ?? null;
-            const currentUser = usePlannerStore.getState().user;
-
             setUser(user)
 
-            // Only re-fetch if the user actually changed/signed in
-            if (user && user.id !== currentUser?.id) {
-                await Promise.all([
+            // TRIGGER FETCH on any valid sign-in or session-restoration event
+            // to ensure data is "fitched back" correctly.
+            if (user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+                Promise.allSettled([
                     fetchUserProfile(),
                     fetchPlanners(),
-                    fetchCards()
-                ]).catch(err => console.error("Auth change data fetch error:", err));
+                    fetchCards(),
+                    loadTasks()
+                ]);
             }
         })
 

@@ -108,8 +108,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
     // Auto-save subtask changes in view mode if items are toggled
     const handleSubtaskChangeInView = async (newSubtasks: Subtask[]) => {
         setSubtasks(newSubtasks);
-        // We don't necessarily need to perform a full save on every toggle if we want to avoid DB noise,
-        // but for immediate feedback across devices, we can.
+        await updateTask(task.id, { subtasks: newSubtasks } as any);
     };
 
     const handleDelete = async () => {

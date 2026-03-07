@@ -26,6 +26,9 @@ export interface Card {
     notes?: { id: string; text: string; createdAt: string; sentiment?: 'positive' | 'negative' | 'neutral' }[];
     canvasData?: any[]; // For 'list' type shapes/annotations
     groups?: { id: string; name: string; items: any[] }[]; // For structured list grouping
+    x?: number;
+    y?: number;
+    sortOrder?: number;
 }
 
 export interface BreadcrumbItem {

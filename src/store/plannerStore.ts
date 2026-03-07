@@ -474,7 +474,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
         // 3. Prevent redundant fetches
         if (isFetchingPlanners && isCurrentlyActive) {
-            console.log(`[openPlanner] Re-entry blocked: Already fetching ${idOrName}`);
+            console.log(`[openPlanner] Re - entry blocked: Already fetching ${idOrName} `);
             return;
         }
 
@@ -1019,7 +1019,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                             id: generateUUID(),
                             templateId: t.assetId,
                             section: t.section || 'WEEKLY',
-                            name: `Week ${i}`,
+                            name: `Week ${i} `,
                             category: category,
                             dimensions: dims,
                             layout: layout,
@@ -1033,7 +1033,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                             id: generateUUID(),
                             templateId: t.assetId,
                             section: t.section || 'DAILY',
-                            name: `Day ${i}`,
+                            name: `Day ${i} `,
                             category: category,
                             dimensions: dims,
                             layout: layout,
@@ -1705,7 +1705,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     addCustomSticker: (url) => set((state) => ({ customStickers: [{ id: generateUUID(), url }, ...state.customStickers] })),
 
     addCustomTemplate: (template) => set((state) => ({
-        customTemplates: [{ id: `custom-${generateUUID()}`, ...template }, ...state.customTemplates]
+        customTemplates: [{ id: `custom - ${generateUUID()} `, ...template }, ...state.customTemplates]
     })),
 
     applyBulkTemplate: async (plannerId, templateId, options) => {
@@ -1831,7 +1831,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 elements[bgIndex] = { ...elements[bgIndex], fill: color };
             } else {
                 elements.unshift({
-                    id: `bg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    id: `bg - ${Date.now()} -${Math.random().toString(36).substr(2, 9)} `,
                     type: 'background',
                     fill: color,
                     zIndex: -1,
@@ -1909,7 +1909,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             // We only set up ONE subscription for the planner table for this user
             const channelId = `user-planners-${user.id}`;
             const existingChannels = supabase.getChannels();
-            const alreadySubscribed = existingChannels.some(c => c.topic === `realtime:public:planners` || c.topic === `realtime:public:planners:user_id=eq.${user.id}`);
+            const alreadySubscribed = existingChannels.some(c => c.topic === `realtime: public: planners` || c.topic === `realtime: public: planners:user_id=eq.${user.id}`);
 
             if (!alreadySubscribed) {
                 supabase
@@ -1944,7 +1944,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             // Upload cover to Google Drive
             const result = await uploadFileToDrive(
                 blob,
-                `cover-${id}-${Date.now()}.png`,
+                `cover - ${id} -${Date.now()}.png`,
                 'image/png',
                 false,
                 undefined,
@@ -2092,7 +2092,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             return;
         }
 
-        console.log(`Fetched ${data?.length || 0} ${type}s`);
         set({ libraryAssets: (data || []).map(repairDriveUrl), isLoadingAssets: false });
     },
 
@@ -2159,7 +2158,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             set({ uploadProgress: 0 });
 
             // Calculate subfolder name (e.g., 'Library Stickers')
-            const subfolderName = `Library ${type.charAt(0).toUpperCase() + type.slice(1)}s`;
+            const subfolderName = `Library ${type.charAt(0).toUpperCase() + type.slice(1)} s`;
 
             // Upload to Google Drive
             const result = await uploadFileToDrive(
@@ -2265,7 +2264,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
             set({ uploadProgress: 0 });
             // Calculate same subfolder for edited asset
-            const subfolderName = `Library ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)}s`;
+            const subfolderName = `Library ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)} s`;
 
             // Re-upload to Google Drive (new file to avoid cache issues)
             const result = await uploadFileToDrive(
@@ -2340,7 +2339,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                     try {
                         await deleteFileFromDrive(asset.external_id);
                     } catch (e) {
-                        console.error(`Could not delete from Drive: ${asset.external_id}`, e);
+                        console.error(`Could not delete from Drive: ${asset.external_id} `, e);
                     }
                 }
             }
@@ -2431,6 +2430,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     fetchUserProfile: async () => {
         const { user } = get();
+        // Always try to fetch global hero config so guest users see public images
+        get().fetchGlobalHeroConfig().catch(() => { });
+
         if (!user) return;
 
         try {
@@ -2446,15 +2448,15 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     fetchGlobalHeroConfig: async () => {
         try {
-            const { data: adminProfile } = await supabase
+            const { data } = await supabase
                 .from('profiles')
                 .select('hero_config')
-                .eq('role', 'admin')
-                .limit(1)
-                .maybeSingle();
+                .not('hero_config', 'is', null)
+                .order('role', { ascending: true })
+                .limit(1);
 
-            if (adminProfile?.hero_config) {
-                set({ globalHeroConfig: adminProfile.hero_config });
+            if (data && data.length > 0 && data[0].hero_config) {
+                set({ globalHeroConfig: data[0].hero_config });
             }
         } catch (error) {
             console.error('Error in fetchGlobalHeroConfig:', error);
@@ -2631,7 +2633,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
 
         const currentRaw = userProfile?.hero_config || {};
-        const boxKey = `home_box_${boxId}`;
+        const boxKey = `home_box_${boxId} `;
 
         const newHeroConfig: Record<string, { imageUrl?: string; title?: string; subtitle?: string }> = {
             ...(currentRaw as any),

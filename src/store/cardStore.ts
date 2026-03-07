@@ -11,6 +11,7 @@ interface CardState {
     rootBackground: string | null;
     rootBackgroundType: 'color' | 'image';
     rootBackgroundOpacity: number;
+    gridGap: number;
     fetchCards: (force?: boolean) => Promise<void>;
     lastCardsFetch?: number;
     addCard: (type: CardType, title: string, parentId: string | null, category?: string, rating?: number, coverImage?: string, description?: string, url?: string, hasBody?: boolean) => Promise<void>;
@@ -18,9 +19,11 @@ interface CardState {
     setRootBackground: (type: 'color' | 'image', value: string | null, opacity?: number) => void;
     deleteCard: (id: string) => Promise<void>;
     setCurrentFolderId: (id: string | null) => void;
+    setGridGap: (gap: number) => void;
     getCardsByParent: (parentId: string | null) => Card[];
     getBreadcrumbs: (folderId: string | null) => { id: string | null; title: string }[];
     shareCard: (cardId: string, email: string) => Promise<void>;
+    reorderCards: (orderedIds: string[]) => Promise<void>;
 }
 
 export const useCardStore = create<CardState>()(
@@ -32,13 +35,18 @@ export const useCardStore = create<CardState>()(
             rootBackground: localStorage.getItem('root_background'),
             rootBackgroundType: (localStorage.getItem('root_background_type') as 'color' | 'image') || 'color',
             rootBackgroundOpacity: parseInt(localStorage.getItem('root_background_opacity') || '100'),
+            gridGap: parseInt(localStorage.getItem('grid_gap') || '1'),
             lastCardsFetch: 0,
 
 
             fetchCards: async (force = false) => {
                 const { cards, lastCardsFetch } = get();
+
                 const { data: { session } } = await supabase.auth.getSession();
-                if (!session?.user) return;
+                if (!session?.user) {
+                    set({ isFetching: false });
+                    return;
+                }
 
                 // Simple cache: data is fresh for 30s
                 const now = Date.now();
@@ -80,7 +88,10 @@ export const useCardStore = create<CardState>()(
                         itemCount: c.item_count,
                         lineCount: c.line_count,
                         canvasData: c.canvas_data,
-                        groups: c.groups || []
+                        groups: c.groups || [],
+                        x: c.x || 0,
+                        y: c.y || 0,
+                        sortOrder: c.sort_order || 0
                     }));
                     set({
                         cards: mappedCards,
@@ -92,6 +103,10 @@ export const useCardStore = create<CardState>()(
 
             addCard: async (type, title, parentId, category, rating, coverImage, description, url, hasBody) => {
                 const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.user) {
+                    console.error('Cannot add card: User not authenticated.');
+                    return;
+                }
                 const tempId = crypto.randomUUID();
                 const newCard: Card = {
                     id: tempId,
@@ -135,13 +150,7 @@ export const useCardStore = create<CardState>()(
                         });
 
                     if (error) {
-                        console.error('CRITICAL: Error adding card to Supabase:', {
-                            error,
-                            message: error.message,
-                            details: error.details,
-                            hint: error.hint,
-                            code: error.code
-                        });
+                        console.error('CRITICAL: Error adding card to Supabase:', error);
                     } else {
                         console.log('Successfully saved to Supabase');
                     }
@@ -158,6 +167,7 @@ export const useCardStore = create<CardState>()(
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     const updatedData: any = {};
+                    if (updates.parentId !== undefined) updatedData.parent_id = updates.parentId;
                     if (updates.title !== undefined) updatedData.title = updates.title;
                     if (updates.description !== undefined) updatedData.description = updates.description;
                     if (updates.coverImage !== undefined) updatedData.cover_image = updates.coverImage;
@@ -176,6 +186,9 @@ export const useCardStore = create<CardState>()(
                     if (updates.sharedWith !== undefined) updatedData.shared_with = updates.sharedWith;
                     if (updates.canvasData !== undefined) updatedData.canvas_data = updates.canvasData;
                     if (updates.groups !== undefined) updatedData.groups = updates.groups;
+                    if (updates.x !== undefined) updatedData.x = updates.x;
+                    if (updates.y !== undefined) updatedData.y = updates.y;
+                    if (updates.sortOrder !== undefined) updatedData.sort_order = updates.sortOrder;
 
                     updatedData.updated_at = new Date().toISOString();
 
@@ -221,7 +234,38 @@ export const useCardStore = create<CardState>()(
                 }
             },
 
+            reorderCards: async (orderedIds) => {
+                // Optimistic update
+                set((state) => {
+                    const cardsMap = new Map(state.cards.map(c => [c.id, c]));
+                    const updatedCards = [...state.cards];
+
+                    orderedIds.forEach((id, index) => {
+                        const card = cardsMap.get(id);
+                        if (card) {
+                            card.sortOrder = index;
+                        }
+                    });
+
+                    return { cards: updatedCards };
+                });
+
+                // Update in DB
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    // We do this in parallel for speed
+                    await Promise.all(orderedIds.map((id, index) =>
+                        supabase.from('cards').update({ sort_order: index }).eq('id', id)
+                    ));
+                }
+            },
+
             setCurrentFolderId: (id) => set({ currentFolderId: id }),
+
+            setGridGap: (gap) => {
+                localStorage.setItem('grid_gap', gap.toString());
+                set({ gridGap: gap });
+            },
 
             getCardsByParent: (parentId) => {
                 return get().cards.filter((c) => c.parentId === parentId);
@@ -299,6 +343,7 @@ export const useCardStore = create<CardState>()(
                 rootBackground: state.rootBackground,
                 rootBackgroundType: state.rootBackgroundType,
                 rootBackgroundOpacity: state.rootBackgroundOpacity,
+                gridGap: state.gridGap,
             }),
         }
     )

@@ -52,9 +52,9 @@ export function PlannerCard({ planner, index }: PlannerCardProps) {
             onClick={handleCardClick}
         >
             {/* 3D Card Effect */}
-            <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100">
                 {/* Cover Image */}
-                <div className="h-56 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+                <div className="h-56 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden rounded-t-2xl">
                     {planner.cover_url && (
                         <img
                             src={planner.cover_url}

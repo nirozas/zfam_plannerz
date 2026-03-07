@@ -29,7 +29,7 @@ const TasksPage: React.FC = () => {
         viewMode, setViewMode, setActiveDayDate, loadAll, isLoading,
         statusFilter, setStatusFilter,
         startDate, endDate, setDateRange,
-        sortBy, setSortBy,
+        sortBy, setSortBy, taskGap, setTaskGap,
         editingTaskId, setEditingTaskId, tasks
     } = useTaskStore();
 
@@ -155,6 +155,21 @@ const TasksPage: React.FC = () => {
                         <option value="priority">Priority</option>
                         <option value="dateAdded">Newest</option>
                     </select>
+
+                    {/* Dynamic Spacing Control */}
+                    <div className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-gray-100/80 rounded-xl group/gap">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mr-1">Gap:</span>
+                        <input
+                            type="range"
+                            min="0"
+                            max="40"
+                            step="2"
+                            value={taskGap}
+                            onChange={(e) => setTaskGap(parseInt(e.target.value))}
+                            className="w-16 h-1 accent-indigo-500 cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+                        />
+                        <span className="text-[9px] font-black text-gray-500 w-4 text-center">{taskGap}</span>
+                    </div>
 
                     {/* Date Range - hidden on mobile */}
                     <div className="hidden lg:flex items-center gap-2 bg-gray-100/80 rounded-xl px-3 py-2">

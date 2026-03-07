@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, Home, Briefcase, Cloud } from 'lucide-react';
+import { Save, User, Loader2, Camera, ShieldCheck, Mail, Database, Image as ImageIcon, RefreshCcw, CheckSquare, Plane, LogOut, Users, Link as LinkIcon, Check, X, Home, Briefcase, Cloud, Bug } from 'lucide-react';
 
 import { usePlannerStore } from '../../store/plannerStore';
 import { supabase } from '../../supabase/client';
 import './SettingsPage.css';
 import PageHero from '../ui/PageHero';
 import { GoogleDriveStatus } from '../cloud/GoogleDriveStatus';
-import { StorageMigrationTool } from '../cloud/StorageMigrationTool';
 import AdminBugReports from './AdminBugReports';
 
 const SettingsPage: React.FC = () => {
@@ -24,8 +23,12 @@ const SettingsPage: React.FC = () => {
     });
 
     const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/auth'; // Hard reload to clear states
+        localStorage.clear();
+        sessionStorage.clear();
+        try {
+            supabase.auth.signOut();
+        } catch (e) { }
+        window.location.href = '/auth';
     };
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -320,7 +323,7 @@ const SettingsPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Vault / Cloud Storage - Moved from right column */}
+                            {/* Vault / Cloud Storage */}
                             <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-5 md:p-8 border border-white shadow-xl shadow-slate-200/50">
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-2">
@@ -331,7 +334,11 @@ const SettingsPage: React.FC = () => {
                                     </div>
                                     <GoogleDriveStatus />
                                 </div>
-                                <StorageMigrationTool />
+                                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                                    <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
+                                        Your vault is connected to Google Drive. Attachments are stored securely in your private Drive folder.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -364,18 +371,16 @@ const SettingsPage: React.FC = () => {
                             </div>
 
 
-                            {/* Admin Reports */}
-                            {userProfile?.role === 'admin' && (
-                                <div className="bg-slate-900 text-white rounded-3xl p-5 md:p-8 border border-slate-800 shadow-2xl">
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                                            <ShieldCheck size={16} />
-                                        </div>
-                                        <h3 className="text-xs font-black uppercase tracking-widest">Admin Control</h3>
+                            {/* Bug Report Module (Always visible if relevant or specifically requested) */}
+                            <div className="bg-slate-900 text-white rounded-3xl p-5 md:p-8 border border-slate-800 shadow-2xl">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                                        <Bug size={16} />
                                     </div>
-                                    <AdminBugReports />
+                                    <h3 className="text-xs font-black uppercase tracking-widest">Bug Fix Module</h3>
                                 </div>
-                            )}
+                                <AdminBugReports />
+                            </div>
                         </div>
                     </div>
                 </div>

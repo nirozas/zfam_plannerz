@@ -21,14 +21,25 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
         const newSubtask: Subtask = {
             id: crypto.randomUUID(),
             title: newTitle.trim(),
-            isCompleted: false
+            isCompleted: false,
+            createdAt: new Date().toISOString()
         };
         onChange([...subtasks, newSubtask]);
         setNewTitle('');
     };
 
     const handleToggle = (id: string) => {
-        onChange(subtasks.map(s => s.id === id ? { ...s, isCompleted: !s.isCompleted } : s));
+        onChange(subtasks.map(s => {
+            if (s.id === id) {
+                const isCompleted = !s.isCompleted;
+                return {
+                    ...s,
+                    isCompleted,
+                    completedAt: isCompleted ? new Date().toISOString() : undefined
+                };
+            }
+            return s;
+        }));
     };
 
     const handleDelete = (id: string) => {
@@ -257,6 +268,19 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                     )}
                                 </div>
                             )}
+                            {/* Timestamps Footer */}
+                            <div className="ml-6 md:ml-8 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60">
+                                {subtask.createdAt && (
+                                    <span className="flex items-center gap-1">
+                                        Added: {new Date(subtask.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                                {subtask.isCompleted && subtask.completedAt && (
+                                    <span className="flex items-center gap-1 text-green-600">
+                                        Done: {new Date(subtask.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     );
                 })}

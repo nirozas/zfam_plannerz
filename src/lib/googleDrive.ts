@@ -103,7 +103,7 @@ const TOKEN_KEY = 'google_drive_token';
 const TOKEN_EXPIRY_KEY = 'google_drive_token_expiry';
 
 export function saveToken(token: any): void {
-    const expiry = Date.now() + (token.expires_in - 60) * 1000;
+    const expiry = Date.now() + (token.expires_in || 3600) * 1000;
     localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
     localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiry));
     (window as any).gapi?.client?.setToken(token);
@@ -118,7 +118,10 @@ export function loadToken(): any | null {
     }
     const raw = localStorage.getItem(TOKEN_KEY);
     const token = raw ? JSON.parse(raw) : null;
-    if (token) (window as any).gapi?.client?.setToken(token);
+    if (token) {
+        (window as any).gapi?.client?.setToken(token);
+        // Force refresh if token is present to ensure gapi is ready
+    }
     return token;
 }
 

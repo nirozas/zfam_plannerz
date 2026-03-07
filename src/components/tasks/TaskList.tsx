@@ -25,7 +25,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
-    const { tasks, categories, selectedCategories, filterType, statusFilter, startDate, endDate, sortBy } = useTaskStore();
+    const { tasks, categories, selectedCategories, filterType, statusFilter, startDate, endDate, sortBy, taskGap } = useTaskStore();
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
@@ -92,19 +92,25 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             return {
                 overdue: [],
                 today: [],
-                upcoming: filtered.filter(t => t.isCompleted || (t.isRecurring && t.completedDates.includes(todayStr)))
+                upcoming: [],
+                completed: filtered.filter(t => t.isCompleted || (t.isRecurring && t.completedDates.includes(todayStr)))
             };
         }
 
         const overdue: Task[] = [];
         const todayTasks: Task[] = [];
         const upcoming: Task[] = [];
+        const completed: Task[] = [];
 
         filtered.forEach(task => {
-            if (!task.isRecurring && task.isCompleted && statusFilter !== 'completed') return;
+            const isTaskDone = task.isCompleted || (task.isRecurring && task.completedDates.includes(todayStr));
+
+            if (isTaskDone) {
+                completed.push(task);
+                return;
+            }
 
             if (task.isRecurring) {
-                if (task.completedDates.includes(todayStr) && statusFilter !== 'completed') return;
                 // Check recurrence bounds
                 if (task.recurrence?.startDate && new Date(task.recurrence.startDate) > today) {
                     upcoming.push(task); return;
@@ -129,8 +135,8 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             else upcoming.push(task);
         });
 
-        return { overdue, today: todayTasks, upcoming };
-    }, [tasks, selectedCategories, filterType, statusFilter, startDate, endDate, searchTerm, todayStr, sortBy]);
+        return { overdue, today: todayTasks, upcoming, completed };
+    }, [tasks, selectedCategories, filterType, statusFilter, startDate, endDate, searchTerm, todayStr, sortBy, today]);
 
     const bgStyle = tintColor ? { backgroundColor: hexToRgba(tintColor, 0.05), minHeight: '100%', borderRadius: '0.75rem', padding: '1rem' } : {};
 
@@ -150,11 +156,11 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 {groupedTasks.overdue.length > 0 && (
                     <div className="mb-4">
                         <div className="text-xs font-bold text-red-500 mb-2 uppercase tracking-wide">Overdue</div>
-                        <div className="space-y-1">{groupedTasks.overdue.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                        <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                     </div>
                 )}
                 {groupedTasks.today.length > 0 ? (
-                    <div className="space-y-1">{groupedTasks.today.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.today.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No tasks due today.</p>
                 )}
@@ -167,7 +173,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Upcoming</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="space-y-1">{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} />)}</div>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No upcoming tasks.</p>
                 )}
@@ -180,7 +186,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-green-600 uppercase tracking-wide mb-3">Completed</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="space-y-1">{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No completed tasks yet.</p>
                 )}
@@ -195,7 +201,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                     <h3 className="text-sm font-bold text-red-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                         Overdue <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{groupedTasks.overdue.length}</span>
                     </h3>
-                    <div className="space-y-1">{groupedTasks.overdue.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}</div>
                 </section>
             )}
 
@@ -203,7 +209,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 <h3 className="text-sm font-bold text-indigo-600 mb-3 uppercase tracking-wide flex items-center gap-2">
                     Today <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">{groupedTasks.today.length}</span>
                 </h3>
-                <div className="space-y-1">
+                <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>
                     {groupedTasks.today.length > 0 ? (
                         groupedTasks.today.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)
                     ) : (
@@ -215,7 +221,18 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             {groupedTasks.upcoming.length > 0 && (
                 <section>
                     <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">Upcoming / Later</h3>
-                    <div className="space-y-1">{groupedTasks.upcoming.map(task => <TaskItem key={task.id} task={task} />)}</div>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(task => <TaskItem key={task.id} task={task} />)}</div>
+                </section>
+            )}
+
+            {groupedTasks.completed.length > 0 && (
+                <section className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                    <h3 className="text-sm font-bold text-green-600 mb-3 uppercase tracking-wide flex items-center gap-2">
+                        Completed <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{groupedTasks.completed.length}</span>
+                    </h3>
+                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>
+                        {groupedTasks.completed.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}
+                    </div>
                 </section>
             )}
         </div>

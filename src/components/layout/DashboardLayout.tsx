@@ -85,7 +85,25 @@ const DashboardLayout: React.FC = () => {
     }
 
     if (!user && location.pathname !== '/') {
-        return <Navigate to="/auth" replace />;
+        // Return a professional looking redirect feedback screen
+        return (
+            <div className="flex flex-col items-center justify-center h-screen w-screen bg-white p-6 text-center animate-in fade-in duration-500">
+                <div className="bg-indigo-50 p-6 rounded-3xl mb-6">
+                    <Loader2 className="animate-spin text-indigo-500" size={40} />
+                </div>
+                <h2 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Secure Vault Restricted</h2>
+                <p className="text-slate-500 text-sm font-medium mb-6">You need to sign in to access your personal workspace.</p>
+                <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest">
+                    <span>Redirecting to Auth Gate</span>
+                    <span className="flex gap-0.5">
+                        <span className="animate-pulse">.</span>
+                        <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
+                        <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
+                    </span>
+                </div>
+                <Navigate to="/auth" state={{ from: location }} replace />
+            </div>
+        );
     }
 
     // Use dvh (dynamic viewport height) with vh fallback so mobile browsers

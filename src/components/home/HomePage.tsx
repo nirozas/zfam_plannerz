@@ -227,7 +227,7 @@ const HomePage: React.FC = () => {
                                 <img
                                     src="/nexus_logo.png"
                                     alt="Zoabi Nexus Vault"
-                                    className="h-32 md:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-3xl"
+                                    className="h-24 md:h-32 lg:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-3xl"
                                 />
                             </div>
                             <div className="welcome-tag">

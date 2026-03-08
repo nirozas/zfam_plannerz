@@ -170,3 +170,37 @@
 .google-btn svg {
     margin-right: 0.5rem;
 }
+
+@media (max-width: 480px),
+(max-height: 700px) {
+    .auth-container {
+        padding: 1.5rem;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .auth-card {
+        padding: 2rem 1.5rem;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        max-width: 100%;
+        border-radius: 24px;
+    }
+
+    .auth-header h2 {
+        font-size: 1.5rem;
+    }
+
+    .auth-header {
+        margin-bottom: 2rem;
+    }
+
+    .auth-form {
+        gap: 1.25rem;
+    }
+
+    .input-group input {
+        padding: 0.875rem 0.875rem 0.875rem 3rem;
+        font-size: 0.95rem;
+    }
+}

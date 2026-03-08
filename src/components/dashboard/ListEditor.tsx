@@ -335,35 +335,35 @@ export const ListEditor: React.FC<ListEditorProps> = ({ card, onBack }) => {
                                 <p className="hidden md:block text-[9px] text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">Workspace</p>
                                 {url && (
                                     <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[9px] md:text-[10px] text-indigo-500 hover:underline font-bold whitespace-nowrap">
-                                        <Globe size={10} /> <span className="hidden xs:inline">Visit Link</span>
+                                        <Globe size={10} /> <span className="hidden sm:inline">Visit Link</span>
                                     </a>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 md:gap-3">
-                        <div className="hidden sm:flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 md:gap-3">
+                        <div className="flex items-center gap-0.5 md:gap-1">
                             <button
                                 onClick={() => setIsBackgroundSettingsOpen(true)}
                                 className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
                                 title="Page Background"
                             >
-                                <Palette size={18} className="md:size-5" />
+                                <Palette size={18} className="size-4 md:size-5" />
                             </button>
                             <button
                                 onClick={() => setShowShare(true)}
                                 className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
                                 title="Share Entry"
                             >
-                                <Share2 size={18} className="md:size-5" />
+                                <Share2 size={18} className="size-4 md:size-5" />
                             </button>
                             <button
                                 onClick={() => setShowMetadata(true)}
                                 className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
                                 title="Entry Metadata"
                             >
-                                <Info size={18} className="md:size-5" />
+                                <Info size={18} className="size-4 md:size-5" />
                             </button>
                         </div>
 

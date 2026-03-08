@@ -20,17 +20,41 @@ const AuthPage: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        if (isSignUp && !formData.fullName.trim()) {
+            setError('Please enter your full name');
+            setLoading(false);
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError('Password must be at least 6 characters');
+            setLoading(false);
+            return;
+        }
+
         try {
             if (isSignUp) {
-                const { error } = await supabase.auth.signUp({
+                const { error, data } = await supabase.auth.signUp({
                     email: formData.email,
                     password: formData.password,
                     options: {
                         data: { full_name: formData.fullName }
                     }
                 });
-                if (error) throw error;
-                alert('Check your email for the confirmation link!');
+
+                if (error) {
+                    if (error.message.includes('Database error')) {
+                        throw new Error('This email might already be registered. Try signing in.');
+                    }
+                    throw error;
+                }
+
+                if (data.user && data.session) {
+                    navigate('/');
+                } else {
+                    alert('Registration successful! Please check your email for a confirmation link before signing in.');
+                    setIsSignUp(false);
+                }
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
                     email: formData.email,
@@ -40,7 +64,8 @@ const AuthPage: React.FC = () => {
                 navigate('/');
             }
         } catch (err: any) {
-            setError(err.message);
+            console.error('[Auth] Error:', err);
+            setError(err.message || 'An unexpected error occurred. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -88,6 +113,7 @@ const AuthPage: React.FC = () => {
                                 value={formData.fullName}
                                 onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                                 required
+                                autoComplete="name"
                             />
                         </div>
                     )}
@@ -100,6 +126,7 @@ const AuthPage: React.FC = () => {
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
                             required
+                            autoComplete="email"
                         />
                     </div>
 
@@ -111,6 +138,7 @@ const AuthPage: React.FC = () => {
                             value={formData.password}
                             onChange={e => setFormData({ ...formData, password: e.target.value })}
                             required
+                            autoComplete={isSignUp ? "new-password" : "current-password"}
                         />
                     </div>
 

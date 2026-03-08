@@ -239,53 +239,53 @@ const CardsPage: React.FC = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden transition-all duration-500" style={backgroundStyle}>
             {/* Header / Breadcrumbs */}
-            <header className={`flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 z-40 transition-all ${backgroundStyle.backgroundImage ? 'bg-white/80 backdrop-blur-md' : 'bg-white'}`}>
-                <nav className="flex items-center space-x-1 md:space-x-2 text-[10px] md:text-sm font-medium overflow-x-auto no-scrollbar py-1">
+            <header className={`flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 sticky top-0 z-40 transition-all ${backgroundStyle.backgroundImage ? 'bg-white/80 backdrop-blur-md' : 'bg-white'}`}>
+                <nav className="flex items-center space-x-1 md:space-x-2 text-[10px] md:text-sm font-medium overflow-x-auto no-scrollbar py-1 min-w-0 flex-1 mr-2 md:mr-4">
                     {breadcrumbs.map((crumb, index) => (
                         <React.Fragment key={crumb.id || 'home'}>
                             {index > 0 && <ChevronRight size={12} className="text-slate-400 shrink-0" />}
                             <button
                                 onClick={() => navigateToFolder(crumb.id)}
-                                className={`hover:text-indigo-600 transition-colors whitespace-nowrap ${index === breadcrumbs.length - 1 ? 'text-slate-900 font-bold' : 'text-slate-500'
+                                className={`hover:text-indigo-600 transition-colors whitespace-nowrap px-1 py-1.5 rounded-lg ${index === breadcrumbs.length - 1 ? 'text-slate-900 font-bold' : 'text-slate-500'
                                     }`}
                             >
-                                {index === 0 ? <Home size={16} className="md:size-[18px]" /> : crumb.title}
+                                {index === 0 ? <Home size={18} className="size-[18px]" /> : crumb.title}
                             </button>
                         </React.Fragment>
                     ))}
                 </nav>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
                     <button
                         onClick={() => setIsBackgroundSettingsOpen(true)}
-                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                        className="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                         title="Page Background"
                     >
-                        <Palette size={20} />
+                        <Palette size={20} className="size-5" />
                     </button>
                     <button
                         onClick={toggleLayoutMode}
-                        className={`p-2 rounded-xl transition-all ${layoutMode === 'free' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                        className={`p-2.5 rounded-xl transition-all ${layoutMode === 'free' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
                         title={layoutMode === 'grid' ? "Switch to Freeboard" : "Switch to Grid"}
                     >
-                        {layoutMode === 'grid' ? <Plus size={20} /> : <Home size={20} />}
+                        {layoutMode === 'grid' ? <Plus size={20} className="size-5" /> : <Home size={20} className="size-5" />}
                     </button>
                     {currentFolder && (
                         <button
                             onClick={() => setActiveShareCard(currentFolder)}
-                            className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                            className="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                             title="Share Folder"
                         >
-                            <Share2 size={20} />
+                            <Share2 size={20} className="size-5" />
                         </button>
                     )}
-                    <div className="w-px h-6 bg-slate-200 mx-1" />
+                    <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="flex items-center gap-2 bg-indigo-600 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-[11px] md:text-sm whitespace-nowrap"
                     >
-                        <Plus size={18} className="md:size-5" />
-                        <span className="hidden xs:inline">Add Item</span>
+                        <Plus size={18} className="size-5" />
+                        <span className="hidden sm:inline">Add Item</span>
                     </button>
                 </div>
             </header>

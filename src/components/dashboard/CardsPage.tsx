@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Plus, ChevronRight, Home, MoreVertical, Folder, FileText,
     Share2, Edit, Trash2, Info, Image as ImageIcon,
-    Link as LinkIcon, Star, MessageSquare, Palette
+    Link as LinkIcon, Star, MessageSquare, Palette, Search, FolderOpen, X as XIcon
 } from 'lucide-react';
 import { Card as CardType } from '../../types/cards';
 import { CardEntryModal } from './CardEntryModal';
@@ -529,6 +529,91 @@ const SortableCard = ({ card, layoutMode, gridGap, updateCard, onCardClick, ...p
     );
 };
 
+// ─────────────────────────────────────────────
+// Move-to-Folder Modal
+// ─────────────────────────────────────────────
+const MoveFolderModal: React.FC<{
+    card: CardType;
+    allFolders: { id: string; title: string }[];
+    onMove: (parentId: string | null) => void;
+    onClose: () => void;
+}> = ({ card, allFolders, onMove, onClose }) => {
+    const [search, setSearch] = useState('');
+    const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        return allFolders.filter(f => f.id !== card.id && f.title.toLowerCase().includes(q));
+    }, [search, allFolders, card.id]);
+
+    return (
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                            <FolderOpen size={16} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-slate-800">Move to Folder</h3>
+                            <p className="text-[10px] text-slate-400 font-bold truncate max-w-[180px]">Moving: {card.title}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                        <XIcon size={16} />
+                    </button>
+                </div>
+
+                {/* Search */}
+                <div className="px-4 pt-3 pb-2">
+                    <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            autoFocus
+                            type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search folders..."
+                            className="w-full pl-8 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent font-medium"
+                        />
+                    </div>
+                </div>
+
+                {/* Folder List */}
+                <div className="max-h-60 overflow-y-auto px-2 pb-3">
+                    {/* Root */}
+                    <button
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        onClick={() => { onMove(null); onClose(); }}
+                    >
+                        <div className="p-1 bg-indigo-50 rounded-lg"><Home size={14} /></div>
+                        Root Home
+                    </button>
+                    {filtered.length === 0 && search && (
+                        <p className="text-center text-xs text-slate-400 font-bold py-4">No folders found</p>
+                    )}
+                    {filtered.map(f => (
+                        <button
+                            key={f.id}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left font-medium"
+                            onClick={() => { onMove(f.id); onClose(); }}
+                        >
+                            <div className="p-1 bg-slate-100 text-slate-500 rounded-lg shrink-0"><Folder size={14} /></div>
+                            <span className="truncate">{f.title}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const CardItem: React.FC<{
     card: CardType;
     onClick: () => void;
@@ -541,6 +626,7 @@ const CardItem: React.FC<{
     allFolders: { id: string; title: string }[];
 }> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize, onMove, allFolders }) => {
     const [showMenu, setShowMenu] = useState(false);
+    const [showMoveModal, setShowMoveModal] = useState(false);
     const isMobile = window.innerWidth < 640;
 
     const cardContent = (
@@ -645,24 +731,16 @@ const CardItem: React.FC<{
                                     <Info size={16} /> Entry Metadata
                                 </button>
                                 <div className="h-px bg-slate-100 my-1" />
-                                <div className="px-4 py-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">Move to Folder</div>
-                                <div className="max-h-32 overflow-y-auto">
-                                    <button
-                                        className="w-full px-4 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 text-left font-bold"
-                                        onClick={(e) => { e.stopPropagation(); onMove(null); setShowMenu(false); }}
-                                    >
-                                        Root Home
-                                    </button>
-                                    {allFolders.filter(f => f.id !== card.id).map(f => (
-                                        <button
-                                            key={f.id}
-                                            className="w-full px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-50 text-left truncate"
-                                            onClick={(e) => { e.stopPropagation(); onMove(f.id); setShowMenu(false); }}
-                                        >
-                                            {f.title}
-                                        </button>
-                                    ))}
-                                </div>
+                                <button
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        setShowMoveModal(true);
+                                    }}
+                                >
+                                    <FolderOpen size={16} /> Move to...
+                                </button>
                                 <div className="h-px bg-slate-100 my-1" />
                                 <button
                                     onClick={(e) => {
@@ -678,6 +756,16 @@ const CardItem: React.FC<{
                         )}
                     </div>
                 </div>
+
+                {/* Move-to Modal */}
+                {showMoveModal && (
+                    <MoveFolderModal
+                        card={card}
+                        allFolders={allFolders}
+                        onMove={onMove}
+                        onClose={() => setShowMoveModal(false)}
+                    />
+                )}
 
                 {card.description && <p className="text-[11px] text-slate-500 line-clamp-2 mb-2 leading-relaxed">{card.description}</p>}
 

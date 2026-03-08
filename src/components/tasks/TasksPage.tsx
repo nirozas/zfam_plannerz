@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     LayoutGrid,
     Plus,
@@ -32,11 +33,13 @@ const TasksPage: React.FC = () => {
         sortBy, setSortBy, taskGap, setTaskGap,
         editingTaskId, setEditingTaskId, tasks
     } = useTaskStore();
+    const { viewMode: urlViewMode } = useParams<{ viewMode: string }>();
+    const navigate = useNavigate();
 
     // Switch to day view and always land on today (calendar clicks use navigateToDay instead)
     const switchToDayView = () => {
         setActiveDayDate(toDateStr(new Date()));
-        setViewMode('day');
+        navigate('/tasks/day');
     };
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -52,6 +55,16 @@ const TasksPage: React.FC = () => {
     useEffect(() => {
         if (user) loadAll();
     }, [user, loadAll]);
+
+    // Sync URL viewMode with store
+    useEffect(() => {
+        if (urlViewMode && ['list', 'day', 'week', 'month'].includes(urlViewMode)) {
+            setViewMode(urlViewMode as any);
+        } else if (!urlViewMode) {
+            // If we land on /tasks, navigate to the current store viewMode (of if not set, list)
+            navigate(`/tasks/${viewMode}`, { replace: true });
+        }
+    }, [urlViewMode, viewMode, setViewMode, navigate]);
 
 
     const renderContent = () => {
@@ -87,7 +100,7 @@ const TasksPage: React.FC = () => {
                 <div className="flex items-center gap-3 md:gap-6">
                     <div className="flex bg-gray-100/80 p-1 rounded-xl">
                         <button
-                            onClick={() => setViewMode('list')}
+                            onClick={() => navigate('/tasks/list')}
                             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-xs font-bold ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <ListTodo size={14} />
@@ -101,14 +114,14 @@ const TasksPage: React.FC = () => {
                             <span className="hidden sm:inline">Day</span>
                         </button>
                         <button
-                            onClick={() => setViewMode('week')}
+                            onClick={() => navigate('/tasks/week')}
                             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-xs font-bold ${viewMode === 'week' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <Columns size={14} />
                             <span className="hidden sm:inline">Week</span>
                         </button>
                         <button
-                            onClick={() => setViewMode('month')}
+                            onClick={() => navigate('/tasks/month')}
                             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-xs font-bold ${viewMode === 'month' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <CalendarDays size={14} />
@@ -213,12 +226,12 @@ const TasksPage: React.FC = () => {
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Tasks Internal Sidebar - hidden on small screens */}
-                <div className="hidden md:block">
+                <div className="hidden md:block flex-shrink-0">
                     <TasksSidebar />
                 </div>
 
-                {/* Task Content */}
-                <div className="flex-1 overflow-y-auto bg-gray-50/50 p-3 md:p-6">
+                {/* Task Content — min-w-0 prevents text from bleeding behind sidebar */}
+                <div className="flex-1 min-w-0 overflow-y-auto bg-gray-50/50 p-3 md:p-6">
                     {renderContent()}
                 </div>
             </div>

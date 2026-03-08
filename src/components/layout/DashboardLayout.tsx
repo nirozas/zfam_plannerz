@@ -181,7 +181,7 @@ const DashboardLayout: React.FC = () => {
             {/* On desktop the sidebar sits in the normal flow (left).
                 On mobile the CSS makes it fixed to the bottom. */}
             <AppSidebar />
-            <main className="flex-1 overflow-hidden relative flex flex-col pb-[65px] md:pb-0">
+            <main className="flex-1 overflow-hidden relative flex flex-col pb-[65px] md:pb-0 min-w-0">
                 <Outlet />
                 <BugReportModal />
             </main>

@@ -118,6 +118,7 @@ function App() {
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/archive" element={<ArchivePage />} />
                         <Route path="/tasks" element={<TasksPage />} />
+                        <Route path="/tasks/:viewMode" element={<TasksPage />} />
                         <Route path="/trips" element={<TripsPage />} />
                         <Route path="/trips/:tripSlug" element={<TripMasterPage />} />
                         <Route path="/cards" element={<CardsPage />} />

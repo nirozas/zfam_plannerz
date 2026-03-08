@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
@@ -185,8 +185,14 @@ export const AppSidebar: React.FC = () => {
                         <div className="text-xs text-gray-500 truncate mb-2">{user?.email}</div>
 
                         {/* Mobile supplementary links */}
-                        <div className="flex flex-col md:hidden border-t border-gray-100 pt-2 gap-1">
-                            <button onClick={handleDriveClick} className="text-xs flex items-center gap-2 py-1.5 font-bold" style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}>
+                        <div className="flex flex-col md:hidden border-t border-gray-100 pt-2 gap-1 px-1">
+                            <button
+                                onClick={() => navigate('/settings')}
+                                className="text-xs flex items-center gap-2 py-2 font-bold text-gray-600 hover:text-indigo-600 transition-colors"
+                            >
+                                <Settings size={14} /> Profile Settings
+                            </button>
+                            <button onClick={handleDriveClick} className="text-xs flex items-center gap-2 py-2 font-bold" style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}>
                                 <HardDrive size={14} /> {signedIn ? 'Drive Connected' : 'Connect Drive'}
                             </button>
                         </div>

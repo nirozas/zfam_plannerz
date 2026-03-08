@@ -31,11 +31,13 @@ export interface Subtask {
     id: string;
     title: string;
     isCompleted: boolean;
-    imageUrl?: string;      // URL of uploaded image
+    imageUrl?: string;      // Legacy single image (kept for back-compat)
+    imageUrls?: string[];   // Multi-image support
     imageWidth?: number;    // Width for resizing
     imageHeight?: number;   // Height for resizing
     dueDate?: string;
     dueTime?: string;
+    note?: string;          // Free-form note on the subtask
     createdAt?: string;     // ISO string
     completedAt?: string;   // ISO string
 }
@@ -51,6 +53,7 @@ export interface Task {
     dueDate?: string;            // ISO string (one-time tasks)
     dueTime?: string;            // Time string (HH:mm)
     completedDates: string[];    // YYYY-MM-DD strings (recurring)
+    completedDateTimes?: Record<string, string>; // dateStr -> full ISO completion time
     isCompleted: boolean;        // one-time tasks
     completedAt?: string;        // ISO string (one-time tasks)
     priority: 'low' | 'medium' | 'high';
@@ -85,7 +88,7 @@ export type TaskSortBy = 'dueDate' | 'name' | 'priority' | 'dateAdded';
 // ─── DB Row → App Type Mappers ───────────────────────────────────────────────
 
 /** Map a raw Supabase tasks row to our Task interface */
-const rowToTask = (row: any, completedDates: string[] = [], attachments: string[] = []): Task => ({
+const rowToTask = (row: any, completedDates: string[] = [], attachments: string[] = [], completedDateTimes: Record<string, string> = {}): Task => ({
     id: row.id,
     title: row.title,
     description: row.description ?? undefined,
@@ -102,6 +105,7 @@ const rowToTask = (row: any, completedDates: string[] = [], attachments: string[
     dueDate: row.due_date ?? undefined,
     dueTime: row.due_time ?? undefined,
     completedDates,
+    completedDateTimes,
     isCompleted: row.is_completed ?? false,
     completedAt: row.completed_at ?? undefined,
     priority: (row.priority as Task['priority']) ?? 'medium',
@@ -152,6 +156,7 @@ interface TaskState {
     loadAll: () => Promise<void>;
 
     addTask: (task: Omit<Task, 'id' | 'dateAdded' | 'completedDates' | 'isCompleted' | 'attachments' | 'assigned_user' | 'assigner'> & { attachmentFiles?: File[] }) => Promise<void>;
+    duplicateTask: (id: string) => Promise<string | null>; // returns new task id
     updateTask: (id: string, updates: Partial<Omit<Task, 'id'>> & { attachmentFiles?: File[] }) => Promise<void>;
     deleteTask: (id: string) => Promise<void>;
     bulkAddTasks: (tasks: any[]) => Promise<void>;
@@ -275,14 +280,20 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 // 3. Completions (batch for all tasks)
                 const { data: completionRows } = await supabase
                     .from('task_completions')
-                    .select('task_id, completed_date')
+                    .select('task_id, completed_date, created_at')
                     .in('task_id', taskIds);
 
                 // Group completions by task_id
                 const completionMap: Record<string, string[]> = {};
+                const completionTimeMap: Record<string, Record<string, string>> = {};
                 for (const row of (completionRows ?? [])) {
                     if (!completionMap[row.task_id]) completionMap[row.task_id] = [];
+                    if (!completionTimeMap[row.task_id]) completionTimeMap[row.task_id] = {};
+
                     completionMap[row.task_id].push(row.completed_date as string);
+                    if (row.created_at) {
+                        completionTimeMap[row.task_id][row.completed_date] = row.created_at;
+                    }
                 }
 
                 // 4. Attachments (batch for all tasks)
@@ -300,10 +311,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                     attachmentMap[row.task_id].push(repairDriveUrl(row.storage_url as string));
                 }
 
-                const tasks: Task[] = taskRows.map((row: any) =>
-                    rowToTask(row, completionMap[row.id] ?? [], attachmentMap[row.id] ?? [])
+                const tasks = (taskRows ?? []).map((row: any) =>
+                    rowToTask(row, completionMap[row.id] ?? [], attachmentMap[row.id] ?? [], completionTimeMap[row.id] ?? {})
                 );
-
                 set({ tasks, isLoading: false });
             } catch (taskErr: any) {
                 console.error('[taskStore] tasks fetch error:', taskErr);
@@ -379,6 +389,72 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
         const task = rowToTask(newRow, [], storageUrls);
         set(state => ({ tasks: [task, ...state.tasks] }));
+    },
+
+    // ── duplicateTask ─────────────────────────────────────────────────────────
+    duplicateTask: async (id: string): Promise<string | null> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const original = get().tasks.find(t => t.id === id);
+        if (!original) return null;
+
+        // Build a fresh copy, resetting completion state
+        const insertRow: Record<string, any> = {
+            user_id: user.id,
+            title: `${original.title} (copy)`,
+            description: original.description ?? null,
+            category_id: original.categoryId || null,
+            priority: original.priority ?? 'medium',
+            is_recurring: original.isRecurring ?? false,
+            date_added: new Date().toISOString(),
+            subtasks: (original.subtasks ?? []).map(s => ({
+                ...s,
+                id: crypto.randomUUID(),
+                isCompleted: false,
+                completedAt: undefined,
+            })),
+            col_span: original.colSpan ?? 1,
+            row_span: original.rowSpan ?? 1,
+            due_date: original.dueDate ?? null,
+            due_time: original.dueTime ?? null,
+            notifications: original.notifications ?? [],
+        };
+
+        if (original.isRecurring && original.recurrence) {
+            insertRow.recurrence_type = original.recurrence.type;
+            insertRow.recurrence_days_of_week = original.recurrence.daysOfWeek ?? null;
+            insertRow.recurrence_day_of_month = original.recurrence.dayOfMonth ?? null;
+            insertRow.recurrence_start_date = original.recurrence.startDate ?? null;
+            insertRow.recurrence_end_date = original.recurrence.endDate ?? null;
+        }
+
+        const { data: newRow, error } = await supabase
+            .from('tasks')
+            .insert(insertRow)
+            .select()
+            .single();
+
+        if (error || !newRow) {
+            console.error('[taskStore] duplicateTask error:', error);
+            return null;
+        }
+
+        // Copy attachment URL rows (no re-upload needed — same URLs)
+        if (original.attachments.length > 0) {
+            await supabase.from('task_attachments').insert(
+                original.attachments.map((url, i) => ({
+                    task_id: newRow.id,
+                    user_id: user.id,
+                    storage_url: url,
+                    sort_order: i,
+                }))
+            );
+        }
+
+        const dupTask = rowToTask(newRow, [], original.attachments);
+        set(state => ({ tasks: [dupTask, ...state.tasks] }));
+        return dupTask.id;
     },
 
     bulkAddTasks: async (tasksData) => {
@@ -596,11 +672,21 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 tasks: state.tasks.map(t => {
                     if (t.id !== id) return t;
                     const already = t.completedDates.includes(dateStr);
+                    const now = new Date().toISOString();
+                    const newTimes = { ...(t.completedDateTimes || {}) };
+
+                    if (already) {
+                        delete newTimes[dateStr];
+                    } else {
+                        newTimes[dateStr] = now;
+                    }
+
                     return {
                         ...t,
                         completedDates: already
                             ? t.completedDates.filter(d => d !== dateStr)
                             : [...t.completedDates, dateStr],
+                        completedDateTimes: newTimes
                     };
                 })
             }));

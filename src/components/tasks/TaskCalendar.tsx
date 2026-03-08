@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTaskStore } from '../../store/taskStore';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isTaskVisibleOnDate } from '../../utils/recurringUtils';
 
@@ -13,7 +14,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskCalendar: React.FC = () => {
-    const { tasks, categories, selectedCategories, navigateToDay, setEditingTaskId } = useTaskStore();
+    const { tasks, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const year = currentDate.getFullYear();
@@ -51,7 +53,10 @@ const TaskCalendar: React.FC = () => {
             cells.push(
                 <div
                     key={d}
-                    onClick={() => navigateToDay(dateStr)}
+                    onClick={() => {
+                        setActiveDayDate(dateStr);
+                        navigate('/tasks/day');
+                    }}
                     className={`min-h-[6rem] border border-gray-100 p-1.5 cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all relative ${isToday ? 'border-indigo-200' : ''}`}
                     style={tintColor ? { backgroundColor: hexToRgba(tintColor, 0.06) } : { backgroundColor: isToday ? hexToRgba('#6366f1', 0.07) : '#fff' }}
                 >

@@ -100,21 +100,35 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
                     {task.priority === 'high' && (
                         <span className="px-1.5 py-0.5 rounded text-red-600 bg-red-50 text-[10px] font-semibold">HIGH</span>
                     )}
+                    {isCompleted && (
+                        <span className="text-green-600 font-medium">
+                            Done: {task.isRecurring
+                                ? (task.completedDateTimes?.[new Date().toISOString().split('T')[0]] ? new Date(task.completedDateTimes[new Date().toISOString().split('T')[0]]).toLocaleString([], { month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
+                                : (task.completedAt ? new Date(task.completedAt).toLocaleString([], { month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')}
+                        </span>
+                    )}
                 </div>
             </div>
 
-            {/* Actions */}
-            <div className={`flex items-center gap-1 ${isHovered ? 'opacity-100' : 'opacity-0'} transition-opacity flex-shrink-0`}>
+            {/* Actions – always visible */}
+            <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                     onClick={handleShare}
-                    className={`p-1 rounded transition-colors ${copied ? 'text-green-500' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                    className={`p-1 rounded transition-colors ${copied ? 'text-green-500' : 'text-gray-300 hover:text-indigo-500 hover:bg-indigo-50'}`}
                     title={copied ? 'Copied!' : 'Share Task'}
                 >
                     <Share2 size={13} />
                 </button>
                 <button
+                    onClick={handleCheck}
+                    className={`p-1 rounded transition-colors ${isCompleted ? 'text-green-500' : 'text-gray-300 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                    title={isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                >
+                    <Check size={13} strokeWidth={3} />
+                </button>
+                <button
                     onClick={(e) => { e.stopPropagation(); if (confirm('Delete task?')) deleteTask(task.id); }}
-                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-rose-50 rounded transition-colors"
+                    className="p-1 text-gray-300 hover:text-red-500 hover:bg-rose-50 rounded transition-colors"
                     title="Delete"
                 >
                     <Trash2 size={13} />

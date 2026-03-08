@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useTaskStore, RecurrenceType, NotificationRule } from '../../store/taskStore';
 import { X, Activity, Image as ImageIcon, Trash2, Loader2, Link as LinkIcon, Check, Bell } from 'lucide-react';
 import TaskRichEditor from './TaskRichEditor';
+import DayOfWeekPicker from './DayOfWeekPicker';
 
 import { usePlannerStore } from '../../store/plannerStore';
 
@@ -26,6 +27,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
     const [assignedTo, setAssignedTo] = useState<string>('');
     const [recurrenceStartDate, setRecurrenceStartDate] = useState('');
     const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+    const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
 
     // Store as File objects — uploaded to Supabase Storage by the store action
     const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
@@ -81,6 +83,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
         setIsRecurring(false);
         setRecurrenceStartDate('');
         setRecurrenceEndDate('');
+        setDaysOfWeek([]);
         setPriority('medium');
         setAssignedTo('');
         setCategoryId(categories[0]?.id || '');
@@ -103,6 +106,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                 notifications,
                 recurrence: isRecurring ? {
                     type: recurrenceType,
+                    daysOfWeek: recurrenceType === 'weekly' && daysOfWeek.length > 0 ? daysOfWeek : undefined,
                     startDate: recurrenceStartDate || undefined,
                     endDate: recurrenceEndDate || undefined,
                 } : undefined,
@@ -309,6 +313,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
                                         <option value="yearly">Yearly</option>
                                     </select>
                                 </div>
+                                {/* Day-of-week picker — shown only for weekly */}
+                                {recurrenceType === 'weekly' && (
+                                    <DayOfWeekPicker selected={daysOfWeek} onChange={setDaysOfWeek} />
+                                )}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Commencement</label>

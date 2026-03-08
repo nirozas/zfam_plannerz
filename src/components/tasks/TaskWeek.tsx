@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTaskStore } from '../../store/taskStore';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { isTaskVisibleOnDate } from '../../utils/recurringUtils';
 
@@ -13,7 +14,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskWeek: React.FC = () => {
-    const { tasks, categories, selectedCategories, navigateToDay, setEditingTaskId } = useTaskStore();
+    const { tasks, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const getWeekStart = (date: Date) => {
@@ -90,7 +92,10 @@ const TaskWeek: React.FC = () => {
                                 key={idx}
                                 className="flex-1 flex flex-col border-r border-gray-200 last:border-r-0 cursor-pointer"
                                 style={isToday ? { backgroundColor: hexToRgba('#6366f1', 0.05) } : {}}
-                                onClick={() => navigateToDay(dateStr)}
+                                onClick={() => {
+                                    setActiveDayDate(dateStr);
+                                    navigate('/tasks/day');
+                                }}
                             >
                                 {/* Day header */}
                                 <div

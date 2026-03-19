@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useTaskStore, Task } from '../../store/taskStore';
-import { Check, Calendar, RotateCcw, Tag, Trash2, Share2, X } from 'lucide-react';
+import { useTaskStore, Task, Subtask } from '../../store/taskStore';
+import { Check, Trash2, Share2, X } from 'lucide-react';
+import { Resizable } from 're-resizable';
 
 interface TaskItemProps {
     task: Task;
@@ -8,13 +9,13 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
-    const { toggleTaskCompletion, toggleTaskFailure, categories, deleteTask, updateTask, setEditingTaskId } = useTaskStore();
-    const [isHovered, setIsHovered] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const { toggleTaskCompletion, toggleTaskFailure, categories, deleteTask, updateTask, setEditingTaskId, setActiveDayDate } = useTaskStore();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isQuickAdding, setIsQuickAdding] = useState(false);
+    const [quickTitle, setQuickTitle] = useState('');
 
     const category = categories.find(c => c.id === task.categoryId);
-    const dateStr = dateContext || new Date().toISOString().split('T')[0];
+    const dateStr = dateContext || (task.dueDate ? task.dueDate.split('T')[0] : new Date().toISOString().split('T')[0]);
     const isCompleted = task.isRecurring
         ? task.completedDates.includes(dateStr)
         : task.isCompleted;
@@ -80,9 +81,21 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
         } else {
             navigator.clipboard.writeText(text);
         }
+    };
 
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleQuickAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!quickTitle.trim()) return;
+        const newSubtask: Subtask = {
+            id: crypto.randomUUID(),
+            title: quickTitle.trim(),
+            isCompleted: false,
+            imageUrls: [],
+            createdAt: new Date().toISOString()
+        };
+        await updateTask(task.id, { subtasks: [...(task.subtasks || []), newSubtask] });
+        setQuickTitle('');
+        setIsQuickAdding(false);
     };
 
     const formatDate = (ds?: string) => {
@@ -91,101 +104,171 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
         return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     };
 
-    // Category color tint for left border
-    const borderColor = category?.color || 'transparent';
+    // Category color tint
+    const catColor = category?.color || '#6366f1';
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
-    return (
+    /** Convert stored spans to pixels — copy logic from TaskMasonry */
+    const spanToPixels = (span: number | undefined, unit: number) => {
+        if (!span || span <= 0) return unit;
+        if (span > 20) return span; // raw px
+        return unit * span;
+    };
+
+    const W = isMobile ? '100% ' as any : spanToPixels(task.colSpan, 280);
+    const H = isMobile ? 'auto' as any : spanToPixels(task.rowSpan, 180);
+
+    const cardContent = (
         <div
-            className={`group flex items-start gap-3 p-3 rounded-lg border-l-4 hover:shadow-sm transition-all cursor-pointer ${isCompleted ? 'bg-green-100 opacity-90' : isFailed ? 'bg-red-100 opacity-90' : 'hover:bg-white'}`}
-            style={{ borderLeftColor: borderColor, backgroundColor: (!isCompleted && !isFailed && isHovered) ? '#fff' : undefined }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={() => setEditingTaskId(task.id)}
+            className={`group h-full w-full flex flex-col rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-200 cursor-pointer relative ${isCompleted ? 'bg-green-100' : isFailed ? 'bg-red-100' : 'bg-white'}`}
+            style={{
+                outline: isCompleted || isFailed ? 'none' : `1px solid ${catColor}30`,
+            }}
+            onClick={() => {
+                setActiveDayDate(dateStr);
+                setEditingTaskId(task.id);
+            }}
         >
-            {/* Checkbox - Increased hit area for mobile */}
-            <div className="relative z-10 p-1 -m-1" onClick={e => e.stopPropagation()}>
-                <button
-                    onClick={handleCheck}
-                    className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isCompleted
-                        ? 'text-white'
-                        : 'border-gray-300 hover:border-indigo-400 text-transparent'
-                        }`}
-                    style={isCompleted ? { backgroundColor: borderColor, borderColor: borderColor } : {}}
-                >
-                    <Check size={14} strokeWidth={3} />
-                </button>
-            </div>
+            {/* Left strip indicator */}
+            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: catColor }}></div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${isCompleted ? 'text-green-800 line-through' : isFailed ? 'text-red-800 line-through' : 'text-gray-800'}`}>
-                    {task.title}
-                </div>
-
-                {task.description && (
-                    <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">{task.description}</div>
+            <div className={`flex flex-col h-full ${isCompleted || isFailed ? 'opacity-90' : ''}`}>
+                {/* Cover Image (from first attachment) */}
+                {task.attachments && task.attachments.length > 0 && (
+                    <div className={`${isMobile ? 'h-24' : 'h-32'} w-full flex-shrink-0 relative bg-gray-200 border-b border-gray-50`}>
+                        <img 
+                            src={task.attachments[0]} 
+                            alt="cover" 
+                            referrerPolicy="no-referrer" 
+                            loading="lazy" 
+                            className="w-full h-full object-cover" 
+                        />
+                    </div>
                 )}
 
-                <div className="flex items-center flex-wrap gap-2 mt-1.5 text-xs">
-                    {task.dueDate && (
-                        <span className="flex items-center gap-1 text-gray-400">
-                            <Calendar size={11} /> {formatDate(task.dueDate)}
-                        </span>
+                <div className="p-4 flex flex-col flex-1 min-h-0">
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className={`font-bold leading-tight text-sm md:text-base flex-1 min-w-0 ${isCompleted ? 'line-through text-green-800' : isFailed ? 'line-through text-red-800' : 'text-gray-800'}`}>
+                            {task.title}
+                        </h3>
+                        {/* Status Checkbox (Corner) */}
+                        <div onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={handleCheck}
+                                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isCompleted ? 'text-white' : 'border-gray-200 text-transparent'}`}
+                                style={isCompleted ? { backgroundColor: catColor, borderColor: catColor } : {}}
+                            >
+                                <Check size={12} strokeWidth={4} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Description snippet */}
+                    {task.description && (
+                        <div 
+                            className="text-[11px] text-gray-400 mt-2 line-clamp-2"
+                            dangerouslySetInnerHTML={{ __html: task.description.replace(/<[^>]*>?/gm, ' ') }} 
+                        />
                     )}
-                    {task.isRecurring && (
-                        <span className="flex items-center gap-1 text-orange-500">
-                            <RotateCcw size={11} /> {task.recurrence?.type}
-                        </span>
+
+                    {/* Subtasks preview */}
+                    {task.subtasks && task.subtasks.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                            {task.subtasks.slice(0, isMobile ? 3 : Math.max(3, Math.floor((H - 130) / 20))).map(st => {
+                                const isStCompleted = task.isRecurring ? (st.completedDates || []).includes(dateStr) : st.isCompleted;
+                                return (
+                                    <div key={st.id} className="flex items-center gap-2 text-[10px] text-gray-500">
+                                        <div className={`w-2 h-2 rounded-full border ${isStCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
+                                        <span className={`truncate ${isStCompleted ? 'line-through opacity-70' : ''}`}>{st.title}</span>
+                                    </div>
+                                );
+                            })}
+                            {task.subtasks.length > (isMobile ? 3 : Math.max(3, Math.floor((H - 130) / 20))) && (
+                                <div className="text-[9px] text-gray-400 pl-4">+{task.subtasks.length - (isMobile ? 3 : Math.max(3, Math.floor((H - 130) / 20)))} more</div>
+                            )}
+                        </div>
                     )}
-                    {category && (
-                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-white text-[10px] font-medium" style={{ backgroundColor: category.color }}>
-                            <Tag size={9} /> {category.name}
-                        </span>
+
+                    {/* Quick Add Subtask Input */}
+                    {isQuickAdding ? (
+                        <form onSubmit={handleQuickAdd} className="mt-3" onClick={e => e.stopPropagation()}>
+                            <input
+                                type="text"
+                                autoFocus
+                                placeholder="Subtask title..."
+                                value={quickTitle}
+                                onChange={e => setQuickTitle(e.target.value)}
+                                onBlur={() => !quickTitle && setIsQuickAdding(false)}
+                                className="w-full text-[11px] px-2 py-1.5 bg-indigo-50/50 border border-indigo-100 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-medium"
+                            />
+                        </form>
+                    ) : (
+                        <button
+                            onClick={e => { e.stopPropagation(); setIsQuickAdding(true); }}
+                            className="mt-3 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-600 transition-colors flex items-center gap-1 w-fit"
+                        >
+                            + Subtask
+                        </button>
                     )}
-                    {task.priority === 'high' && (
-                        <span className="px-1.5 py-0.5 rounded text-red-600 bg-red-50 text-[10px] font-semibold">HIGH</span>
-                    )}
-                    {isCompleted && (
-                        <span className="text-green-600 font-medium">
-                            Done: {task.isRecurring
-                                ? (task.completedDateTimes?.[new Date().toISOString().split('T')[0]] ? new Date(task.completedDateTimes[new Date().toISOString().split('T')[0]]).toLocaleString([], { month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
-                                : (task.completedAt ? new Date(task.completedAt).toLocaleString([], { month: 'numeric', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')}
-                        </span>
-                    )}
+
+                    <div className="flex-1 min-h-[12px]"></div>
+
+                    {/* Footer */}
+                    <div className="flex flex-col gap-2 mt-auto pt-3 border-t border-gray-50/50">
+                        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+                            {category && <span className="font-bold uppercase tracking-wider" style={{ color: catColor }}>{category.name}</span>}
+                            {task.priority === 'high' && (
+                                <span className="px-1.5 py-0.5 rounded text-red-600 bg-red-50 text-[9px] font-black uppercase">HIGH</span>
+                            )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60 uppercase tracking-tighter">
+                                {task.dateAdded && <span>Added: {new Date(task.dateAdded).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                                {task.dueDate && <span>Due: {formatDate(task.dueDate)}</span>}
+                                {isCompleted && (task.completedAt || (task.isRecurring && task.completedDateTimes?.[dateStr])) && (
+                                    <span className="text-green-600">Done: {new Date(task.completedAt || task.completedDateTimes?.[dateStr] || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                )}
+                                {task.isRecurring && <span className="text-orange-500">{task.recurrence?.type}</span>}
+                            </div>
+                            
+                            {/* Action Buttons (Small) */}
+                            <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                                <button onClick={handleShare} className="p-1 text-gray-300 hover:text-indigo-500 rounded"><Share2 size={12} /></button>
+                                <button onClick={handleFail} className={`p-1 rounded ${isFailed ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:text-red-500'}`}><X size={13} strokeWidth={3} /></button>
+                                <button onClick={handleDeleteClick} className="p-1 text-gray-300 hover:text-red-500 rounded"><Trash2 size={12} /></button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    );
 
-            {/* Actions – always visible */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                    onClick={handleShare}
-                    className={`p-1 rounded transition-colors ${copied ? 'text-green-500' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
-                    title={copied ? 'Copied!' : 'Share Task'}
-                >
-                    <Share2 size={13} />
-                </button>
-                <button
-                    onClick={handleFail}
-                    className={`p-1 rounded transition-colors ${isFailed ? 'text-red-600 bg-red-100' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
-                    title={isFailed ? 'Unmark failed' : 'Mark as failed'}
-                >
-                    <X size={13} strokeWidth={3} />
-                </button>
-                <button
-                    onClick={handleCheck}
-                    className={`p-1 rounded transition-colors ${isCompleted ? 'text-green-600 bg-green-100' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'}`}
-                    title={isCompleted ? 'Unmark complete' : 'Mark complete'}
-                >
-                    <Check size={13} strokeWidth={3} />
-                </button>
-                <button
-                    onClick={handleDeleteClick}
-                    className="p-1 text-gray-300 hover:text-red-500 hover:bg-rose-50 rounded transition-colors"
-                    title="Delete"
-                >
-                    <Trash2 size={13} />
-                </button>
-            </div>
+    if (isMobile) {
+        return <div className="w-full">{cardContent}</div>;
+    }
+
+    return (
+        <Resizable
+            size={{ width: W, height: H }}
+            minWidth={240}
+            minHeight={140}
+            onResizeStop={(_e, _direction, ref) => {
+                updateTask(task.id, {
+                    colSpan: ref.offsetWidth,
+                    rowSpan: ref.offsetHeight,
+                });
+            }}
+            enable={{
+                top: false, right: true, bottom: true, left: false,
+                topRight: false, bottomRight: true, bottomLeft: false, topLeft: false
+            }}
+            handleClasses={{
+                bottomRight: 'w-4 h-4 bg-gray-400/20 rounded-full cursor-nwse-resize hover:bg-indigo-500 transition-colors absolute bottom-1 right-1 z-20'
+            }}
+            className="group/resizer"
+        >
+            {cardContent}
 
             {/* Recurring Task Delete Modal */}
             {showDeleteModal && (
@@ -234,7 +317,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
                     </div>
                 </div>
             )}
-        </div>
+        </Resizable>
     );
 };
 

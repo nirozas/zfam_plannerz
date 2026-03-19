@@ -156,11 +156,11 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 {groupedTasks.overdue.length > 0 && (
                     <div className="mb-4">
                         <div className="text-xs font-bold text-red-500 mb-2 uppercase tracking-wide">Overdue</div>
-                        <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                        <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                     </div>
                 )}
                 {groupedTasks.today.length > 0 ? (
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.today.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.today.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No tasks due today.</p>
                 )}
@@ -173,7 +173,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Upcoming</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No upcoming tasks.</p>
                 )}
@@ -186,7 +186,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-green-600 uppercase tracking-wide mb-3">Completed</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No completed tasks yet.</p>
                 )}
@@ -201,7 +201,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                     <h3 className="text-sm font-bold text-red-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                         Overdue <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{groupedTasks.overdue.length}</span>
                     </h3>
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}</div>
                 </section>
             )}
 
@@ -209,7 +209,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 <h3 className="text-sm font-bold text-indigo-600 mb-3 uppercase tracking-wide flex items-center gap-2">
                     Today <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">{groupedTasks.today.length}</span>
                 </h3>
-                <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>
+                <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>
                     {groupedTasks.today.length > 0 ? (
                         groupedTasks.today.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)
                     ) : (
@@ -221,7 +221,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             {groupedTasks.upcoming.length > 0 && (
                 <section>
                     <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">Upcoming / Later</h3>
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(task => <TaskItem key={task.id} task={task} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(task => <TaskItem key={task.id} task={task} />)}</div>
                 </section>
             )}
 
@@ -230,7 +230,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                     <h3 className="text-sm font-bold text-green-600 mb-3 uppercase tracking-wide flex items-center gap-2">
                         Completed <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{groupedTasks.completed.length}</span>
                     </h3>
-                    <div className="flex flex-col" style={{ gap: `${taskGap}px` }}>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>
                         {groupedTasks.completed.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}
                     </div>
                 </section>

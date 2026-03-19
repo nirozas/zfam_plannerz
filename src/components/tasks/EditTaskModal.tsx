@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTaskStore, Task, Subtask, RecurrenceType, NotificationRule } from '../../store/taskStore';
-import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, ArrowLeft, Bell, Copy, Share2 } from 'lucide-react';
+import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, ArrowLeft, Copy, Share2 } from 'lucide-react';
 import TaskRichEditor from './TaskRichEditor';
 import SubtaskList from './SubtaskList';
 import DayOfWeekPicker from './DayOfWeekPicker';
@@ -220,255 +220,350 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                     <div className="w-full p-6 md:p-10 space-y-10">
 
                         {/* Title */}
-                        {isEditing ? (
-                            <input type="text" required value={title} onChange={e => setTitle(e.target.value)}
-                                className="w-full text-3xl font-black border-none focus:ring-0 placeholder-gray-200 bg-transparent text-gray-800"
-                                placeholder="Task title..." autoFocus />
-                        ) : (
-                            <h2 className="text-3xl font-black text-gray-800 leading-tight">{title}</h2>
-                        )}
+                        <div className="space-y-2">
+                            {isEditing ? (
+                                <input type="text" required value={title} onChange={e => setTitle(e.target.value)}
+                                    className="w-full text-3xl font-black border-none focus:ring-0 placeholder-gray-200 bg-transparent text-gray-800"
+                                    placeholder="Task title..." autoFocus />
+                            ) : (
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <h2 className="text-3xl font-black text-gray-800 leading-tight">{title}</h2>
+                                    {activeDayDate && (
+                                        <div className="text-indigo-600 bg-indigo-50 px-4 py-1.5 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-sm border border-indigo-100/30 flex items-center gap-2 w-fit">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div>
+                                            Viewing: {(() => {
+                                                const [y, m, d] = activeDayDate.split('-').map(Number);
+                                                return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+                                            })()}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!isEditing && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                    {task.dateAdded && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Added: {new Date(task.dateAdded).toLocaleString()}
+                                        </div>
+                                    )}
+                                    {task.dueDate && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-400"></div> Due: {new Date(task.dueDate.includes('T') ? task.dueDate : `${task.dueDate}T12:00:00Z`).toLocaleString()}
+                                        </div>
+                                    )}
+                                    {isCompleted && (task.completedAt || (task.isRecurring && task.completedDateTimes?.[activeDayDate || ''])) && (
+                                        <div className="flex items-center gap-2 text-green-600">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Done: {new Date(task.completedAt || task.completedDateTimes?.[activeDayDate || ''] || '').toLocaleString()}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* ── 2-col: Description + Meta sidebar ── */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* ── 2-col: Subtasks (Main) + Sidebar (Right) ── */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-                            {/* Description (left, 2/3 width) */}
-                            <div className="lg:col-span-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 mb-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Description
-                                </label>
-                                <div className={`${isEditing ? 'border border-gray-100 rounded-xl bg-white shadow-sm' : ''} transition-all`}>
-                                    <TaskRichEditor value={description} onChange={setDescription}
-                                        placeholder="No description provided." readOnly={!isEditing} />
+                            {/* Main Area (left, 2/3 width) */}
+                            <div className="lg:col-span-2 space-y-10 order-2 lg:order-1">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Subtasks List
+                                        </div>
+                                        {subtasks.length > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-green-50 text-green-600 px-3 py-1 rounded-xl text-[9px] font-black border border-green-100 shadow-sm">
+                                                    {subtasks.filter(s => task.isRecurring && activeDayDate ? (s.completedDates || []).includes(activeDayDate) : s.isCompleted).length} / {subtasks.length} Completed
+                                                </div>
+                                                <div className="bg-red-50 text-red-600 px-3 py-1 rounded-xl text-[9px] font-black border border-red-100 shadow-sm">
+                                                    {subtasks.filter(s => task.isRecurring && activeDayDate ? (s.failedDates || []).includes(activeDayDate) : s.isFailed).length} / {subtasks.length} Failed
+                                                </div>
+                                            </div>
+                                        )}
+                                    </label>
+                                    <div className="bg-white rounded-2xl p-5 border border-indigo-100/30 shadow-sm">
+                                        <SubtaskList
+                                            subtasks={subtasks}
+                                            onChange={isEditing ? setSubtasks : handleSubtaskChangeInView}
+                                            readOnly={!isEditing}
+                                            dateContext={dateStr}
+                                            isRecurring={task.isRecurring}
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Gallery (view mode) */}
+                                {!isEditing && savedUrls.length > 0 && (
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Gallery
+                                        </label>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {savedUrls.map((url, i) => (
+                                                <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border border-gray-100 group">
+                                                    <img src={url} alt="" referrerPolicy="no-referrer"
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Meta sidebar (right, 1/3 width) */}
-                            <div className="flex flex-col gap-6">
+                            <div className="lg:col-span-1 space-y-6 order-1 lg:order-2 flex flex-col">
+                                <div className="bg-slate-100/80 border border-slate-200 p-8 rounded-[40px] space-y-8 h-fit lg:sticky lg:top-24 shadow-inner">
+                                    {/* Task Performance (Sticky Stats) */}
+                                    {isRecurring && !isEditing && (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {/* Weekly Stats */}
+                                            <div className="bg-white/80 p-5 rounded-[28px] border border-slate-200/50 space-y-3 shadow-sm">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                    <div className="w-1 h-1 rounded-full bg-indigo-300"></div> Weekly Performance
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-green-50 text-green-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-green-100/50">
+                                                        {(() => {
+                                                            const [Ay, Am, Ad] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const activeDate = new Date(Ay, Am - 1, Ad);
+                                                            const startOfWeek = new Date(activeDate);
+                                                            startOfWeek.setDate(activeDate.getDate() - activeDate.getDay());
+                                                            startOfWeek.setHours(0,0,0,0);
+                                                            const endOfWeek = new Date(startOfWeek);
+                                                            endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                                            endOfWeek.setHours(23,59,59,999);
+                                                            
+                                                            return task.completedDates.filter(d => {
+                                                                const [y, m, d_] = d.split('-').map(Number);
+                                                                const date = new Date(y, m - 1, d_);
+                                                                return date >= startOfWeek && date <= endOfWeek;
+                                                            }).length;
+                                                        })()} Done
+                                                    </div>
+                                                    <div className="flex-1 bg-red-50 text-red-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-red-100/50">
+                                                            {(() => {
+                                                            const [Ay, Am, Ad] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const activeDate = new Date(Ay, Am - 1, Ad);
+                                                            const startOfWeek = new Date(activeDate);
+                                                            startOfWeek.setDate(activeDate.getDate() - activeDate.getDay());
+                                                            startOfWeek.setHours(0,0,0,0);
+                                                            const endOfWeek = new Date(startOfWeek);
+                                                            endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                                            endOfWeek.setHours(23,59,59,999);
+                                                            
+                                                            return (task.failedDates || []).filter(d => {
+                                                                const [y, m, d_] = d.split('-').map(Number);
+                                                                const date = new Date(y, m - 1, d_);
+                                                                return date >= startOfWeek && date <= endOfWeek;
+                                                            }).length;
+                                                        })()} Fail
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                {/* Metadata card */}
-                                <div className="bg-white border border-gray-100 p-5 rounded-2xl space-y-6">
+                                            {/* Monthly Stats */}
+                                            <div className="bg-white/80 p-5 rounded-[28px] border border-slate-200/50 space-y-3 shadow-sm">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                    <div className="w-1 h-1 rounded-full bg-indigo-300"></div> Monthly Performance
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-green-50 text-green-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-green-100/50">
+                                                        {(() => {
+                                                            const [Ay, Am] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const month = Am - 1;
+                                                            const year = Ay;
+                                                            return task.completedDates.filter(d => {
+                                                                const [y, m] = d.split('-').map(Number);
+                                                                return (m - 1) === month && y === year;
+                                                            }).length;
+                                                        })()} Done
+                                                    </div>
+                                                    <div className="flex-1 bg-red-50 text-red-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-red-100/50">
+                                                        {(() => {
+                                                            const [Ay, Am] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const month = Am - 1;
+                                                            const year = Ay;
+                                                            return (task.failedDates || []).filter(d => {
+                                                                const [y, m] = d.split('-').map(Number);
+                                                                return (m - 1) === month && y === year;
+                                                            }).length;
+                                                        })()} Fail
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Category */}
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Category</label>
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Category Identity
+                                        </label>
                                         {isEditing ? (
                                             <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
-                                                className="w-full bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-100">
+                                                className="w-full bg-white border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all">
                                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </select>
                                         ) : (
-                                            <div className="flex items-center gap-2 text-sm font-bold text-gray-700 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 w-fit">
-                                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: category?.color }}></div>
-                                                {category?.name}
+                                            <div className="flex items-center gap-3 text-[13px] font-black text-slate-700 bg-white px-5 py-4 rounded-[22px] border border-slate-200/50 w-full shadow-sm group hover:border-indigo-200 transition-all">
+                                                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: category?.color }}></div>
+                                                <span className="uppercase tracking-widest">{category?.name}</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Priority */}
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Priority</label>
-                                        {isEditing ? (
-                                            <select value={priority} onChange={e => setPriority(e.target.value as any)}
-                                                className="w-full bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-100">
-                                                <option value="low">Low</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="high">High</option>
-                                            </select>
-                                        ) : (
-                                            <div className={`text-[10px] font-black uppercase tracking-tighter px-2.5 py-1 rounded-full w-fit
-                                                ${priority === 'high' ? 'bg-red-50 text-red-500' : priority === 'medium' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'}`}>
-                                                {priority} priority
-                                            </div>
-                                        )}
+                                    {/* Description */}
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Core Description
+                                        </label>
+                                        <div className={`${isEditing ? 'border-2 border-indigo-100 rounded-[28px] bg-white shadow-xl' : 'bg-white/40 backdrop-blur-sm rounded-[28px] border border-white/60 p-1'} transition-all min-h-[120px] overflow-hidden`}>
+                                            <TaskRichEditor value={description} onChange={setDescription}
+                                                placeholder="Clarify the mission details..." readOnly={!isEditing} />
+                                        </div>
                                     </div>
 
-                                    {/* Timing */}
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Timing</label>
-                                        {!isEditing ? (
-                                            <div className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                                                <Clock size={16} className="text-gray-400" />
-                                                {isRecurring
-                                                    ? `${recurrenceType} recurrence${recurrenceType === 'weekly' && daysOfWeek.length > 0 ? ' · ' + daysOfWeek.map(d => ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d]).join('/') : ''}`
-                                                    : dueDate
-                                                        ? `${new Date(dueDate.includes('T') ? dueDate : `${dueDate}T12:00:00Z`).toLocaleDateString()} ${task.dueTime || ''}`
-                                                        : 'No date set'}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)}
-                                                        className="w-4 h-4 rounded-md text-indigo-600 focus:ring-offset-0 focus:ring-indigo-200 border-gray-200 bg-gray-50" />
-                                                    <span className="text-xs font-bold text-gray-500 group-hover:text-gray-700 transition-colors">Repeat this task</span>
-                                                </label>
-                                                {isRecurring ? (
-                                                    <div className="space-y-3 pl-6 border-l-2 border-indigo-100">
-                                                        <div>
-                                                            <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Frequency</label>
+                                    {/* Meta info */}
+                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t border-gray-200">
+                                        {/* Priority */}
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Priority Level</label>
+                                            {isEditing ? (
+                                                <select value={priority} onChange={e => setPriority(e.target.value as any)}
+                                                    className="w-full bg-white border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-100">
+                                                    <option value="low">Low</option>
+                                                    <option value="medium">Medium</option>
+                                                    <option value="high">High</option>
+                                                </select>
+                                            ) : (
+                                                <div className={`text-[10px] font-black uppercase tracking-tighter px-3 py-1.5 rounded-full w-fit shadow-sm
+                                                    ${priority === 'high' ? 'bg-red-500 text-white' : priority === 'medium' ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                                    {priority} priority
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Timing */}
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Operation Timing</label>
+                                            {!isEditing ? (
+                                                <div className="space-y-4">
+                                                    <div className="text-xs font-bold text-gray-600 flex items-center gap-2 bg-white/50 p-3 rounded-xl border border-gray-100">
+                                                        <Clock size={16} className="text-indigo-400" />
+                                                        {isRecurring
+                                                            ? `${recurrenceType} recurrence${recurrenceType === 'weekly' && daysOfWeek.length > 0 ? ' · ' + daysOfWeek.map(d => ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d]).join('/') : ''}`
+                                                            : dueDate
+                                                                ? `${new Date(dueDate.includes('T') ? dueDate : `${dueDate}T12:00:00Z`).toLocaleDateString()} ${task.dueTime || ''}`
+                                                                : 'No schedule'}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4 bg-white/50 p-3 rounded-2xl border border-gray-200">
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)}
+                                                            className="w-4 h-4 rounded-md text-indigo-600 focus:ring-offset-0 focus:ring-indigo-200 border-gray-300 bg-white" />
+                                                        <span className="text-xs font-bold text-gray-500 group-hover:text-gray-700 transition-colors">Recurring Operation</span>
+                                                    </label>
+                                                    {isRecurring ? (
+                                                        <div className="space-y-3 pl-4 border-l-2 border-indigo-200">
                                                             <select value={recurrenceType} onChange={e => setRecurrenceType(e.target.value as RecurrenceType)}
-                                                                className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 py-1.5 px-3">
+                                                                className="w-full bg-white border-gray-100 rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 py-1.5 px-3">
                                                                 <option value="daily">Daily</option>
                                                                 <option value="weekly">Weekly</option>
                                                                 <option value="monthly">Monthly</option>
                                                                 <option value="yearly">Yearly</option>
                                                             </select>
-                                                        </div>
-                                                        {/* Day-of-week picker — shown when weekly */}
-                                                        {recurrenceType === 'weekly' && (
-                                                            <DayOfWeekPicker selected={daysOfWeek} onChange={setDaysOfWeek} />
-                                                        )}
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Start Date</label>
+                                                            {recurrenceType === 'weekly' && <DayOfWeekPicker selected={daysOfWeek} onChange={setDaysOfWeek} />}
+                                                            <div className="space-y-2">
                                                                 <input type="date" value={recurrenceStartDate} onChange={e => setRecurrenceStartDate(e.target.value)}
-                                                                    className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 py-1.5 px-3" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">End Date (Opt)</label>
-                                                                <input type="date" value={recurrenceEndDate} onChange={e => setRecurrenceEndDate(e.target.value)}
-                                                                    className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 py-1.5 px-3" />
+                                                                    className="w-full bg-white border-gray-100 rounded-lg text-[10px] font-bold py-1.5 px-3" />
+                                                                <input type="date" value={recurrenceEndDate} placeholder="End date" onChange={e => setRecurrenceEndDate(e.target.value)}
+                                                                    className="w-full bg-white border-gray-100 rounded-lg text-[10px] font-bold py-1.5 px-3" title="End Date" />
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="pl-2 space-y-3">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Deadline Date</label>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            <div className="grid grid-cols-1 gap-2">
                                                                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                                                                    className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 px-3 py-2" />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Time</label>
+                                                                    className="w-full bg-white border-gray-100 rounded-lg text-xs font-bold px-3 py-2" />
                                                                 <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)}
-                                                                    className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-100 px-3 py-2" />
+                                                                    className="w-full bg-white border-gray-100 rounded-lg text-xs font-bold px-3 py-2" />
                                                             </div>
-                                                        </div>
-                                                        {/* Reminders */}
-                                                        <div>
-                                                            <label className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase mb-2">
-                                                                <Bell size={12} /> Reminders
-                                                            </label>
                                                             <div className="flex flex-col gap-2">
                                                                 {notifications.map((n, i) => (
-                                                                    <div key={i} className="flex items-center justify-between bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-indigo-100">
+                                                                    <div key={i} className="flex items-center justify-between bg-white text-indigo-700 text-[10px] font-black px-3 py-2 rounded-lg border border-indigo-100 shadow-sm">
                                                                         <span>{n.value} {n.type.replace('_before', ' before')}</span>
-                                                                        <button type="button" onClick={() => setNotifications(prev => prev.filter((_, idx) => idx !== i))} className="text-indigo-400 hover:text-indigo-600">
+                                                                        <button type="button" onClick={() => setNotifications(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600">
                                                                             <X size={12} />
                                                                         </button>
                                                                     </div>
                                                                 ))}
-                                                                <select className="w-full bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 text-xs font-bold text-gray-600 focus:bg-white"
+                                                                <select className="w-full bg-white border border-gray-100 rounded-lg px-2 py-2 text-[10px] font-black text-gray-500 uppercase tracking-widest"
                                                                     value=""
                                                                     onChange={(e) => {
                                                                         if (!e.target.value) return;
-                                                                        const val = parseInt(e.target.value.split('-')[0]);
-                                                                        const type = e.target.value.split('-')[1] as any;
-                                                                        setNotifications([...notifications, { id: crypto.randomUUID(), type, value: val }]);
+                                                                        const [valStr, type] = e.target.value.split('-');
+                                                                        setNotifications([...notifications, { id: crypto.randomUUID(), type: type as any, value: parseInt(valStr) }]);
                                                                     }}>
-                                                                    <option value="">+ Add reminder...</option>
-                                                                    <option value="15-minutes_before">15 minutes before</option>
-                                                                    <option value="30-minutes_before">30 minutes before</option>
-                                                                    <option value="1-hours_before">1 hour before</option>
-                                                                    <option value="1-days_before">1 day before</option>
+                                                                    <option value="">+ Notification</option>
+                                                                    <option value="15-minutes_before">15m</option>
+                                                                    <option value="30-minutes_before">30m</option>
+                                                                    <option value="1-hours_before">1h</option>
+                                                                    <option value="1-days_before">1d</option>
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>{/* end meta card */}
-
-                                <div className="flex-1"></div>
-
-                                {/* Attachments (edit mode only) */}
-                                {isEditing && (
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-2">Attachments</label>
-                                        <div className="space-y-3">
-                                            <div className="flex gap-2">
-                                                <button type="button" onClick={() => fileInputRef.current?.click()}
-                                                    className="flex-1 flex items-center justify-center gap-2 border-2 border-dashed border-gray-100 rounded-xl py-3 text-xs font-bold text-gray-400 hover:border-indigo-200 hover:text-indigo-500 transition-all bg-gray-50/30">
-                                                    <Plus size={14} /> Images
-                                                </button>
-                                                <button type="button" onClick={() => setShowUrlInput(!showUrlInput)}
-                                                    className="flex-1 flex items-center justify-center gap-2 border-2 border-dashed border-gray-100 rounded-xl py-3 text-xs font-bold text-gray-400 hover:border-slate-200 hover:text-slate-500 transition-all bg-gray-50/30">
-                                                    <LinkIcon size={14} /> URL
-                                                </button>
-                                            </div>
-                                            {showUrlInput && (
-                                                <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200">
-                                                    <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-                                                        className="flex-1 bg-gray-50 border-none rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-100"
-                                                        placeholder="Paste image URL..."
-                                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddUrl())} />
-                                                    <button type="button" onClick={handleAddUrl} className="bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700">Add</button>
+                                                    )}
                                                 </div>
                                             )}
-                                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" multiple />
-                                            <div className="flex flex-wrap gap-2">
-                                                {savedUrls.map((url, i) => (
-                                                    <div key={`saved-${i}`} className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-100 group">
-                                                        <img src={url} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                                                        <button type="button" onClick={() => setSavedUrls(p => p.filter((_, j) => j !== i))}
-                                                            className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <X size={12} className="text-white" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                {newPreviews.map((src, i) => (
-                                                    <div key={`new-${i}`} className="relative w-12 h-12 rounded-lg overflow-hidden border border-indigo-200 group">
-                                                        <img src={src} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                                                        <button type="button" onClick={() => removeNewFile(i)}
-                                                            className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <X size={12} className="text-white" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Duplicate / delete moved to top */}
-
-                            </div>{/* end meta sidebar */}
-                        </div>{/* end 3-col grid */}
-
-                        {/* ── Full-width: Subtasks ── */}
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Subtasks
-                            </label>
-                            <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100/50">
-                                <SubtaskList
-                                    subtasks={subtasks}
-                                    onChange={isEditing ? setSubtasks : handleSubtaskChangeInView}
-                                    readOnly={!isEditing}
-                                    dateContext={dateStr}
-                                    isRecurring={task.isRecurring}
-                                />
+                                    {/* Attachments */}
+                                    {isEditing && (
+                                        <div className="pt-6 border-t border-gray-200">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-3">Attachments</label>
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                                                        className="flex items-center justify-center gap-2 border border-gray-300 rounded-xl py-2.5 text-[10px] font-black uppercase bg-white hover:bg-gray-50 transition-colors">
+                                                        <Plus size={12} /> Files
+                                                    </button>
+                                                    <button type="button" onClick={() => setShowUrlInput(!showUrlInput)}
+                                                        className="flex items-center justify-center gap-2 border border-gray-300 rounded-xl py-2.5 text-[10px] font-black uppercase bg-white hover:bg-gray-50 transition-colors">
+                                                        <LinkIcon size={12} /> Link
+                                                    </button>
+                                                </div>
+                                                {showUrlInput && (
+                                                    <div className="flex gap-2">
+                                                        <input type="text" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+                                                            className="flex-1 bg-white border-gray-200 rounded-xl px-3 py-2 text-xs font-bold"
+                                                            placeholder="URL..."
+                                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddUrl())} />
+                                                        <button type="button" onClick={handleAddUrl} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Add</button>
+                                                    </div>
+                                                )}
+                                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" multiple />
+                                                <div className="flex flex-wrap gap-2">
+                                                    {[...savedUrls, ...newPreviews].map((url, i) => (
+                                                        <div key={i} className="relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 group">
+                                                            <img src={url} alt="" className="w-full h-full object-cover" />
+                                                            <button type="button" onClick={() => i < savedUrls.length ? setSavedUrls(p => p.filter((_, j) => j !== i)) : removeNewFile(i - savedUrls.length)}
+                                                                className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X size={12} className="text-white" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* ── Full-width: Gallery (view mode) ── */}
-                        {!isEditing && savedUrls.length > 0 && (
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Gallery
-                                </label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {savedUrls.map((url, i) => (
-                                        <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border border-gray-100 group">
-                                            <img src={url} alt="" referrerPolicy="no-referrer"
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
 
                     </div>{/* end w-full wrapper */}
                 </div>{/* end overflow-y-auto */}

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Subtask } from '../../store/taskStore';
 import {
-    Plus, X, Circle, CheckCircle, Image as ImageIcon, Link as LinkIcon,
-    CalendarDays, Clock, MessageSquare
+    Plus, Circle, CheckCircle, Image as ImageIcon, 
+    Clock, GripVertical, Pencil
 } from 'lucide-react';
+import SubtaskEditorModal from './SubtaskEditorModal';
 
 interface SubtaskListProps {
     subtasks: Subtask[];
@@ -22,18 +23,15 @@ const getImages = (s: Subtask): string[] => {
 
 const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly = false, dateContext, isRecurring = false }) => {
     const [newTitle, setNewTitle] = useState('');
-    const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
-    const [editingTitleValue, setEditingTitleValue] = useState('');
-    const [editingImageUrlId, setEditingImageUrlId] = useState<string | null>(null);
-    const [editingTimingId, setEditingTimingId] = useState<string | null>(null);
-    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-    const [urlInput, setUrlInput] = useState('');
+    const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
     const [zoom, setZoom] = useState<number>(() => {
         const saved = localStorage.getItem('subtask-zoom');
         return saved ? parseFloat(saved) : 1;
     });
     const zoomRef = useRef(zoom);
     const gridWrapperRef = useRef<HTMLDivElement>(null);
+    const draggedId = useRef<string | null>(null);
+    const dragOverId = useRef<string | null>(null);
 
     // Touch pinch tracking
     const lastTouchDist = useRef<number | null>(null);
@@ -47,7 +45,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
         localStorage.setItem('subtask-zoom', clamped.toString());
     }, []);
 
-    // Ctrl + wheel → zoom (trackpad pinch sends ctrlKey wheel events)
+    // Ctrl + wheel → zoom
     useEffect(() => {
         const el = gridWrapperRef.current;
         if (!el) return;
@@ -64,6 +62,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
 
     // Touch pinch → zoom
     const getTouchDist = (e: React.TouchEvent) => {
+        if (e.touches.length < 2) return 0;
         const [t1, t2] = [e.touches[0], e.touches[1]];
         const dx = t1.clientX - t2.clientX;
         const dy = t1.clientY - t2.clientY;
@@ -80,6 +79,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
         if (e.touches.length !== 2 || lastTouchDist.current === null) return;
         e.preventDefault();
         const newDist = getTouchDist(e);
+        if (newDist === 0) return;
         const ratio = newDist / lastTouchDist.current;
         applyZoom(zoomRef.current * ratio);
         lastTouchDist.current = newDist;
@@ -87,22 +87,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
 
     const handleTouchEnd = () => { lastTouchDist.current = null; };
 
-    const handleTitleEdit = (id: string, currentTitle: string) => {
-        setEditingTitleId(id);
-        setEditingTitleValue(currentTitle);
-        setEditingImageUrlId(null);
-        setEditingTimingId(null);
-        setEditingNoteId(null);
-    };
-
-    const handleTitleSave = (id: string) => {
-        if (editingTitleValue.trim()) {
-            onChange(subtasks.map(s => s.id === id ? { ...s, title: editingTitleValue.trim() } : s));
-        }
-        setEditingTitleId(null);
-    };
-
-    const handleAdd = (e: React.FormEvent) => {
+    const handleAdd = (e: React.FormEvent, position: 'top' | 'bottom' = 'bottom') => {
         e.preventDefault();
         if (!newTitle.trim()) return;
         const newSubtask: Subtask = {
@@ -112,32 +97,78 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
             imageUrls: [],
             createdAt: new Date().toISOString()
         };
-        onChange([...subtasks, newSubtask]);
+        if (position === 'top') {
+            onChange([newSubtask, ...subtasks]);
+        } else {
+            onChange([...subtasks, newSubtask]);
+        }
         setNewTitle('');
     };
 
-    const handleToggle = (id: string) => {
+    const handleToggle = (id: string, type: 'complete' | 'fail' = 'complete') => {
         onChange(subtasks.map(s => {
             if (s.id === id) {
                 if (isRecurring && dateContext) {
                     const cd = s.completedDates || [];
+                    const fd = s.failedDates || [];
                     const isCompletedOnDate = cd.includes(dateContext);
+                    const isFailedOnDate = fd.includes(dateContext);
+                    
+                    const newCTimes = { ...(s.completedDateTimes || {}) };
+                    const newFTimes = { ...(s.failedDateTimes || {}) };
                     const now = new Date().toISOString();
-                    const newTimes = { ...(s.completedDateTimes || {}) };
-                    if (isCompletedOnDate) {
-                        delete newTimes[dateContext];
-                    } else {
-                        newTimes[dateContext] = now;
-                    }
 
-                    return {
-                        ...s,
-                        completedDates: isCompletedOnDate ? cd.filter(d => d !== dateContext) : [...cd, dateContext],
-                        completedDateTimes: newTimes
-                    };
+                    if (type === 'complete') {
+                        if (isCompletedOnDate) {
+                            delete newCTimes[dateContext];
+                            return { ...s, completedDates: cd.filter(d => d !== dateContext), completedDateTimes: newCTimes };
+                        } else {
+                            newCTimes[dateContext] = now;
+                            delete newFTimes[dateContext]; // Unfail if completing
+                            return { 
+                                ...s, 
+                                completedDates: [...cd, dateContext], completedDateTimes: newCTimes, 
+                                failedDates: fd.filter(d => d !== dateContext), failedDateTimes: newFTimes,
+                                isFailed: false // Clear general flag
+                            };
+                        }
+                    } else {
+                        // Fail
+                        if (isFailedOnDate) {
+                            delete newFTimes[dateContext];
+                            return { ...s, failedDates: fd.filter(d => d !== dateContext), failedDateTimes: newFTimes };
+                        } else {
+                            newFTimes[dateContext] = now;
+                            delete newCTimes[dateContext]; // Uncomplete if failing
+                            return { 
+                                ...s, 
+                                failedDates: [...fd, dateContext], failedDateTimes: newFTimes, 
+                                completedDates: cd.filter(d => d !== dateContext), completedDateTimes: newCTimes,
+                                isCompleted: false // Clear general flag
+                            };
+                        }
+                    }
                 } else {
-                    const isCompleted = !s.isCompleted;
-                    return { ...s, isCompleted, completedAt: isCompleted ? new Date().toISOString() : undefined };
+                    // One-time
+                    if (type === 'complete') {
+                        const next = !s.isCompleted;
+                        return { 
+                            ...s, 
+                            isCompleted: next, 
+                            isFailed: next ? false : s.isFailed, 
+                            completedAt: next ? new Date().toISOString() : undefined,
+                            failedAt: next ? undefined : s.failedAt // Clear fail time if completed
+                        };
+                    } else {
+                        const next = !s.isFailed;
+                        return { 
+                            ...s, 
+                            isFailed: next, 
+                            isCompleted: next ? false : s.isCompleted,
+                            failedAt: next ? new Date().toISOString() : undefined,
+                            completedAt: next ? undefined : s.completedAt // Clear completion time if failed
+                        };
+                    }
                 }
             }
             return s;
@@ -145,78 +176,70 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
     };
 
     const handleDelete = (id: string) => {
-        if (readOnly) return;
         onChange(subtasks.filter(s => s.id !== id));
     };
 
-    const handleImageUrlAdd = (id: string) => {
-        if (!urlInput.trim()) return;
-        onChange(subtasks.map(s => s.id === id ? {
-            ...s,
-            imageUrls: [...(s.imageUrls || []), urlInput.trim()]
-        } : s));
-        setEditingImageUrlId(null);
-        setUrlInput('');
+    const handleSubtaskUpdate = (updated: Subtask) => {
+        onChange(subtasks.map(s => s.id === updated.id ? updated : s));
     };
 
-    const handleImageUpload = (id: string, file: File) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            onChange(subtasks.map(s => s.id === id ? {
-                ...s,
-                imageUrls: [...(s.imageUrls || []), reader.result as string]
-            } : s));
-        };
-        reader.readAsDataURL(file);
+    const handleDragStart = (id: string) => { draggedId.current = id; };
+    const handleDragOver = (e: React.DragEvent, id: string) => {
+        e.preventDefault();
+        dragOverId.current = id;
     };
-
-    const handleRemoveImage = (id: string, imgIndex: number) => {
-        onChange(subtasks.map(s => {
-            if (s.id !== id) return s;
-            const imgs = getImages(s);
-            imgs.splice(imgIndex, 1);
-            return { ...s, imageUrls: imgs, imageUrl: undefined };
-        }));
+    const handleDrop = () => {
+        const from = draggedId.current;
+        const to = dragOverId.current;
+        if (!from || !to || from === to) return;
+        const fromIdx = subtasks.findIndex(s => s.id === from);
+        const toIdx = subtasks.findIndex(s => s.id === to);
+        if (fromIdx === -1 || toIdx === -1) return;
+        const newList = [...subtasks];
+        const [moved] = newList.splice(fromIdx, 1);
+        newList.splice(toIdx, 0, moved);
+        onChange(newList);
+        draggedId.current = null;
+        dragOverId.current = null;
     };
-
-    const handleNoteChange = (id: string, note: string) => {
-        onChange(subtasks.map(s => s.id === id ? { ...s, note } : s));
-    };
-
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
     return (
         <div className="subtask-list">
-            {/* Toolbar: Add form + zoom hint badge */}
-            <div className="flex items-center gap-2 mb-4">
-                {!readOnly && (
-                    <form onSubmit={handleAdd} className="flex items-center gap-2 flex-1 bg-white/50 p-2 rounded-xl border border-gray-100 shadow-sm">
-                        <Plus size={16} className="text-indigo-500 shrink-0" />
+            <div className="flex flex-col gap-3 mb-6">
+                <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-indigo-500">
+                         <Plus size={14} /> New Objective
+                     </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <form onSubmit={(e) => handleAdd(e, 'bottom')} className="flex items-center gap-2 flex-1 bg-white/50 p-2.5 rounded-2xl border border-gray-100 shadow-sm w-full group focus-within:border-indigo-200 transition-all">
+                        <Plus size={18} className="text-indigo-400 shrink-0 group-hover:rotate-90 transition-transform" />
                         <input
                             type="text"
                             value={newTitle}
                             onChange={e => setNewTitle(e.target.value)}
-                            placeholder="Add a subtask..."
+                            placeholder="Type new objective..."
                             className="flex-1 text-sm bg-transparent border-none focus:outline-none placeholder-gray-400 font-bold"
                         />
-                        <button type="submit" className="shrink-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">
-                            Add
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                            <button type="button" onClick={(e) => handleAdd(e as any, 'top')} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-95">Top</button>
+                            <button type="submit" className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">Bottom</button>
+                        </div>
                     </form>
-                )}
-                {/* Zoom indicator — double-click to reset */}
-                <button
-                    type="button"
-                    onDoubleClick={() => applyZoom(1)}
-                    title="Pinch or Ctrl+scroll to zoom · Double-click to reset"
-                    className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm text-[10px] font-black text-gray-400 hover:text-indigo-500 hover:border-indigo-200 transition-all select-none"
-                >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
-                    {Math.round(zoom * 100)}%
-                </button>
+
+                    <button
+                        type="button"
+                        onDoubleClick={() => applyZoom(1)}
+                        title="Pinch or Ctrl+scroll to zoom · Double-click to reset"
+                        className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-2xl px-4 py-2.5 shadow-sm text-[10px] font-black text-gray-400 hover:text-indigo-500 hover:border-indigo-200 transition-all select-none"
+                    >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+                        {Math.round(zoom * 100)}%
+                    </button>
+                </div>
             </div>
 
-            {/* Pinch-to-zoom wrapper — handles Ctrl+wheel (trackpad) and touch pinch */}
             <div
                 ref={gridWrapperRef}
                 onTouchStart={handleTouchStart}
@@ -224,230 +247,148 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                 onTouchEnd={handleTouchEnd}
                 style={{ touchAction: 'pan-y' }}
             >
-                {/* Responsive auto-grid — scaled via transform for reliability */}
                 <div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 transition-transform duration-200"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 transition-transform duration-200"
                     style={{
                         transform: `scale(${zoom})`,
                         transformOrigin: 'top left',
                         width: `${(1 / zoom) * 100}%`,
-                        marginBottom: `${(zoom - 1) * 100}%`, // Compensate for visual scale to prevent overlap below
+                        marginBottom: `${(zoom - 1) * 100}%`,
                     }}
                 >
-                    {subtasks.map(subtask => {
-                        const images = getImages(subtask);
-                        const isEditingNote = editingNoteId === subtask.id;
+                    {subtasks.map((subtask) => {
                         const isSubtaskCompleted = isRecurring && dateContext
                             ? (subtask.completedDates || []).includes(dateContext)
                             : subtask.isCompleted;
+                        const isSubtaskFailed = isRecurring && dateContext
+                            ? (subtask.failedDates || []).includes(dateContext)
+                            : subtask.isFailed;
+                        const images = getImages(subtask);
 
                         return (
                             <div
                                 key={subtask.id}
-                                className="group flex flex-col gap-2 bg-white/60 p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:border-indigo-100"
+                                draggable={true}
+                                onDragStart={() => handleDragStart(subtask.id)}
+                                onDragOver={(e) => handleDragOver(e, subtask.id)}
+                                onDrop={handleDrop}
+                                onDoubleClick={() => setEditingSubtask(subtask)}
+                                className={`group flex flex-col gap-3 p-4 rounded-[28px] border border-gray-100 shadow-sm hover:shadow-xl transition-all hover:border-indigo-200 active:cursor-grabbing ${
+                                    isSubtaskCompleted ? 'bg-green-50/60' : 
+                                    isSubtaskFailed ? 'bg-red-50/60' : 'bg-white/90'
+                                }`}
                             >
-                                {/* Top row: checkbox + title + action buttons */}
-                                <div className="flex items-start gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleToggle(subtask.id)}
-                                        className={`flex-shrink-0 transition-all mt-0.5 ${isSubtaskCompleted ? 'text-indigo-600 scale-110' : 'text-gray-300 hover:text-indigo-400 hover:scale-110'}`}
-                                    >
-                                        {isSubtaskCompleted
-                                            ? <CheckCircle size={isMobile ? 18 : 20} />
-                                            : <Circle size={isMobile ? 18 : 20} />
-                                        }
-                                    </button>
-                                    {/* Title — clickable to edit when not readOnly */}
-                                    {!readOnly && editingTitleId === subtask.id ? (
-                                        <input
-                                            type="text"
-                                            autoFocus
-                                            value={editingTitleValue}
-                                            onChange={e => setEditingTitleValue(e.target.value)}
-                                            onBlur={() => handleTitleSave(subtask.id)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') handleTitleSave(subtask.id);
-                                                if (e.key === 'Escape') setEditingTitleId(null);
-                                            }}
-                                            className="flex-1 bg-indigo-50 border border-indigo-200 rounded-lg px-2 py-0.5 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                                        />
-                                    ) : (
-                                        <span
-                                            className={`flex-1 break-words leading-tight pt-0.5 font-semibold text-[13px] md:text-sm transition-all ${isSubtaskCompleted ? 'text-gray-400 line-through opacity-50' : 'text-gray-700'} ${!readOnly ? 'cursor-pointer hover:text-indigo-600' : ''}`}
-                                            onClick={() => !readOnly && handleTitleEdit(subtask.id, subtask.title)}
-                                            title={readOnly ? undefined : 'Click to edit'}
+                                <div className="flex items-start gap-3">
+                                    <div className="flex flex-col items-center gap-2 mt-0.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); handleToggle(subtask.id, 'complete'); }}
+                                            className={`flex-shrink-0 transition-all ${isSubtaskCompleted ? 'text-green-600 scale-110' : 'text-gray-200 hover:text-green-400 hover:scale-110'}`}
                                         >
+                                            <CheckCircle size={22} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); handleToggle(subtask.id, 'fail'); }}
+                                            className={`flex-shrink-0 transition-all ${isSubtaskFailed ? 'text-red-600 scale-110' : 'text-gray-200 hover:text-red-400 hover:scale-110'}`}
+                                        >
+                                            <Circle size={18} className="relative flex items-center justify-center">
+                                                <Plus size={12} className="rotate-45" />
+                                            </Circle>
+                                        </button>
+                                        <div className="h-2"></div>
+                                        <GripVertical size={14} className="text-gray-100 cursor-grab active:cursor-grabbing hover:text-indigo-400 transition-colors" />
+                                    </div>
+
+                                    <div 
+                                        className="flex-1 min-w-0 cursor-pointer" 
+                                        onClick={() => setEditingSubtask(subtask)}
+                                    >
+                                        <span className={`block break-words leading-tight pt-1 font-black text-sm md:text-[15px] transition-all ${
+                                            isSubtaskCompleted ? 'text-green-800 line-through' : 
+                                            isSubtaskFailed ? 'text-red-800 line-through opacity-70' : 'text-gray-700'
+                                        } group-hover:text-indigo-600`}>
                                             {subtask.title}
                                         </span>
-                                    )}
+                                        {subtask.note && (
+                                            <p className="mt-1.5 text-[11px] text-gray-400 line-clamp-2 italic font-medium leading-relaxed">{subtask.note}</p>
+                                        )}
+                                    </div>
 
-                                    {!readOnly && (
-                                        <div className={`flex items-center gap-1 transition-opacity ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                            {/* Upload image */}
-                                            <label className="cursor-pointer text-gray-400 hover:text-indigo-500 p-1.5 rounded-lg hover:bg-indigo-50 transition-all" title="Upload Image">
-                                                <ImageIcon size={13} />
-                                                <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => {
-                                                    if (!e.target.files) return;
-                                                    Array.from(e.target.files).forEach(f => handleImageUpload(subtask.id, f));
-                                                }} />
-                                            </label>
-                                            {/* URL */}
-                                            <button type="button" title="Add Image URL"
-                                                onClick={() => {
-                                                    setEditingImageUrlId(editingImageUrlId === subtask.id ? null : subtask.id);
-                                                    setEditingTimingId(null);
-                                                    setEditingNoteId(null);
-                                                    setUrlInput('');
-                                                }}
-                                                className={`p-1.5 rounded-lg transition-all ${editingImageUrlId === subtask.id ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                            ><LinkIcon size={13} /></button>
-                                            {/* Note */}
-                                            <button type="button" title="Add/Edit Note"
-                                                onClick={() => {
-                                                    setEditingNoteId(isEditingNote ? null : subtask.id);
-                                                    setEditingImageUrlId(null);
-                                                    setEditingTimingId(null);
-                                                }}
-                                                className={`p-1.5 rounded-lg transition-all ${isEditingNote ? 'text-emerald-600 bg-emerald-50' : 'text-gray-400 hover:text-emerald-500 hover:bg-emerald-50'}`}
-                                            ><MessageSquare size={13} /></button>
-                                            {/* Due date */}
-                                            <button type="button" title="Due Date & Time"
-                                                onClick={() => {
-                                                    setEditingTimingId(editingTimingId === subtask.id ? null : subtask.id);
-                                                    setEditingImageUrlId(null);
-                                                    setEditingNoteId(null);
-                                                }}
-                                                className={`p-1.5 rounded-lg transition-all ${editingTimingId === subtask.id ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
-                                            ><CalendarDays size={13} /></button>
-                                            {/* Delete */}
-                                            <button type="button" title="Delete"
-                                                onClick={() => handleDelete(subtask.id)}
-                                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-all"
-                                            ><X size={13} /></button>
-                                        </div>
+                                    {subtask.priority && (
+                                        <div className={`shrink-0 w-2.5 h-2.5 rounded-full mt-2.5 shadow-sm ${
+                                            subtask.priority === 'high' ? 'bg-red-500 animate-pulse' : 
+                                            subtask.priority === 'medium' ? 'bg-amber-500' : 'bg-blue-500'
+                                        }`} />
                                     )}
                                 </div>
 
-                                {/* Note display */}
-                                {subtask.note && !isEditingNote && (
-                                    <div
-                                        className="ml-6 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-2 font-medium leading-snug cursor-pointer hover:bg-emerald-100 transition-colors"
-                                        onClick={() => !readOnly && setEditingNoteId(subtask.id)}
-                                        title={readOnly ? undefined : 'Click to edit note'}
-                                    >
-                                        {subtask.note}
-                                    </div>
-                                )}
-
-                                {/* Note editor */}
-                                {isEditingNote && (
-                                    <div className="ml-6 animate-in slide-in-from-top-2 duration-200">
-                                        <textarea
-                                            autoFocus
-                                            value={subtask.note || ''}
-                                            onChange={e => handleNoteChange(subtask.id, e.target.value)}
-                                            placeholder="Write a note for this subtask..."
-                                            rows={3}
-                                            className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-[11px] font-medium text-emerald-800 placeholder-emerald-300 outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
-                                        />
-                                        <div className="flex justify-end gap-2 mt-1.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditingNoteId(null)}
-                                                className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all"
-                                            >Done</button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* URL Input */}
-                                {editingImageUrlId === subtask.id && (
-                                    <div className="ml-6 flex gap-2 animate-in slide-in-from-top-2 duration-200 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                                        <input
-                                            type="text"
-                                            value={urlInput}
-                                            onChange={e => setUrlInput(e.target.value)}
-                                            placeholder="Paste image URL..."
-                                            className="flex-1 bg-white border-none rounded-md px-2 py-1 text-[10px] md:text-xs font-bold focus:ring-1 focus:ring-indigo-200"
-                                            autoFocus
-                                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleImageUrlAdd(subtask.id))}
-                                        />
-                                        <button onClick={() => handleImageUrlAdd(subtask.id)} className="bg-indigo-600 text-white px-2 md:px-3 rounded-md text-[9px] md:text-[10px] font-black uppercase tracking-widest">Apply</button>
-                                        <button onClick={() => setEditingImageUrlId(null)} className="text-gray-400 hover:text-gray-600 px-1"><X size={12} /></button>
-                                    </div>
-                                )}
-
-                                {/* Timing editor */}
-                                {editingTimingId === subtask.id && (
-                                    <div className="ml-6 animate-in slide-in-from-top-2 duration-200 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex flex-col sm:flex-row gap-3">
-                                        <div className="flex-1">
-                                            <label className="text-[9px] font-black uppercase text-indigo-400 mb-1 block flex items-center gap-1"><CalendarDays size={10} /> Deadline</label>
-                                            <input type="date" value={subtask.dueDate || ''}
-                                                onChange={e => onChange(subtasks.map(s => s.id === subtask.id ? { ...s, dueDate: e.target.value } : s))}
-                                                className="w-full bg-white border-none rounded-md px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-300 text-indigo-900 shadow-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-[9px] font-black uppercase text-indigo-400 mb-1 block flex items-center gap-1"><Clock size={10} /> Time</label>
-                                            <input type="time" value={subtask.dueTime || ''}
-                                                onChange={e => onChange(subtasks.map(s => s.id === subtask.id ? { ...s, dueTime: e.target.value } : s))}
-                                                className="w-full bg-white border-none rounded-md px-2 py-1 text-xs font-bold focus:ring-1 focus:ring-indigo-300 text-indigo-900 shadow-sm"
-                                            />
-                                        </div>
-                                        <button onClick={() => setEditingTimingId(null)} className="sm:mt-4 bg-indigo-600 text-white px-3 py-1.5 rounded-md text-[10px] font-black uppercase shadow-sm whitespace-nowrap">Done</button>
-                                    </div>
-                                )}
-
-                                {/* Timing display */}
-                                {editingTimingId !== subtask.id && (subtask.dueDate || subtask.dueTime) && (
-                                    <div className="ml-6 flex items-center gap-3 text-[9px] md:text-[10px] font-bold text-indigo-400">
-                                        {subtask.dueDate && <span className="flex items-center gap-1"><CalendarDays size={10} /> {new Date(`${subtask.dueDate}T12:00:00Z`).toLocaleDateString()}</span>}
-                                        {subtask.dueTime && <span className="flex items-center gap-1"><Clock size={10} /> {subtask.dueTime}</span>}
-                                    </div>
-                                )}
-
-                                {/* Images gallery — full image, no crop */}
-                                {images.length > 0 && (
-                                    <div className="mt-1 flex flex-col gap-2">
-                                        {images.map((imgUrl, imgIdx) => (
-                                            <div key={imgIdx} className="relative group/img rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                                <img src={imgUrl} alt="attachment" className="w-full h-auto max-h-[80vh] object-contain" />
-                                                {!readOnly && (
-                                                    <button
-                                                        onClick={() => handleRemoveImage(subtask.id, imgIdx)}
-                                                        className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-all shadow"
-                                                    ><X size={10} /></button>
-                                                )}
+                                <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100/50">
+                                    <div className="flex items-center gap-3">
+                                        {(subtask.dueDate || subtask.dueTime) && (
+                                            <div className="flex items-center gap-1.5 text-[9px] font-black text-indigo-500 uppercase tracking-[0.1em] bg-indigo-50 px-2.5 py-1 rounded-full">
+                                                <Clock size={10} />
+                                                {subtask.dueTime || 'All Day'}
                                             </div>
-                                        ))}
+                                        )}
+                                        {images.length > 0 && (
+                                            <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-[0.1em] bg-gray-50 px-2 py-1 rounded-full">
+                                                <ImageIcon size={10} /> {images.length}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                    
+                                    {!readOnly && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setEditingSubtask(subtask); }}
+                                            className="p-2 rounded-xl text-gray-300 hover:text-white hover:bg-indigo-600 opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                    )}
+                                </div>
 
-                                {/* Timestamps */}
-                                <div className="ml-6 mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60">
+                                {/* Timestamps Strip */}
+                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60">
                                     {subtask.createdAt && (
-                                        <span>Added: {new Date(subtask.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="flex items-center gap-1">
+                                            Added: {new Date(subtask.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     )}
                                     {isSubtaskCompleted && subtask.completedAt && !isRecurring && (
-                                        <span className="text-green-600">Done: {new Date(subtask.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="text-green-600 flex items-center gap-1">
+                                            Done: {new Date(subtask.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     )}
                                     {isSubtaskCompleted && isRecurring && dateContext && subtask.completedDateTimes?.[dateContext] && (
-                                        <span className="text-green-600">Done: {new Date(subtask.completedDateTimes[dateContext]).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="text-green-600 flex items-center gap-1">
+                                            Done: {new Date(subtask.completedDateTimes![dateContext]).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                    {isSubtaskFailed && subtask.failedAt && !isRecurring && (
+                                        <span className="text-red-600 flex items-center gap-1">
+                                            Failed: {new Date(subtask.failedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                    {isSubtaskFailed && isRecurring && dateContext && subtask.failedDateTimes?.[dateContext] && (
+                                        <span className="text-red-600 flex items-center gap-1">
+                                            Failed: {new Date(subtask.failedDateTimes![dateContext]).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     )}
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-                {/* end scaled grid */}
             </div>
-            {/* end pinch wrapper */}
 
-            {subtasks.length > 0 && (
-                <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-gray-400 border-t border-gray-100 pt-3">
-                    {subtasks.filter(s => isRecurring && dateContext ? (s.completedDates || []).includes(dateContext) : s.isCompleted).length} / {subtasks.length} Completed
-                </div>
+            {editingSubtask && (
+                <SubtaskEditorModal
+                    subtask={editingSubtask}
+                    onSave={handleSubtaskUpdate}
+                    onDelete={handleDelete}
+                    onClose={() => setEditingSubtask(null)}
+                />
             )}
         </div>
     );

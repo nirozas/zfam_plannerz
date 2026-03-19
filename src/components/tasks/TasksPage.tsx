@@ -31,7 +31,8 @@ const TasksPage: React.FC = () => {
         statusFilter, setStatusFilter,
         startDate, endDate, setDateRange,
         sortBy, setSortBy, taskGap, setTaskGap,
-        editingTaskId, setEditingTaskId, tasks
+        editingTaskId, setEditingTaskId, tasks,
+        categories, selectedCategories, setSelectedCategories, toggleSelectedCategory
     } = useTaskStore();
     const { viewMode: urlViewMode } = useParams<{ viewMode: string }>();
     const navigate = useNavigate();
@@ -221,6 +222,30 @@ const TasksPage: React.FC = () => {
                         <Plus size={16} /> <span className="hidden sm:inline">New</span>
                     </button>
                 </div>
+            </div>
+
+            {/* Mobile Category Filter Bar */}
+            <div className="md:hidden flex items-center gap-2 overflow-x-auto px-4 py-3 bg-white border-b border-gray-50 scrollbar-hide no-scrollbar">
+                <button
+                    onClick={() => setSelectedCategories([])}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategories.length === 0 ? 'bg-slate-900 shadow-sm text-white' : 'bg-gray-100 text-gray-500'}`}
+                >
+                    All
+                </button>
+                {categories.map(cat => {
+                    const isSelected = selectedCategories.includes(cat.id);
+                    return (
+                        <button
+                            key={cat.id}
+                            onClick={() => toggleSelectedCategory(cat.id)}
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${isSelected ? 'shadow-sm text-white' : 'bg-gray-100 text-gray-400 opacity-60'}`}
+                            style={isSelected ? { backgroundColor: cat.color } : {}}
+                        >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : ''}`} style={!isSelected ? { backgroundColor: cat.color } : {}} />
+                            {cat.name}
+                        </button>
+                    );
+                })}
             </div>
 
 

@@ -63,11 +63,11 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
-                    to="/planners"
+                    to="/trips"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Planners"
+                    title="Adventure Trips"
                 >
-                    <LayoutGrid size={22} />
+                    <Plane size={22} />
                 </NavLink>
 
                 <NavLink
@@ -87,21 +87,14 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
-                    to="/trips"
+                    to="/planners"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Adventure Trips"
+                    title="Planners"
                 >
-                    <Plane size={22} />
+                    <LayoutGrid size={22} />
                 </NavLink>
 
-                {/* Bug Report Button */}
-                <button
-                    onClick={() => setBugModalOpen(true)}
-                    className="nav-item text-rose-400 hover:text-rose-600 transition-colors mt-auto mb-2"
-                    title="Report a Bug"
-                >
-                    <Bug size={22} />
-                </button>
+                {/* Bug Report Button - Moved to popover */}
 
                 {/* Google Drive Connection Button (Desktop) */}
                 <div className="relative group/drive hidden md:flex">
@@ -184,13 +177,19 @@ export const AppSidebar: React.FC = () => {
                         <div className="font-bold text-sm truncate">{displayName}</div>
                         <div className="text-xs text-gray-500 truncate mb-2">{user?.email}</div>
 
-                        {/* Mobile supplementary links */}
-                        <div className="flex flex-col md:hidden border-t border-gray-100 pt-2 gap-1 px-1">
+                        {/* Profile supplementary links */}
+                        <div className="flex flex-col border-t border-gray-100 pt-2 gap-1 px-1">
                             <button
                                 onClick={() => navigate('/settings')}
                                 className="text-xs flex items-center gap-2 py-2 font-bold text-gray-600 hover:text-indigo-600 transition-colors"
                             >
                                 <Settings size={14} /> Profile Settings
+                            </button>
+                            <button
+                                onClick={() => setBugModalOpen(true)}
+                                className="text-xs flex items-center gap-2 py-2 font-bold text-rose-400 hover:text-rose-600 transition-colors"
+                            >
+                                <Bug size={14} /> Report a Bug
                             </button>
                             <button onClick={handleDriveClick} className="text-xs flex items-center gap-2 py-2 font-bold" style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}>
                                 <HardDrive size={14} /> {signedIn ? 'Drive Connected' : 'Connect Drive'}

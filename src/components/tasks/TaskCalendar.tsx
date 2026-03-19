@@ -89,7 +89,11 @@ const TaskCalendar: React.FC = () => {
                                         color: dynamicText,
                                         borderLeft: `3px solid ${dynamicBorder}`,
                                     }}
-                                    onClick={e => { e.stopPropagation(); setEditingTaskId(task.id); }}
+                                    onClick={e => { 
+                                        e.stopPropagation(); 
+                                        setActiveDayDate(dateStr);
+                                        setEditingTaskId(task.id); 
+                                    }}
                                 >
                                     {task.title}
                                 </div>

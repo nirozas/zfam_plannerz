@@ -125,7 +125,11 @@ const TaskWeek: React.FC = () => {
                                                 key={task.id}
                                                 className={`p-2 rounded-lg shadow-sm border-l-4 hover:shadow-md transition-shadow ${isCompleted ? 'bg-green-100 opacity-90' : isFailed ? 'bg-red-100 opacity-90' : 'bg-white'}`}
                                                 style={{ borderLeftColor: catColor }}
-                                                onClick={e => { e.stopPropagation(); setEditingTaskId(task.id); }}
+                                                onClick={e => { 
+                                                    e.stopPropagation(); 
+                                                    setActiveDayDate(dateStr);
+                                                    setEditingTaskId(task.id); 
+                                                }}
                                             >
                                                 {task.attachments && task.attachments.length > 0 && (
                                                     <div className="mb-1.5 h-16 w-full rounded overflow-hidden">

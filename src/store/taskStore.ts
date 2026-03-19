@@ -34,10 +34,15 @@ export interface Subtask {
     isCompleted: boolean;
     completedDates?: string[]; // New: dates when this recurring subtask is completed
     completedDateTimes?: Record<string, string>; // New: specific times when completed
+    isFailed?: boolean;      // New: failed state
+    failedDates?: string[];  // New: dates when failed (recurring)
+    failedDateTimes?: Record<string, string>; // New: specific times when failed
+    failedAt?: string;       // New: ISO string for one-time failed state
     imageUrl?: string;      // Legacy single image (kept for back-compat)
     imageUrls?: string[];   // Multi-image support
     imageWidth?: number;    // Width for resizing
     imageHeight?: number;   // Height for resizing
+    priority?: 'low' | 'medium' | 'high'; // New: optional priority
     dueDate?: string;
     dueTime?: string;
     note?: string;          // Free-form note on the subtask
@@ -546,7 +551,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         if (rest.priority !== undefined) updateRow.priority = rest.priority;
         if (rest.isCompleted !== undefined) {
             updateRow.is_completed = rest.isCompleted;
-            updateRow.completed_at = rest.isCompleted ? new Date().toISOString() : null;
         }
         if (rest.dueDate !== undefined) updateRow.due_date = rest.dueDate ?? null;
         if (rest.subtasks !== undefined) updateRow.subtasks = rest.subtasks;
@@ -680,7 +684,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 .from('tasks')
                 .update({
                     is_completed: newCompleted,
-                    completed_at: completedAt,
                     is_failed: newFailed
                 })
                 .eq('id', id)

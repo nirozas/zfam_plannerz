@@ -34,6 +34,8 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
     const [isEditingBg, setIsEditingBg] = useState(false);
     const dayBg = dayViewBackgrounds[activeDayDate] || '';
     const [tempBgUrl, setTempBgUrl] = useState(dayBg);
+    const [quickAddingTaskId, setQuickAddingTaskId] = useState<string | null>(null);
+    const [quickAddValue, setQuickAddValue] = useState('');
 
     // Drag-and-drop ordering state (local, per day)
     const [orderedIds, setOrderedIds] = useState<string[]>([]);
@@ -158,6 +160,25 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
         setIsEditingBg(false);
     };
 
+    const handleQuickAdd = async (e: React.FormEvent, taskId: string) => {
+        e.preventDefault();
+        if (!quickAddValue.trim()) return;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const newSubtask = {
+            id: crypto.randomUUID(),
+            title: quickAddValue.trim(),
+            isCompleted: false,
+            imageUrls: [],
+            createdAt: new Date().toISOString()
+        };
+
+        await updateTask(taskId, { subtasks: [...(task.subtasks || []), newSubtask] });
+        setQuickAddValue('');
+        setQuickAddingTaskId(null);
+    };
+
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
     return (
@@ -241,7 +262,10 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
 
                             const cardContent = (
                                 <div
-                                    onClick={() => setEditingTaskId(task.id)}
+                                    onClick={() => {
+                                        setActiveDayDate(activeDayDate);
+                                        setEditingTaskId(task.id);
+                                    }}
                                     draggable
                                     onDragStart={(e) => { e.stopPropagation(); handleDragStart(task.id); }}
                                     onDragOver={(e) => handleDragOver(e, task.id)}
@@ -331,7 +355,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                                         const isStCompleted = task.isRecurring ? (st.completedDates || []).includes(activeDayDate) : st.isCompleted;
                                                         return (
                                                             <div key={st.id} className="flex items-center gap-2 text-[10px] md:text-xs text-gray-500">
-                                                                <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full border ${isStCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
+                                                                  <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full border ${isStCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
                                                                 <span className={`truncate ${isStCompleted ? 'line-through opacity-70' : ''}`}>{st.title}</span>
                                                             </div>
                                                         );
@@ -340,6 +364,28 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                                         <div className="text-[9px] md:text-[10px] text-gray-400 pl-4 md:pl-5">+{task.subtasks.length - maxSubtasksVisible} more</div>
                                                     )}
                                                 </div>
+                                            )}
+
+                                            {/* Quick Add Subtask */}
+                                            {quickAddingTaskId === task.id ? (
+                                                <form onSubmit={e => handleQuickAdd(e, task.id)} className="mt-2" onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        type="text"
+                                                        autoFocus
+                                                        placeholder="Add subtask..."
+                                                        value={quickAddValue}
+                                                        onChange={e => setQuickAddValue(e.target.value)}
+                                                        onBlur={() => !quickAddValue && setQuickAddingTaskId(null)}
+                                                        className="w-full text-[10px] md:text-xs px-2 py-1 bg-indigo-50/50 border border-indigo-100 rounded-lg outline-none focus:ring-1 focus:ring-indigo-300 font-medium"
+                                                    />
+                                                </form>
+                                            ) : (
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); setQuickAddingTaskId(task.id); }}
+                                                    className="mt-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-600 transition-colors flex items-center gap-1 w-fit"
+                                                >
+                                                    + Subtask
+                                                </button>
                                             )}
 
                                             <div className="flex-1"></div>

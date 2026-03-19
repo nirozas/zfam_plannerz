@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTaskStore, Task } from '../../store/taskStore';
-import { Clock, CheckCircle, Paperclip, ChevronLeft, ChevronRight, Image as ImageIcon, Share2, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, Paperclip, ChevronLeft, ChevronRight, Image as ImageIcon, Share2, Trash2, X } from 'lucide-react';
 import { isTaskVisibleOnDate, toDateStr } from '../../utils/recurringUtils';
 import { Resizable } from 're-resizable';
 
@@ -26,7 +26,7 @@ const spanToPixels = (span: number | undefined, unit: number, gap: number) => {
 
 const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
     const {
-        tasks, categories, selectedCategories, toggleTaskCompletion, deleteTask,
+        tasks, categories, selectedCategories, toggleTaskCompletion, toggleTaskFailure, deleteTask,
         activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds,
         setDayViewBackground, setEditingTaskId, updateTask, taskGap
     } = useTaskStore();
@@ -39,6 +39,9 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
     const [orderedIds, setOrderedIds] = useState<string[]>([]);
     const draggedId = useRef<string | null>(null);
     const dragOverId = useRef<string | null>(null);
+
+    // Context for deleting a recurring task instance
+    const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean, task: Task | null }>({ isOpen: false, task: null });
 
     useEffect(() => { setTempBgUrl(dayBg); }, [dayBg, activeDayDate]);
 
@@ -120,6 +123,33 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
         toggleTaskCompletion(task.id, activeDayDate);
     };
 
+    const handleDeleteInstance = () => {
+        if (!deleteModalState.task) return;
+        const currentDeleted = deleteModalState.task.deletedDates || [];
+        updateTask(deleteModalState.task.id, { deletedDates: [...currentDeleted, activeDayDate] });
+        setDeleteModalState({ isOpen: false, task: null });
+    };
+
+    const handleDeleteFuture = () => {
+        if (!deleteModalState.task) return;
+        const current = new Date(activeDayDate);
+        current.setDate(current.getDate() - 1);
+        const yStr = current.toISOString().split('T')[0];
+        updateTask(deleteModalState.task.id, {
+            recurrence: {
+                ...deleteModalState.task.recurrence!,
+                endDate: yStr
+            }
+        });
+        setDeleteModalState({ isOpen: false, task: null });
+    };
+
+    const handleDeleteAll = () => {
+        if (!deleteModalState.task) return;
+        deleteTask(deleteModalState.task.id);
+        setDeleteModalState({ isOpen: false, task: null });
+    };
+
     const activeCategoryColors = selectedCategories.length === 1
         ? categories.find(c => c.id === selectedCategories[0])?.color : null;
 
@@ -134,7 +164,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
         <div className="flex flex-col h-full relative overflow-hidden">
             {/* Background Image Layer */}
             {dayBg && (
-                <img src={dayBg} alt="" referrerPolicy="no-referrer" aria-hidden="true"
+                <img src={dayBg} alt="" referrerPolicy="no-referrer" aria-hidden="true" loading="lazy"
                     className="absolute inset-0 z-0 w-full h-full object-cover pointer-events-none opacity-60 transition-opacity duration-700" />
             )}
 
@@ -197,11 +227,17 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                             const isCompleted = task.isRecurring
                                 ? task.completedDates.includes(activeDayDate)
                                 : task.isCompleted;
+                            const isFailed = task.isRecurring
+                                ? task.failedDates?.includes(activeDayDate)
+                                : task.isFailed;
                             const catColor = category?.color || '#6366f1';
 
                             // Pixel sizes — stored as raw px when > 20, else as span multipliers
                             const W = spanToPixels(task.colSpan, 280, taskGap);
                             const H = spanToPixels(task.rowSpan, 150, taskGap);
+                            
+                            // Estimate how many subtasks we can fit. Roughly 3 for base height 150, plus 1 for every 22px.
+                            const maxSubtasksVisible = isMobile ? 3 : Math.max(3, Math.floor((H - 110) / 22));
 
                             const cardContent = (
                                 <div
@@ -210,20 +246,20 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                     onDragStart={(e) => { e.stopPropagation(); handleDragStart(task.id); }}
                                     onDragOver={(e) => handleDragOver(e, task.id)}
                                     onDrop={handleDrop}
-                                    className="w-full h-full rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-200 flex flex-col cursor-grab active:cursor-grabbing bg-white relative group/card"
+                                    className={`w-full h-full rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-200 flex flex-col cursor-grab active:cursor-grabbing relative group/card ${isCompleted ? 'bg-green-100' : isFailed ? 'bg-red-100' : 'bg-white'}`}
                                     style={{
-                                        borderColor: isCompleted ? '#e5e7eb' : 'transparent',
+                                        borderColor: isCompleted || isFailed ? 'transparent' : 'transparent',
                                         outline: isCompleted ? 'none' : `1px solid ${catColor}30`,
                                     }}
                                 >
                                     {/* Left strip indicator */}
                                     <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: catColor }}></div>
 
-                                    <div className={`flex flex-col h-full ${isCompleted ? 'opacity-60 grayscale' : ''}`}>
+                                    <div className={`flex flex-col h-full ${isCompleted || isFailed ? 'opacity-90' : ''}`}>
                                         {/* Cover Image */}
                                         {task.attachments && task.attachments.length > 0 && (
-                                            <div className={`${isMobile ? 'h-24' : 'h-32'} w-full flex-shrink-0 relative bg-gray-100 border-b border-gray-50`}>
-                                                <img src={task.attachments[0]} alt="cover" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                            <div className={`${isMobile ? 'h-24' : 'h-32'} w-full flex-shrink-0 relative bg-gray-200 animate-pulse border-b border-gray-50`}>
+                                                <img src={task.attachments[0]} alt="cover" referrerPolicy="no-referrer" loading="lazy" className="w-full h-full object-cover relative z-10" />
                                                 {task.attachments.length > 1 && (
                                                     <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Paperclip size={10} /> +{task.attachments.length - 1}
@@ -234,7 +270,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
 
                                         <div className="p-3 md:p-4 flex flex-col flex-1 min-h-0">
                                             <div className="flex items-start justify-between gap-2">
-                                                <h3 className={`font-bold text-gray-800 leading-tight text-sm md:text-base flex-1 min-w-0 ${isCompleted ? 'line-through text-gray-400' : ''}`}>
+                                                <h3 className={`font-bold leading-tight text-sm md:text-base flex-1 min-w-0 ${isCompleted ? 'line-through text-green-800' : isFailed ? 'line-through text-red-800' : 'text-gray-800'}`}>
                                                     {task.title}
                                                 </h3>
                                                 {/* Action buttons — always visible */}
@@ -252,14 +288,28 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                                         <Share2 size={13} />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => handleToggle(e, task)}
-                                                        className="p-1.5 text-gray-300 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all"
-                                                        title={isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                                                        onClick={(e) => { e.stopPropagation(); toggleTaskFailure(task.id, activeDayDate); }}
+                                                        className={`p-1.5 rounded-lg transition-all ${isFailed ? 'text-red-600 bg-red-100' : 'text-gray-300 hover:text-red-500 hover:bg-red-50'}`}
+                                                        title={isFailed ? 'Unmark failed' : 'Mark as failed'}
                                                     >
-                                                        <CheckCircle size={14} className={isCompleted ? 'text-green-500 fill-green-50' : ''} />
+                                                        <X size={14} strokeWidth={3} />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); if (confirm('Delete this task?')) deleteTask(task.id); }}
+                                                        onClick={(e) => handleToggle(e, task)}
+                                                        className={`p-3 md:p-1.5 rounded-lg transition-all ${isCompleted ? 'text-green-600 bg-green-100' : 'text-gray-300 hover:text-green-500 hover:bg-green-50'}`}
+                                                        title={isCompleted ? 'Unmark complete' : 'Mark complete'}
+                                                    >
+                                                        <CheckCircle size={18} className={isCompleted ? 'text-green-600 fill-green-100' : ''} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (task.isRecurring) {
+                                                                setDeleteModalState({ isOpen: true, task });
+                                                            } else {
+                                                                if (confirm('Delete this task?')) deleteTask(task.id);
+                                                            }
+                                                        }}
                                                         className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                                         title="Delete Task"
                                                     >
@@ -277,14 +327,17 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                                             {/* Subtasks preview */}
                                             {task.subtasks && task.subtasks.length > 0 && (
                                                 <div className="mt-2 md:mt-3 space-y-1">
-                                                    {task.subtasks.slice(0, 3).map(st => (
-                                                        <div key={st.id} className="flex items-center gap-2 text-[10px] md:text-xs text-gray-500">
-                                                            <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full border ${st.isCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
-                                                            <span className={`truncate ${st.isCompleted ? 'line-through opacity-70' : ''}`}>{st.title}</span>
-                                                        </div>
-                                                    ))}
-                                                    {task.subtasks.length > 3 && (
-                                                        <div className="text-[9px] md:text-[10px] text-gray-400 pl-4 md:pl-5">+{task.subtasks.length - 3} more</div>
+                                                    {task.subtasks.slice(0, maxSubtasksVisible).map(st => {
+                                                        const isStCompleted = task.isRecurring ? (st.completedDates || []).includes(activeDayDate) : st.isCompleted;
+                                                        return (
+                                                            <div key={st.id} className="flex items-center gap-2 text-[10px] md:text-xs text-gray-500">
+                                                                <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full border ${isStCompleted ? 'bg-indigo-400 border-indigo-400' : 'border-gray-300'}`}></div>
+                                                                <span className={`truncate ${isStCompleted ? 'line-through opacity-70' : ''}`}>{st.title}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {task.subtasks.length > maxSubtasksVisible && (
+                                                        <div className="text-[9px] md:text-[10px] text-gray-400 pl-4 md:pl-5">+{task.subtasks.length - maxSubtasksVisible} more</div>
                                                     )}
                                                 </div>
                                             )}
@@ -353,6 +406,54 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                     </div>
                 )}
             </div>
+
+            {/* Recurring Task Delete Modal */}
+            {deleteModalState.isOpen && deleteModalState.task && (
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+                    onClick={(e) => { e.stopPropagation(); setDeleteModalState({ isOpen: false, task: null }); }}
+                >
+                    <div className="bg-white rounded-xl shadow-xl p-5 max-w-sm w-full mx-4 cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Recurring Task</h3>
+                        <p className="text-sm text-gray-500 mb-4">How would you like to delete this recurring task?</p>
+                        
+                        <div className="space-y-2">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteInstance(); }}
+                                className="w-full text-left px-4 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors border border-gray-100"
+                            >
+                                <span className="font-medium text-gray-900 block">This event only</span>
+                                <span className="text-xs text-gray-500">Other instances will remain untouched</span>
+                            </button>
+                            
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteFuture(); }}
+                                className="w-full text-left px-4 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors border border-gray-100"
+                            >
+                                <span className="font-medium text-gray-900 block">This and following events</span>
+                                <span className="text-xs text-gray-500">Past instances will be preserved</span>
+                            </button>
+                            
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteAll(); }}
+                                className="w-full text-left px-4 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors border border-red-100"
+                            >
+                                <span className="font-medium block">All events</span>
+                                <span className="text-xs opacity-80">Completely remove this task</span>
+                            </button>
+                        </div>
+                        
+                        <div className="mt-4 pt-4 border-t flex justify-end">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setDeleteModalState({ isOpen: false, task: null }); }}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

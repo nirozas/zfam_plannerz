@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTaskStore, Task, Subtask, RecurrenceType, NotificationRule } from '../../store/taskStore';
-import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, ArrowLeft, Bell, Copy } from 'lucide-react';
+import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, ArrowLeft, Bell, Copy, Share2 } from 'lucide-react';
 import TaskRichEditor from './TaskRichEditor';
 import SubtaskList from './SubtaskList';
 import DayOfWeekPicker from './DayOfWeekPicker';
@@ -11,7 +11,7 @@ interface EditTaskModalProps {
 }
 
 const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
-    const { categories, updateTask, deleteTask, duplicateTask, setEditingTaskId } = useTaskStore();
+    const { categories, updateTask, deleteTask, duplicateTask, setEditingTaskId, toggleTaskCompletion, toggleTaskFailure, viewMode, activeDayDate } = useTaskStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isEditing, setIsEditing] = useState(false);
@@ -47,6 +47,31 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
     const [isDuplicating, setIsDuplicating] = useState(false);
     const [urlInput, setUrlInput] = useState('');
     const [showUrlInput, setShowUrlInput] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const baseDate = viewMode === 'day' ? activeDayDate : new Date().toISOString().split('T')[0];
+    const dateStr = baseDate;
+    const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
+    const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+
+    const handleShare = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const text = `Task: ${task.title}\n${task.description ? `Description: ${task.description}\n` : ''}${task.dueDate ? `Due: ${new Date(task.dueDate.includes('T') ? task.dueDate : task.dueDate + 'T12:00:00Z').toLocaleDateString()}\n` : ''}`;
+        if (navigator.share) navigator.share({ title: task.title, text }).catch(() => navigator.clipboard.writeText(text));
+        else navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleCheck = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleTaskCompletion(task.id, dateStr);
+    };
+
+    const handleFail = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleTaskFailure(task.id, dateStr);
+    };
 
     const handleAddUrl = () => {
         if (!urlInput.trim()) return;
@@ -155,15 +180,30 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                             )}
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <button onClick={handleShare} className={`p-1.5 rounded-lg transition-all ${copied ? 'text-green-500' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`} title="Share">
+                            <Share2 size={16} />
+                        </button>
+                        <button onClick={handleFail} className={`p-1.5 rounded-lg transition-all ${isFailed ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`} title="Mark failed">
+                            <X size={16} strokeWidth={3} />
+                        </button>
+                        <button onClick={handleCheck} className={`p-1.5 rounded-lg transition-all ${isCompleted ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:text-green-500 hover:bg-green-50'}`} title="Mark complete">
+                            <Check size={16} strokeWidth={3} />
+                        </button>
+                        <button onClick={handleDelete} className="p-1.5 rounded-lg transition-all text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete Task">
+                            <Trash2 size={16} />
+                        </button>
+
+                        <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
+
                         <button
                             onClick={handleDuplicate}
                             disabled={isDuplicating}
                             title="Duplicate this task"
-                            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl transition-all disabled:opacity-50"
+                            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-xl transition-all disabled:opacity-50"
                         >
                             {isDuplicating ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
-                            {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+                            <span className="hidden sm:inline">{isDuplicating ? 'Duplicating...' : 'Duplicate'}</span>
                         </button>
                         {isEditing && (
                             <button onClick={handleSave} disabled={isSaving}
@@ -392,12 +432,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                     </div>
                                 )}
 
-                                {isEditing && (
-                                    <button onClick={handleDelete}
-                                        className="w-full py-3 text-red-500 font-bold text-xs uppercase tracking-widest hover:bg-red-50 rounded-2xl transition-all border border-transparent hover:border-red-100 flex items-center justify-center gap-2">
-                                        <Trash2 size={14} /> Delete Permanently
-                                    </button>
-                                )}
+                                {/* Duplicate / delete moved to top */}
 
                             </div>{/* end meta sidebar */}
                         </div>{/* end 3-col grid */}
@@ -412,6 +447,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                     subtasks={subtasks}
                                     onChange={isEditing ? setSubtasks : handleSubtaskChangeInView}
                                     readOnly={!isEditing}
+                                    dateContext={dateStr}
+                                    isRecurring={task.isRecurring}
                                 />
                             </div>
                         </div>

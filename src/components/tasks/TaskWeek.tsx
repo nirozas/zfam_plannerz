@@ -117,10 +117,13 @@ const TaskWeek: React.FC = () => {
                                     {dayTasks.map(task => {
                                         const cat = categories.find(c => c.id === task.categoryId);
                                         const catColor = cat?.color || '#6366f1';
+                                        const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
+                                        const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+
                                         return (
                                             <div
                                                 key={task.id}
-                                                className="bg-white p-2 rounded-lg shadow-sm border-l-4 hover:shadow-md transition-shadow"
+                                                className={`p-2 rounded-lg shadow-sm border-l-4 hover:shadow-md transition-shadow ${isCompleted ? 'bg-green-100 opacity-90' : isFailed ? 'bg-red-100 opacity-90' : 'bg-white'}`}
                                                 style={{ borderLeftColor: catColor }}
                                                 onClick={e => { e.stopPropagation(); setEditingTaskId(task.id); }}
                                             >
@@ -129,7 +132,7 @@ const TaskWeek: React.FC = () => {
                                                         <img src={task.attachments[0]} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
-                                                <div className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">
+                                                <div className={`text-xs font-semibold line-clamp-2 leading-snug mb-1 ${isCompleted ? 'text-green-800 line-through' : isFailed ? 'text-red-800 line-through' : 'text-gray-800'}`}>
                                                     {task.title}
                                                 </div>
                                                 <div className="flex items-center gap-1 flex-wrap">

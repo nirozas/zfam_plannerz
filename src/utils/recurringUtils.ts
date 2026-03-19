@@ -55,6 +55,10 @@ export const isTaskVisibleOnDate = (task: Task, checkDate: Date): boolean => {
     const rec = task.recurrence;
     if (!rec) return false; // isRecurring=true but no rule — skip gracefully
 
+    // ── Check if this specific date is deleted ──────────────────────────────
+    const checkStr = toDateStr(checkDate);
+    if (task.deletedDates?.includes(checkStr)) return false;
+
     // ── Bound checks (parsed as local dates) ──────────────────────────
     if (rec.startDate) {
         const start = localDate(rec.startDate);

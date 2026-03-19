@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 import { repairDriveUrl } from '../utils/urlUtils';
+import { isTaskVisibleOnDate } from '../utils/recurringUtils';
 
 // ─── Type Aliases ────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export interface Subtask {
     id: string;
     title: string;
     isCompleted: boolean;
+    completedDates?: string[]; // New: dates when this recurring subtask is completed
+    completedDateTimes?: Record<string, string>; // New: specific times when completed
     imageUrl?: string;      // Legacy single image (kept for back-compat)
     imageUrls?: string[];   // Multi-image support
     imageWidth?: number;    // Width for resizing
@@ -56,6 +59,9 @@ export interface Task {
     completedDateTimes?: Record<string, string>; // dateStr -> full ISO completion time
     isCompleted: boolean;        // one-time tasks
     completedAt?: string;        // ISO string (one-time tasks)
+    deletedDates?: string[];     // New: dates when this recurring task instance was deleted
+    isFailed?: boolean;          // New: one-time tasks failed state
+    failedDates?: string[];      // New: dates when this recurring task instance was failed
     priority: 'low' | 'medium' | 'high';
     attachments: string[];       // Storage public URLs
     subtasks: Subtask[];         // New: Subtasks list
@@ -108,6 +114,9 @@ const rowToTask = (row: any, completedDates: string[] = [], attachments: string[
     completedDateTimes,
     isCompleted: row.is_completed ?? false,
     completedAt: row.completed_at ?? undefined,
+    deletedDates: row.deleted_dates ?? [],
+    isFailed: row.is_failed ?? false,
+    failedDates: row.failed_dates ?? [],
     priority: (row.priority as Task['priority']) ?? 'medium',
     attachments,
     subtasks: row.subtasks ?? [],  // Map JSONB subtasks
@@ -161,6 +170,7 @@ interface TaskState {
     deleteTask: (id: string) => Promise<void>;
     bulkAddTasks: (tasks: any[]) => Promise<void>;
     toggleTaskCompletion: (id: string, date: string) => Promise<void>;
+    toggleTaskFailure: (id: string, date: string) => Promise<void>;
 
     addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
     updateCategory: (id: string, updates: Partial<Omit<Category, 'id'>>) => Promise<void>;
@@ -180,6 +190,7 @@ interface TaskState {
     setDayViewBackground: (date: string, url: string | null) => void;
     editingTaskId: string | null;
     setEditingTaskId: (id: string | null) => void;
+    syncTaskNotifications: (task: Task) => Promise<void>;
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -348,6 +359,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             assigned_by: rest.assigned_to ? user.id : null,
             due_time: rest.dueTime ?? null,
             notifications: rest.notifications ?? [],
+            deleted_dates: rest.deletedDates ?? [],
+            is_failed: rest.isFailed ?? false,
+            failed_dates: rest.failedDates ?? [],
         };
 
         if (!rest.isRecurring && rest.dueDate) {
@@ -389,6 +403,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
         const task = rowToTask(newRow, [], storageUrls);
         set(state => ({ tasks: [task, ...state.tasks] }));
+        
+        // Sync notifications
+        get().syncTaskNotifications(task);
     },
 
     // ── duplicateTask ─────────────────────────────────────────────────────────
@@ -419,6 +436,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             due_date: original.dueDate ?? null,
             due_time: original.dueTime ?? null,
             notifications: original.notifications ?? [],
+            deleted_dates: [],
+            is_failed: false,
+            failed_dates: [],
         };
 
         if (original.isRecurring && original.recurrence) {
@@ -538,6 +558,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             updateRow.assigned_to = rest.assigned_to;
             updateRow.assigned_by = user.id;
         }
+        if (rest.deletedDates !== undefined) updateRow.deleted_dates = rest.deletedDates;
+        if (rest.isFailed !== undefined) updateRow.is_failed = rest.isFailed;
+        if (rest.failedDates !== undefined) updateRow.failed_dates = rest.failedDates;
         if (rest.isRecurring !== undefined) {
             updateRow.is_recurring = rest.isRecurring;
             if (!rest.isRecurring) {
@@ -607,12 +630,18 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                     recurrence: rest.recurrence !== undefined ? rest.recurrence : t.recurrence,
                     attachments: finalAttachments ?? t.attachments,
                     subtasks: rest.subtasks ?? t.subtasks,
+                    deletedDates: rest.deletedDates ?? t.deletedDates,
+                    isFailed: rest.isFailed ?? t.isFailed,
+                    failedDates: rest.failedDates ?? t.failedDates,
                     colSpan: rest.colSpan ?? t.colSpan,
                     rowSpan: rest.rowSpan ?? t.rowSpan,
                 };
                 return merged;
             })
         }));
+
+        const updatedTask = get().tasks.find(t => t.id === id);
+        if (updatedTask) get().syncTaskNotifications(updatedTask);
     },
 
     // ── deleteTask ───────────────────────────────────────────────────────────
@@ -645,11 +674,14 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             // One-time task: toggle is_completed in DB
             const newCompleted = !task.isCompleted;
             const completedAt = newCompleted ? new Date().toISOString() : null;
+            const newFailed = newCompleted ? false : task.isFailed; // Unfail if completing
+            
             const { error } = await supabase
                 .from('tasks')
                 .update({
                     is_completed: newCompleted,
-                    completed_at: completedAt
+                    completed_at: completedAt,
+                    is_failed: newFailed
                 })
                 .eq('id', id)
                 .eq('user_id', user.id);
@@ -657,11 +689,19 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
             set(state => ({
                 tasks: state.tasks.map(t =>
-                    t.id === id ? { ...t, isCompleted: newCompleted, completedAt: completedAt ?? undefined } : t
+                    t.id === id ? { ...t, isCompleted: newCompleted, completedAt: completedAt ?? undefined, isFailed: newFailed } : t
                 )
             }));
         } else {
-            // Recurring: use the RPC for atomic toggle
+            const already = task.completedDates.includes(dateStr);
+            let newFailedDates = task.failedDates || [];
+            
+            // If we are completing it (-!already-) and it's marked failed, remove the failed state
+            if (!already && newFailedDates.includes(dateStr)) {
+                newFailedDates = newFailedDates.filter(d => d !== dateStr);
+                await supabase.from('tasks').update({ failed_dates: newFailedDates }).eq('id', id).eq('user_id', user.id);
+            }
+
             const { error } = await supabase.rpc('toggle_task_completion', {
                 p_task_id: id,
                 p_completed_date: dateStr,
@@ -671,11 +711,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             set(state => ({
                 tasks: state.tasks.map(t => {
                     if (t.id !== id) return t;
-                    const already = t.completedDates.includes(dateStr);
+                    const isAlready = t.completedDates.includes(dateStr);
                     const now = new Date().toISOString();
                     const newTimes = { ...(t.completedDateTimes || {}) };
 
-                    if (already) {
+                    if (isAlready) {
                         delete newTimes[dateStr];
                     } else {
                         newTimes[dateStr] = now;
@@ -683,10 +723,74 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
                     return {
                         ...t,
-                        completedDates: already
+                        completedDates: isAlready
                             ? t.completedDates.filter(d => d !== dateStr)
                             : [...t.completedDates, dateStr],
-                        completedDateTimes: newTimes
+                        completedDateTimes: newTimes,
+                        failedDates: (!isAlready) ? t.failedDates?.filter(d => d !== dateStr) : t.failedDates
+                    };
+                })
+            }));
+        }
+    },
+
+    // ── toggleTaskFailure ────────────────────────────────────────────────────
+    toggleTaskFailure: async (id, dateStr) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const task = get().tasks.find(t => t.id === id);
+        if (!task) return;
+
+        if (!task.isRecurring) {
+            // One-time task: toggle is_failed in DB
+            const newFailed = !task.isFailed;
+            const { error } = await supabase
+                .from('tasks')
+                .update({ is_failed: newFailed, is_completed: false })
+                .eq('id', id)
+                .eq('user_id', user.id);
+            if (error) { console.error('[taskStore] toggle failure one-time error:', error); return; }
+
+            set(state => ({
+                tasks: state.tasks.map(t =>
+                    t.id === id ? { ...t, isFailed: newFailed, isCompleted: false } : t
+                )
+            }));
+        } else {
+            // Recurring task
+            const alreadyFailed = task.failedDates?.includes(dateStr) || false;
+            let newFailedDates = task.failedDates || [];
+            if (alreadyFailed) {
+                newFailedDates = newFailedDates.filter(d => d !== dateStr);
+            } else {
+                newFailedDates = [...newFailedDates, dateStr];
+            }
+            
+            // Un-complete if completed
+            const alreadyCompleted = task.completedDates.includes(dateStr);
+            if (!alreadyFailed && alreadyCompleted) {
+                // Remove completion (needs RPC or update completion array).
+                // Actually, the toggleTaskCompletion runs RPC so we must call toggleTaskCompletion recursively first, or just hit the RPC directly.
+                await supabase.rpc('toggle_task_completion', { p_task_id: id, p_completed_date: dateStr });
+            }
+
+            const { error } = await supabase
+                .from('tasks')
+                .update({ failed_dates: newFailedDates })
+                .eq('id', id)
+                .eq('user_id', user.id);
+            
+            if (error) { console.error('[taskStore] toggle failure recurring error:', error); return; }
+
+            set(state => ({
+                tasks: state.tasks.map(t => {
+                    if (t.id !== id) return t;
+                    const newCompletedDates = (!alreadyFailed && alreadyCompleted) ? t.completedDates.filter(d=>d!==dateStr) : t.completedDates;
+                    return {
+                        ...t,
+                        failedDates: newFailedDates,
+                        completedDates: newCompletedDates
                     };
                 })
             }));
@@ -783,6 +887,66 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         }
         localStorage.setItem('tasks-day-view-bgs', JSON.stringify(current));
         set({ dayViewBackgrounds: current });
+    },
+
+    syncTaskNotifications: async (task) => {
+        // Only on native platforms
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+
+        const { requestNotificationPermission, scheduleTaskNotification } = await import('../utils/notificationUtils');
+        
+        // Request first
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+
+        // Logic: for simplicity, we schedule the next 7 days for recurring tasks,
+        // or just the dueDate for one-time tasks.
+        if (!task.notifications || task.notifications.length === 0) return;
+
+        const datesToSchedule: string[] = [];
+        if (!task.isRecurring && task.dueDate) {
+            datesToSchedule.push(task.dueDate);
+        } else if (task.isRecurring) {
+            // Schedule for the next 7 days
+            const start = new Date();
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                if (isTaskVisibleOnDate(task, d)) {
+                    datesToSchedule.push(d.toISOString().split('T')[0]);
+                }
+            }
+        }
+
+        for (const dateStr of datesToSchedule) {
+            for (const rule of task.notifications) {
+                // Use task.id's numeric hash + index for predictable IDs if we wanted to cancel,
+                // but for now we'll just schedule fresh ones.
+                let targetDate = new Date(dateStr + (task.dueTime ? `T${task.dueTime}:00` : 'T09:00:00'));
+                
+                if (rule.type === 'minutes_before') {
+                    targetDate.setMinutes(targetDate.getMinutes() - Number(rule.value));
+                } else if (rule.type === 'hours_before') {
+                    targetDate.setHours(targetDate.getHours() - Number(rule.value));
+                } else if (rule.type === 'days_before') {
+                    targetDate.setDate(targetDate.getDate() - Number(rule.value));
+                } else if (rule.type === 'exact_time') {
+                    const [h, m] = (rule.value as string).split(':').map(Number);
+                    targetDate = new Date(dateStr + `T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
+                }
+
+                if (targetDate > new Date()) {
+                    await scheduleTaskNotification(
+                        task.id,
+                        `Task Reminder: ${task.title}`,
+                        task.description || 'You have a task scheduled now.',
+                        targetDate.toISOString().split('T')[0],
+                        targetDate.toTimeString().split(' ')[0].slice(0, 5)
+                    );
+                }
+            }
+        }
     },
 }));
 

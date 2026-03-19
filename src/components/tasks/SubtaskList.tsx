@@ -9,6 +9,8 @@ interface SubtaskListProps {
     subtasks: Subtask[];
     onChange: (subtasks: Subtask[]) => void;
     readOnly?: boolean;
+    dateContext?: string;
+    isRecurring?: boolean;
 }
 
 // Helper: merge legacy imageUrl into imageUrls array
@@ -18,7 +20,7 @@ const getImages = (s: Subtask): string[] => {
     return urls;
 };
 
-const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly = false }) => {
+const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly = false, dateContext, isRecurring = false }) => {
     const [newTitle, setNewTitle] = useState('');
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [editingTitleValue, setEditingTitleValue] = useState('');
@@ -117,8 +119,26 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
     const handleToggle = (id: string) => {
         onChange(subtasks.map(s => {
             if (s.id === id) {
-                const isCompleted = !s.isCompleted;
-                return { ...s, isCompleted, completedAt: isCompleted ? new Date().toISOString() : undefined };
+                if (isRecurring && dateContext) {
+                    const cd = s.completedDates || [];
+                    const isCompletedOnDate = cd.includes(dateContext);
+                    const now = new Date().toISOString();
+                    const newTimes = { ...(s.completedDateTimes || {}) };
+                    if (isCompletedOnDate) {
+                        delete newTimes[dateContext];
+                    } else {
+                        newTimes[dateContext] = now;
+                    }
+
+                    return {
+                        ...s,
+                        completedDates: isCompletedOnDate ? cd.filter(d => d !== dateContext) : [...cd, dateContext],
+                        completedDateTimes: newTimes
+                    };
+                } else {
+                    const isCompleted = !s.isCompleted;
+                    return { ...s, isCompleted, completedAt: isCompleted ? new Date().toISOString() : undefined };
+                }
             }
             return s;
         }));
@@ -217,6 +237,10 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                     {subtasks.map(subtask => {
                         const images = getImages(subtask);
                         const isEditingNote = editingNoteId === subtask.id;
+                        const isSubtaskCompleted = isRecurring && dateContext
+                            ? (subtask.completedDates || []).includes(dateContext)
+                            : subtask.isCompleted;
+
                         return (
                             <div
                                 key={subtask.id}
@@ -227,9 +251,9 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                     <button
                                         type="button"
                                         onClick={() => handleToggle(subtask.id)}
-                                        className={`flex-shrink-0 transition-all mt-0.5 ${subtask.isCompleted ? 'text-indigo-600 scale-110' : 'text-gray-300 hover:text-indigo-400 hover:scale-110'}`}
+                                        className={`flex-shrink-0 transition-all mt-0.5 ${isSubtaskCompleted ? 'text-indigo-600 scale-110' : 'text-gray-300 hover:text-indigo-400 hover:scale-110'}`}
                                     >
-                                        {subtask.isCompleted
+                                        {isSubtaskCompleted
                                             ? <CheckCircle size={isMobile ? 18 : 20} />
                                             : <Circle size={isMobile ? 18 : 20} />
                                         }
@@ -250,7 +274,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                         />
                                     ) : (
                                         <span
-                                            className={`flex-1 break-words leading-tight pt-0.5 font-semibold text-[13px] md:text-sm transition-all ${subtask.isCompleted ? 'text-gray-400 line-through opacity-50' : 'text-gray-700'} ${!readOnly ? 'cursor-pointer hover:text-indigo-600' : ''}`}
+                                            className={`flex-1 break-words leading-tight pt-0.5 font-semibold text-[13px] md:text-sm transition-all ${isSubtaskCompleted ? 'text-gray-400 line-through opacity-50' : 'text-gray-700'} ${!readOnly ? 'cursor-pointer hover:text-indigo-600' : ''}`}
                                             onClick={() => !readOnly && handleTitleEdit(subtask.id, subtask.title)}
                                             title={readOnly ? undefined : 'Click to edit'}
                                         >
@@ -405,8 +429,11 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                     {subtask.createdAt && (
                                         <span>Added: {new Date(subtask.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                     )}
-                                    {subtask.isCompleted && subtask.completedAt && (
+                                    {isSubtaskCompleted && subtask.completedAt && !isRecurring && (
                                         <span className="text-green-600">Done: {new Date(subtask.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                    )}
+                                    {isSubtaskCompleted && isRecurring && dateContext && subtask.completedDateTimes?.[dateContext] && (
+                                        <span className="text-green-600">Done: {new Date(subtask.completedDateTimes[dateContext]).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                     )}
                                 </div>
                             </div>
@@ -419,7 +446,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
 
             {subtasks.length > 0 && (
                 <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-gray-400 border-t border-gray-100 pt-3">
-                    {subtasks.filter(s => s.isCompleted).length} / {subtasks.length} Completed
+                    {subtasks.filter(s => isRecurring && dateContext ? (s.completedDates || []).includes(dateContext) : s.isCompleted).length} / {subtasks.length} Completed
                 </div>
             )}
         </div>

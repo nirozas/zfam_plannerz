@@ -73,14 +73,21 @@ const TaskCalendar: React.FC = () => {
                     <div className="space-y-0.5">
                         {dayTasks.slice(0, 3).map(task => {
                             const cat = categories.find(c => c.id === task.categoryId);
+                            const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
+                            const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+                            
+                            const dynamicBg = isCompleted ? '#dcfce7' : isFailed ? '#fee2e2' : (cat ? hexToRgba(cat.color, 0.15) : '#e0e7ff');
+                            const dynamicText = isCompleted ? '#166534' : isFailed ? '#991b1b' : (cat?.color || '#4f46e5');
+                            const dynamicBorder = isCompleted ? '#166534' : isFailed ? '#991b1b' : (cat?.color || '#4f46e5');
+
                             return (
                                 <div
                                     key={task.id}
-                                    className="text-[10px] truncate px-1.5 py-0.5 rounded font-medium"
+                                    className={`text-[10px] truncate px-1.5 py-0.5 rounded font-medium ${isCompleted || isFailed ? 'line-through opacity-90' : ''}`}
                                     style={{
-                                        backgroundColor: cat ? hexToRgba(cat.color, 0.15) : '#e0e7ff',
-                                        color: cat?.color || '#4f46e5',
-                                        borderLeft: `3px solid ${cat?.color || '#4f46e5'}`,
+                                        backgroundColor: dynamicBg,
+                                        color: dynamicText,
+                                        borderLeft: `3px solid ${dynamicBorder}`,
                                     }}
                                     onClick={e => { e.stopPropagation(); setEditingTaskId(task.id); }}
                                 >

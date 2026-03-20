@@ -42,6 +42,7 @@ export interface Subtask {
     imageUrls?: string[];   // Multi-image support
     imageWidth?: number;    // Width for resizing
     imageHeight?: number;   // Height for resizing
+    imageSize?: 'S' | 'M' | 'L'; // New: image size option
     priority?: 'low' | 'medium' | 'high'; // New: optional priority
     dueDate?: string;
     dueTime?: string;

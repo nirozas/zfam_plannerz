@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Subtask } from '../../store/taskStore';
 import {
-    Plus, Circle, CheckCircle, Image as ImageIcon, 
-    Clock, GripVertical, Pencil
+    Plus, Circle, CheckCircle, Image as ImageIcon,
+    Clock, GripVertical, Pencil, Link as LinkIcon, X
 } from 'lucide-react';
 import SubtaskEditorModal from './SubtaskEditorModal';
 
@@ -28,6 +28,10 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
         const saved = localStorage.getItem('subtask-zoom');
         return saved ? parseFloat(saved) : 1;
     });
+    const [newQuickImageUrls, setNewQuickImageUrls] = useState<string[]>([]);
+    const [showQuickUrlInput, setShowQuickUrlInput] = useState(false);
+    const [quickUrlInput, setQuickUrlInput] = useState('');
+    const quickFileRef = useRef<HTMLInputElement>(null);
     const zoomRef = useRef(zoom);
     const gridWrapperRef = useRef<HTMLDivElement>(null);
     const draggedId = useRef<string | null>(null);
@@ -87,6 +91,24 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
 
     const handleTouchEnd = () => { lastTouchDist.current = null; };
 
+    const handleQuickImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        Array.from(e.target.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewQuickImageUrls(prev => [...prev, reader.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleAddQuickUrl = () => {
+        if (!quickUrlInput.trim()) return;
+        setNewQuickImageUrls(prev => [...prev, quickUrlInput.trim()]);
+        setQuickUrlInput('');
+        setShowQuickUrlInput(false);
+    };
+
     const handleAdd = (e: React.FormEvent, position: 'top' | 'bottom' = 'bottom') => {
         e.preventDefault();
         if (!newTitle.trim()) return;
@@ -94,7 +116,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
             id: crypto.randomUUID(),
             title: newTitle.trim(),
             isCompleted: false,
-            imageUrls: [],
+            imageUrls: newQuickImageUrls,
             createdAt: new Date().toISOString()
         };
         if (position === 'top') {
@@ -103,6 +125,9 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
             onChange([...subtasks, newSubtask]);
         }
         setNewTitle('');
+        setNewQuickImageUrls([]);
+        setShowQuickUrlInput(false);
+        setQuickUrlInput('');
     };
 
     const handleToggle = (id: string, type: 'complete' | 'fail' = 'complete') => {
@@ -212,31 +237,66 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                      </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                    <form onSubmit={(e) => handleAdd(e, 'bottom')} className="flex items-center gap-2 flex-1 bg-white/50 p-2.5 rounded-2xl border border-gray-100 shadow-sm w-full group focus-within:border-indigo-200 transition-all">
-                        <Plus size={18} className="text-indigo-400 shrink-0 group-hover:rotate-90 transition-transform" />
-                        <input
-                            type="text"
-                            value={newTitle}
-                            onChange={e => setNewTitle(e.target.value)}
-                            placeholder="Type new objective..."
-                            className="flex-1 text-sm bg-transparent border-none focus:outline-none placeholder-gray-400 font-bold"
-                        />
-                        <div className="flex items-center gap-1 shrink-0">
-                            <button type="button" onClick={(e) => handleAdd(e as any, 'top')} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-95">Top</button>
-                            <button type="submit" className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">Bottom</button>
-                        </div>
-                    </form>
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <form onSubmit={(e) => handleAdd(e, 'bottom')} className="flex items-center gap-2 flex-1 bg-white/50 p-2.5 rounded-2xl border border-gray-100 shadow-sm w-full group focus-within:border-indigo-200 transition-all">
+                            <Plus size={18} className="text-indigo-400 shrink-0 group-hover:rotate-90 transition-transform" />
+                            <input
+                                type="text"
+                                value={newTitle}
+                                onChange={e => setNewTitle(e.target.value)}
+                                placeholder="Type new objective..."
+                                className="flex-1 text-sm bg-transparent border-none focus:outline-none placeholder-gray-400 font-bold"
+                            />
+                            <div className="flex items-center gap-1 shrink-0">
+                                <input type="file" ref={quickFileRef} onChange={handleQuickImageUpload} className="hidden" accept="image/*" multiple />
+                                <button type="button" onClick={() => quickFileRef.current?.click()} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Upload Images">
+                                    <ImageIcon size={16} />
+                                </button>
+                                <button type="button" onClick={() => setShowQuickUrlInput(!showQuickUrlInput)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Add Image URL">
+                                    <LinkIcon size={16} />
+                                </button>
+                                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                                <button type="button" onClick={(e) => handleAdd(e as any, 'top')} className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-50 hover:text-indigo-600 transition-all active:scale-95">Top</button>
+                                <button type="submit" className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">Bottom</button>
+                            </div>
+                        </form>
 
-                    <button
-                        type="button"
-                        onDoubleClick={() => applyZoom(1)}
-                        title="Pinch or Ctrl+scroll to zoom · Double-click to reset"
-                        className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-2xl px-4 py-2.5 shadow-sm text-[10px] font-black text-gray-400 hover:text-indigo-500 hover:border-indigo-200 transition-all select-none"
-                    >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
-                        {Math.round(zoom * 100)}%
-                    </button>
+                        <button
+                            type="button"
+                            onDoubleClick={() => applyZoom(1)}
+                            title="Pinch or Ctrl+scroll to zoom · Double-click to reset"
+                            className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-2xl px-4 py-2.5 shadow-sm text-[10px] font-black text-gray-400 hover:text-indigo-500 hover:border-indigo-200 transition-all select-none w-full sm:w-auto justify-center"
+                        >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+                            {Math.round(zoom * 100)}%
+                        </button>
+                    </div>
+
+                    {showQuickUrlInput && (
+                        <div className="flex gap-2 animate-in slide-in-from-top-2 bg-white/50 p-2 rounded-xl border border-gray-100 shadow-sm">
+                            <input type="text" value={quickUrlInput} onChange={e => setQuickUrlInput(e.target.value)}
+                                placeholder="Paste image URL..."
+                                className="flex-1 bg-transparent border-none focus:outline-none text-[11px] font-bold px-2"
+                                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddQuickUrl())} />
+                            <button onClick={handleAddQuickUrl} className="bg-indigo-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">Apply</button>
+                            <button onClick={() => setShowQuickUrlInput(false)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                        </div>
+                    )}
+
+                    {newQuickImageUrls.length > 0 && (
+                        <div className="flex flex-wrap gap-2 p-2 bg-white/30 rounded-xl border border-dashed border-gray-200">
+                            {newQuickImageUrls.map((url, i) => (
+                                <div key={i} className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-100 group">
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                    <button onClick={() => setNewQuickImageUrls(prev => prev.filter((_, j) => j !== i))} className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <X size={10} className="text-white" />
+                                    </button>
+                                </div>
+                            ))}
+                            <button onClick={() => setNewQuickImageUrls([])} className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 px-2 py-1 rounded-lg transition-all ml-auto">Clear All</button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -292,9 +352,10 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                             onClick={(e) => { e.stopPropagation(); handleToggle(subtask.id, 'fail'); }}
                                             className={`flex-shrink-0 transition-all ${isSubtaskFailed ? 'text-red-600 scale-110' : 'text-gray-200 hover:text-red-400 hover:scale-110'}`}
                                         >
-                                            <Circle size={18} className="relative flex items-center justify-center">
+                                            <div className="relative flex items-center justify-center w-[18px] h-[18px]">
+                                                <Circle size={18} className="absolute inset-0" />
                                                 <Plus size={12} className="rotate-45" />
-                                            </Circle>
+                                            </div>
                                         </button>
                                         <div className="h-2"></div>
                                         <GripVertical size={14} className="text-gray-100 cursor-grab active:cursor-grabbing hover:text-indigo-400 transition-colors" />
@@ -323,17 +384,47 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                     )}
                                 </div>
 
+                                {images.length > 0 && (
+                                    <div className={`mt-2 -mx-1 flex flex-wrap gap-2 ${
+                                        subtask.imageSize === 'L' ? 'flex-col' : ''
+                                    }`}>
+                                        {images.map((img, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                className={`relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all hover:shadow-md cursor-zoom-in group/img ${
+                                                    subtask.imageSize === 'S' ? 'w-12 h-12' :
+                                                    subtask.imageSize === 'M' ? 'w-24 h-24' :
+                                                    'w-full'
+                                                } ${
+                                                    subtask.imageSize !== 'L' ? 'bg-gray-50' : ''
+                                                }`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    window.open(img, '_blank');
+                                                }}
+                                            >
+                                                <img 
+                                                    src={img} 
+                                                    alt="" 
+                                                    className={`transition-transform duration-500 group-hover/img:scale-110 ${
+                                                        subtask.imageSize === 'L' 
+                                                            ? 'w-full h-auto object-contain' 
+                                                            : 'w-full h-full object-contain'
+                                                    }`}
+                                                    loading="lazy"
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100/50">
                                     <div className="flex items-center gap-3">
                                         {(subtask.dueDate || subtask.dueTime) && (
                                             <div className="flex items-center gap-1.5 text-[9px] font-black text-indigo-500 uppercase tracking-[0.1em] bg-indigo-50 px-2.5 py-1 rounded-full">
                                                 <Clock size={10} />
                                                 {subtask.dueTime || 'All Day'}
-                                            </div>
-                                        )}
-                                        {images.length > 0 && (
-                                            <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-[0.1em] bg-gray-50 px-2 py-1 rounded-full">
-                                                <ImageIcon size={10} /> {images.length}
                                             </div>
                                         )}
                                     </div>
@@ -348,7 +439,6 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
                                     )}
                                 </div>
 
-                                {/* Timestamps Strip */}
                                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-bold text-gray-400 opacity-60">
                                     {subtask.createdAt && (
                                         <span className="flex items-center gap-1">

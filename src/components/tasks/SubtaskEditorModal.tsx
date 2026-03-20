@@ -18,9 +18,15 @@ const SubtaskEditorModal: React.FC<SubtaskEditorModalProps> = ({ subtask, onSave
     const [priority, setPriority] = useState(subtask.priority);
     const [dueDate, setDueDate] = useState(subtask.dueDate || '');
     const [dueTime, setDueTime] = useState(subtask.dueTime || '');
-    const [imageUrls, setImageUrls] = useState<string[]>(subtask.imageUrls || []);
+    const [imageUrls, setImageUrls] = useState<string[]>(() => {
+        const urls = subtask.imageUrls ? [...subtask.imageUrls] : [];
+        if (subtask.imageUrl && !urls.includes(subtask.imageUrl)) urls.unshift(subtask.imageUrl);
+        return urls;
+    });
     const [urlInput, setUrlInput] = useState('');
     const [showUrlInput, setShowUrlInput] = useState(false);
+
+    const [imageSize, setImageSize] = useState<'S' | 'M' | 'L'>(subtask.imageSize || 'S');
 
     const handleSave = () => {
         onSave({
@@ -30,7 +36,8 @@ const SubtaskEditorModal: React.FC<SubtaskEditorModalProps> = ({ subtask, onSave
             priority,
             dueDate: dueDate || undefined,
             dueTime: dueTime || undefined,
-            imageUrls
+            imageUrls,
+            imageSize
         });
         onClose();
     };
@@ -155,6 +162,21 @@ const SubtaskEditorModal: React.FC<SubtaskEditorModalProps> = ({ subtask, onSave
                             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                                 <ImageIcon size={12} /> Visual Attachments
                             </label>
+                            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                {(['S', 'M', 'L'] as const).map(size => (
+                                    <button
+                                        key={size}
+                                        onClick={() => setImageSize(size)}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                            imageSize === size 
+                                            ? 'bg-white text-indigo-600 shadow-sm border border-gray-100' 
+                                            : 'text-gray-400 hover:text-gray-600'
+                                        }`}
+                                    >
+                                        {size}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setShowUrlInput(!showUrlInput)} className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-all">
                                     Add Link
@@ -179,8 +201,8 @@ const SubtaskEditorModal: React.FC<SubtaskEditorModalProps> = ({ subtask, onSave
                         {imageUrls.length > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                 {imageUrls.map((url, i) => (
-                                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group">
-                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 bg-gray-50 group">
+                                        <img src={url} alt="" className="w-full h-full object-contain" />
                                         <button onClick={() => handleRemoveImage(i)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
                                             <X size={12} />
                                         </button>

@@ -4,6 +4,7 @@ import { X, Trash2, Loader2, Clock, Plus, Link as LinkIcon, Check, Pencil, Arrow
 import TaskRichEditor from './TaskRichEditor';
 import SubtaskList from './SubtaskList';
 import DayOfWeekPicker from './DayOfWeekPicker';
+import { toDateStr } from '../../utils/recurringUtils';
 
 interface EditTaskModalProps {
     task: Task;
@@ -49,7 +50,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const baseDate = viewMode === 'day' ? activeDayDate : new Date().toISOString().split('T')[0];
+    const baseDate = viewMode === 'day' ? activeDayDate : toDateStr(new Date());
     const dateStr = baseDate;
     const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
     const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
@@ -325,7 +326,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 bg-green-50 text-green-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-green-100/50">
                                                         {(() => {
-                                                            const [Ay, Am, Ad] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const [Ay, Am, Ad] = (activeDayDate || toDateStr(new Date())).split('-').map(Number);
                                                             const activeDate = new Date(Ay, Am - 1, Ad);
                                                             const startOfWeek = new Date(activeDate);
                                                             startOfWeek.setDate(activeDate.getDate() - activeDate.getDay());
@@ -343,7 +344,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                                     </div>
                                                     <div className="flex-1 bg-red-50 text-red-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-red-100/50">
                                                             {(() => {
-                                                            const [Ay, Am, Ad] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const [Ay, Am, Ad] = (activeDayDate || toDateStr(new Date())).split('-').map(Number);
                                                             const activeDate = new Date(Ay, Am - 1, Ad);
                                                             const startOfWeek = new Date(activeDate);
                                                             startOfWeek.setDate(activeDate.getDate() - activeDate.getDay());
@@ -370,7 +371,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 bg-green-50 text-green-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-green-100/50">
                                                         {(() => {
-                                                            const [Ay, Am] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const [Ay, Am] = (activeDayDate || toDateStr(new Date())).split('-').map(Number);
                                                             const month = Am - 1;
                                                             const year = Ay;
                                                             return task.completedDates.filter(d => {
@@ -381,7 +382,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
                                                     </div>
                                                     <div className="flex-1 bg-red-50 text-red-600 text-[11px] font-black px-3 py-2 rounded-xl text-center border border-red-100/50">
                                                         {(() => {
-                                                            const [Ay, Am] = (activeDayDate || new Date().toISOString().split('T')[0]).split('-').map(Number);
+                                                            const [Ay, Am] = (activeDayDate || toDateStr(new Date())).split('-').map(Number);
                                                             const month = Am - 1;
                                                             const year = Ay;
                                                             return (task.failedDates || []).filter(d => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTaskStore, Task, Subtask } from '../../store/taskStore';
 import { Check, Trash2, Share2, X } from 'lucide-react';
 import { Resizable } from 're-resizable';
+import { toDateStr } from '../../utils/recurringUtils';
 
 interface TaskItemProps {
     task: Task;
@@ -15,7 +16,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
     const [quickTitle, setQuickTitle] = useState('');
 
     const category = categories.find(c => c.id === task.categoryId);
-    const dateStr = dateContext || (task.dueDate ? task.dueDate.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const dateStr = dateContext || (task.dueDate ? task.dueDate.split('T')[0] : toDateStr(new Date()));
     const isCompleted = task.isRecurring
         ? task.completedDates.includes(dateStr)
         : task.isCompleted;
@@ -57,7 +58,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, dateContext }) => {
     const handleDeleteFuture = () => {
         const current = new Date(dateStr);
         current.setDate(current.getDate() - 1);
-        const yStr = current.toISOString().split('T')[0];
+        const yStr = toDateStr(current);
         updateTask(task.id, {
             recurrence: {
                 ...task.recurrence!,

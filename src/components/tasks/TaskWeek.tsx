@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTaskStore } from '../../store/taskStore';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
-import { isTaskVisibleOnDate } from '../../utils/recurringUtils';
+import { isTaskVisibleOnDate, toDateStr } from '../../utils/recurringUtils';
 
 const hexToRgba = (hex: string, alpha: number) => {
     try {
@@ -60,7 +60,6 @@ const TaskWeek: React.FC = () => {
         ? categories.find(c => c.id === selectedCategories[0])?.color
         : null;
 
-    const toDateStr = (d: Date) => d.toISOString().split('T')[0];
 
     return (
         <div

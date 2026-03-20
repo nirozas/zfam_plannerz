@@ -136,7 +136,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
         if (!deleteModalState.task) return;
         const current = new Date(activeDayDate);
         current.setDate(current.getDate() - 1);
-        const yStr = current.toISOString().split('T')[0];
+        const yStr = toDateStr(current);
         updateTask(deleteModalState.task.id, {
             recurrence: {
                 ...deleteModalState.task.recurrence!,

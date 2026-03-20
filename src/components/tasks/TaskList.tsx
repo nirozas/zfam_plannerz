@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTaskStore, Task } from '../../store/taskStore';
 import TaskItem from './TaskItem';
+import { toDateStr } from '../../utils/recurringUtils';
 
 const isRecurringDueOnDate = (task: Task, date: Date): boolean => {
     if (!task.recurrence) return false;
@@ -27,7 +28,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
     const { tasks, categories, selectedCategories, filterType, statusFilter, startDate, endDate, sortBy, taskGap } = useTaskStore();
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = toDateStr(today);
 
     // Background tint when single category selected
     const tintColor = selectedCategories.length === 1

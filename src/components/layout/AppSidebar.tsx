@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings, Wallet } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { supabase } from '../../supabase/client';
@@ -84,6 +84,14 @@ export const AppSidebar: React.FC = () => {
                     title="Recursive Cards"
                 >
                     <StickyNote size={22} />
+                </NavLink>
+
+                <NavLink
+                    to="/finances"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Vault & Finances"
+                >
+                    <Wallet size={22} />
                 </NavLink>
 
                 <NavLink

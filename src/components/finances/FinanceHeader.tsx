@@ -1,6 +1,5 @@
 import React from 'react';
 import { useFinanceStore } from '@/store/financeStore';
-import { Card } from '@/components/ui/Card'; // Assuming a shared Card component exists, but I'll make a custom one for RM style
 import { Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 

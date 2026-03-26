@@ -17,7 +17,7 @@ const MONTHS = [
 const PASTEL_GRADIENT = "bg-gradient-to-br from-[#FFADAD]/10 via-[#9BF6FF]/10 to-[#BDB2FF]/10";
 
 const FinancesPage: React.FC = () => {
-    const { entries, fetchEntries, fetchCategories, fetchBudgets, exportToCSV, categories } = useFinanceStore();
+    const { entries, fetchEntries, fetchCategories, fetchBudgets, exportToCSV, categories, fetchPaymentMethods } = useFinanceStore();
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isPlansOpen, setIsPlansOpen] = useState(false);
     const [editEntry, setEditEntry] = useState<FinanceEntry | undefined>(undefined);
@@ -36,7 +36,8 @@ const FinancesPage: React.FC = () => {
         fetchEntries();
         fetchCategories();
         fetchBudgets();
-    }, [fetchEntries, fetchCategories, fetchBudgets]);
+        fetchPaymentMethods();
+    }, [fetchEntries, fetchCategories, fetchBudgets, fetchPaymentMethods]);
 
     const years = useMemo(() => {
         const currentYear = new Date().getFullYear();
@@ -247,6 +248,8 @@ const FinancesPage: React.FC = () => {
                              month={!isCustomRange ? selectedMonth : 'all'}
                              year={!isCustomRange ? selectedYear : 'all'}
                              categoryFilter={categoryFilter}
+                             storeFilter={search}
+                             paymentFilter={paymentFilter}
                              onFilterSelect={(type, value) => {
                                  if (type === 'category') setCategoryFilter(value);
                                  if (type === 'store') setSearch(value);

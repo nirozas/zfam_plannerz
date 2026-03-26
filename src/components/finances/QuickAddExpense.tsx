@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FinanceEntry, useFinanceStore } from '@/store/financeStore';
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator } from 'lucide-react';
+import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator, Settings, Edit2, Trash2 } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 import { AutocompleteSearch } from './AutocompleteSearch';
 
@@ -14,6 +14,63 @@ interface Props {
 
 
 
+const ManagePaymentMethods = ({ onClose }: { onClose: () => void }) => {
+    const { paymentMethods, addPaymentMethod, updatePaymentMethodString, deletePaymentMethod } = useFinanceStore();
+    const [newName, setNewName] = useState('');
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
+
+    const handleAdd = () => {
+        if(newName.trim()) {
+            addPaymentMethod(newName.trim());
+            setNewName('');
+        }
+    };
+
+    const handleSaveEdit = (method: any) => {
+        if(editName.trim() && editName !== method.name) {
+            updatePaymentMethodString(method.name, editName.trim());
+        }
+        setEditingId(null);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+            <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} className="bg-white dark:bg-slate-900 rounded-[35px] w-full max-w-sm p-6 shadow-2xl border border-gray-100 dark:border-slate-800">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest text-xs">Manage Wallets</h3>
+                    <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"><X size={16} /></button>
+                </div>
+
+                <div className="flex gap-2 mb-6">
+                    <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder="New Payment Method..." className="flex-1 h-12 px-4 rounded-xl bg-gray-50 dark:bg-slate-800 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-100 dark:text-slate-200" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                    <button type="button" onClick={handleAdd} className="w-12 h-12 flex items-center justify-center bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none"><Plus size={20} /></button>
+                </div>
+
+                <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2">
+                    {paymentMethods.map(pm => (
+                        <div key={pm.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 group border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-colors">
+                            {editingId === pm.id ? (
+                                <input autoFocus value={editName} onChange={e=>setEditName(e.target.value)} onBlur={() => handleSaveEdit(pm)} onKeyDown={e => e.key==='Enter' && handleSaveEdit(pm)} className="flex-1 bg-white dark:bg-slate-900 px-3 py-1 rounded-lg text-sm font-bold outline-none text-indigo-600 dark:text-indigo-400" />
+                            ) : (
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{pm.name}</span>
+                            )}
+                            
+                            {editingId !== pm.id && (
+                                <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button type="button" onClick={() => { setEditingId(pm.id); setEditName(pm.name); }} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                                    <button type="button" onClick={() => deletePaymentMethod(pm.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={14} /></button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    {paymentMethods.length === 0 && <div className="text-center text-[10px] font-black text-slate-400 py-6 uppercase tracking-widest">No Saved Wallets</div>}
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
 export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry }) => {
     const { addEntry, updateEntry } = useFinanceStore();
     const [loading, setLoading] = useState(false);
@@ -21,9 +78,17 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
     const [calcInput, setCalcInput] = useState('');
     
     // Derived options from existing entries
-    const { entries } = useFinanceStore();
+    const { entries, paymentMethods: savedPaymentMethods } = useFinanceStore();
     const storeOptions = useMemo(() => Array.from(new Set(entries.map(e => e.store_name).filter(Boolean))), [entries]);
-    const paymentOptions = useMemo(() => Array.from(new Set(entries.map(e => e.payment_method).filter(Boolean))), [entries]);
+    
+    // Combine saved and historical payment methods
+    const paymentOptions = useMemo(() => {
+        const historical = entries.map(e => e.payment_method).filter(Boolean);
+        const mappedSaved = savedPaymentMethods.map(p => p.name);
+        return Array.from(new Set([...historical, ...mappedSaved]));
+    }, [entries, savedPaymentMethods]);
+    
+    const [showManageWallets, setShowManageWallets] = useState(false);
     
     // Form state
     const [title, setTitle] = useState('');
@@ -305,7 +370,12 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                 </div>
 
                                 <div className="group">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 ml-2 group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
+                                        <button type="button" onClick={() => setShowManageWallets(true)} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded-md">
+                                            <Settings size={12} /> Manage
+                                        </button>
+                                    </div>
                                     <div className="relative">
                                         <AutocompleteSearch
                                             value={paymentMethod}
@@ -364,6 +434,10 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                             </button>
                         </form>
                     </motion.div>
+                    
+                    <AnimatePresence>
+                        {showManageWallets && <ManagePaymentMethods onClose={() => setShowManageWallets(false)} />}
+                    </AnimatePresence>
                 </>
             )}
         </AnimatePresence>

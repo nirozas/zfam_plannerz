@@ -26,6 +26,13 @@ export interface FinanceEntry {
     created_at: string;
 }
 
+export interface FinancePaymentMethod {
+    id: string;
+    user_id: string;
+    name: string;
+    created_at: string;
+}
+
 export interface FinanceBudget {
     id: string;
     user_id: string;
@@ -40,6 +47,7 @@ interface FinanceStore {
     entries: FinanceEntry[];
     categories: FinanceCategory[];
     budgets: FinanceBudget[];
+    paymentMethods: FinancePaymentMethod[];
     loading: boolean;
     error: string | null;
 
@@ -54,12 +62,17 @@ interface FinanceStore {
     fetchBudgets: () => Promise<void>;
     setBudget: (budget: Omit<FinanceBudget, 'id' | 'user_id'>) => Promise<void>;
     exportToCSV: () => void;
+    fetchPaymentMethods: () => Promise<void>;
+    addPaymentMethod: (name: string) => Promise<void>;
+    updatePaymentMethodString: (oldName: string, newName: string) => Promise<void>;
+    deletePaymentMethod: (id: string) => Promise<void>;
 }
 
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
     entries: [],
     categories: [],
     budgets: [],
+    paymentMethods: [],
     loading: false,
     error: null,
 
@@ -269,6 +282,53 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
             get().fetchBudgets();
         } catch (error) {
             console.error('Error setting budget:', error);
+        }
+    },
+
+    fetchPaymentMethods: async () => {
+        const user = usePlannerStore.getState().user;
+        if (!user) return;
+        try {
+            const { data, error } = await supabase.from('finance_payment_methods').select('*').eq('user_id', user.id).order('name');
+            if (error) throw error;
+            set({ paymentMethods: data || [] });
+        } catch (error: any) {
+            console.error('Error fetching payment methods:', error);
+        }
+    },
+
+    addPaymentMethod: async (name) => {
+        const user = usePlannerStore.getState().user;
+        if (!user) return;
+        try {
+            const { data, error } = await supabase.from('finance_payment_methods').insert([{ user_id: user.id, name }]).select().single();
+            if (error) throw error;
+            set({ paymentMethods: [...get().paymentMethods, data].sort((a,b) => a.name.localeCompare(b.name)) });
+        } catch (error: any) {
+            console.error('Error adding payment method:', error);
+        }
+    },
+
+    updatePaymentMethodString: async (oldName: string, newName: string) => {
+        const user = usePlannerStore.getState().user;
+        if (!user) return;
+        try {
+            await supabase.from('finances').update({ payment_method: newName }).eq('user_id', user.id).eq('payment_method', oldName);
+            await supabase.from('finance_payment_methods').update({ name: newName }).eq('user_id', user.id).eq('name', oldName);
+            get().fetchEntries();
+            get().fetchPaymentMethods();
+        } catch (error: any) {
+            console.error('Error updating payment method universally:', error);
+        }
+    },
+
+    deletePaymentMethod: async (id) => {
+        try {
+            const { error } = await supabase.from('finance_payment_methods').delete().eq('id', id);
+            if (error) throw error;
+            set({ paymentMethods: get().paymentMethods.filter(p => p.id !== id) });
+        } catch (error: any) {
+            console.error('Error deleting payment method:', error);
         }
     },
 

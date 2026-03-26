@@ -13,7 +13,11 @@ export const FinanceHeader: React.FC = () => {
     const monthlyTotal = entries
         .filter(e => {
             const date = new Date(e.date);
-            return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            const isSaving = e.category?.name.toLowerCase().includes('saving');
+            return date.getMonth() === currentMonth && 
+                   date.getFullYear() === currentYear && 
+                   !e.is_income && 
+                   !isSaving;
         })
         .reduce((sum, e) => sum + Number(e.amount), 0);
 

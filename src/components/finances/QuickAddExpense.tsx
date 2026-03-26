@@ -142,7 +142,7 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                 className={`flex items-center justify-center gap-2 h-14 rounded-[22px] text-xs font-black uppercase tracking-widest transition-all ${isIncome ? 'bg-white text-emerald-500 shadow-lg shadow-emerald-100' : 'text-slate-400'}`}
                             >
                                 <ArrowDown size={16} />
-                                Income
+                                Saving
                             </button>
                         </div>
 
@@ -368,7 +368,7 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                 ) : (
                                     <>
                                         {editEntry ? <Check size={24} /> : <Plus size={24} />}
-                                        {editEntry ? 'Save Changes' : `Secure ${isIncome ? 'Income' : 'Expense'}`}
+                                        {editEntry ? 'Save Changes' : `Secure ${isIncome ? 'Saving' : 'Expense'}`}
                                     </>
                                 )}
                             </button>

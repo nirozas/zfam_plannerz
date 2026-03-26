@@ -5,7 +5,7 @@ import {
     Cell, PieChart, Pie
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { ArrowUp, ArrowDown, AlertCircle, PieChart as PieIcon, BarChart3, TrendingUp, Calendar, Store, CreditCard } from 'lucide-react';
+import { ArrowUp, ArrowDown, AlertCircle, PieChart as PieIcon, BarChart3, TrendingUp, Calendar, Store, CreditCard, X } from 'lucide-react';
 import { getColorForName, PASTEL_COLORS } from '@/utils/financeColors';
 
 interface Props {
@@ -14,10 +14,12 @@ interface Props {
     month: number | 'all';
     year: number | 'all';
     categoryFilter?: string;
+    storeFilter?: string;
+    paymentFilter?: string;
     onFilterSelect?: (type: 'category' | 'store' | 'payment', value: string) => void;
 }
 
-export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year, categoryFilter, onFilterSelect }) => {
+export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year, categoryFilter, storeFilter, paymentFilter, onFilterSelect }) => {
     const { entries, categories, budgets } = useFinanceStore();
     const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
     const [analyzedCategory, setAnalyzedCategory] = useState<string>('all');
@@ -34,11 +36,25 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                 return (month === 'all' || date.getUTCMonth() === month) && (year === 'all' || date.getUTCFullYear() === year);
             });
         }
+        if (storeFilter) {
+            base = base.filter(e => e.store_name?.toLowerCase().includes(storeFilter.toLowerCase()));
+        }
+        if (paymentFilter) {
+            base = base.filter(e => e.payment_method?.toLowerCase().includes(paymentFilter.toLowerCase()));
+        }
+        if (categoryFilter) {
+            base = base.filter(e => {
+                const catName = e.category?.name.toLowerCase() || '';
+                const parentName = e.category?.parent_id ? categories.find(c => c.id === e.category?.parent_id)?.name.toLowerCase() || '' : '';
+                return catName.includes(categoryFilter.toLowerCase()) || parentName.includes(categoryFilter.toLowerCase());
+            });
+        }
+
         return base;
-    }, [entries, fromDate, toDate, month, year, viewMode]);
+    }, [entries, fromDate, toDate, month, year, viewMode, storeFilter, paymentFilter, categoryFilter, categories]);
 
     const stats = useMemo(() => {
-        const isSaving = (e: any) => e.category?.name.toLowerCase().includes('saving');
+        const isSaving = (e: any) => e.is_income || (e.category?.name || '').toLowerCase().includes('saving');
         
         const income = filteredEntries.filter(e => e.is_income && !isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
         const expenses = filteredEntries.filter(e => !e.is_income && !isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
@@ -74,8 +90,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                 hasBudget: !!budget
             };
         }).filter(c => {
-            const matchesCategory = !categoryFilter || c.name.toLowerCase().includes(categoryFilter.toLowerCase());
-            return (c.spent > 0 || c.hasBudget) && matchesCategory;
+            return (c.spent > 0 || c.hasBudget);
         }).sort((a, b) => b.spent - a.spent);
 
         // Subcategory Breakdown (Used in the second graph)
@@ -120,7 +135,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
             paymentData,
             explicitSavings
         };
-    }, [filteredEntries, budgets, month, year, categories, analyzedCategory, categoryFilter]);
+    }, [filteredEntries, budgets, month, year, categories, analyzedCategory]);
 
     const spendingPercent = stats.totalSpendingPlan > 0 ? Math.min((stats.expenses / stats.totalSpendingPlan) * 100, 100) : 0;
     const totalSavedComputed = stats.explicitSavings + Math.max(0, stats.net);
@@ -287,7 +302,18 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Category Trends</span>
                     </div>
-                    <BarChart3 size={18} className="text-indigo-200" />
+                    <div className="flex flex-row items-center gap-2">
+                        {categoryFilter && (
+                            <button 
+                                onClick={() => onFilterSelect && onFilterSelect('category', '')}
+                                className="w-6 h-6 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                                title="Reset Category Filter"
+                            >
+                                <X size={12} strokeWidth={3} />
+                            </button>
+                        )}
+                        <BarChart3 size={18} className="text-indigo-200" />
+                    </div>
                 </div>
                 <div className="h-[250px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
@@ -324,6 +350,14 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Subcategory Flow</span>
                         </div>
+                        {categoryFilter && (
+                            <button 
+                                onClick={() => onFilterSelect && onFilterSelect('category', '')}
+                                className="w-6 h-6 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                            >
+                                <X size={12} strokeWidth={3} />
+                            </button>
+                        )}
                     </div>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -382,6 +416,14 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Purchases per Store</span>
                             </div>
+                            {storeFilter && (
+                                <button 
+                                    onClick={() => onFilterSelect && onFilterSelect('store', '')}
+                                    className="w-6 h-6 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                                >
+                                    <X size={12} strokeWidth={3} />
+                                </button>
+                            )}
                         </div>
                         <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
@@ -424,6 +466,14 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Exp. per Payment</span>
                             </div>
+                            {paymentFilter && (
+                                <button 
+                                    onClick={() => onFilterSelect && onFilterSelect('payment', '')}
+                                    className="w-6 h-6 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                                >
+                                    <X size={12} strokeWidth={3} />
+                                </button>
+                            )}
                         </div>
                         <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">

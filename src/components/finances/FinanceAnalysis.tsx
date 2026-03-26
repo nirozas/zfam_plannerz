@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { ArrowUp, ArrowDown, AlertCircle, PieChart as PieIcon, BarChart3, TrendingUp, Calendar, Store, CreditCard } from 'lucide-react';
-import { getColorForName } from '@/utils/financeColors';
+import { getColorForName, PASTEL_COLORS } from '@/utils/financeColors';
 
 interface Props {
     fromDate?: string;
@@ -296,7 +296,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#6366f1', opacity: 0.6 }} dy={10} />
                             <Tooltip cursor={{ fill: '#F9FAFB', opacity: 0.5 }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900, fontSize: 10 }} />
                             <Bar dataKey="total" radius={[12, 12, 0, 0]} barSize={44} animationDuration={2000}>
-                                {stats.categoryUsage.map((u) => <Cell key={`cell-${u.name}`} fill={getColorForName(u.name)} />)}
+                                {stats.categoryUsage.map((u) => <Cell key={`cell-${u.name}`} fill={getColorForName(u.name)} stroke="#000000" strokeWidth={1.5} />)}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
@@ -331,7 +331,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                         <Cell 
                                             key={`cell-${entry.name}`} 
                                             fill={getColorForName(entry.name)} 
-                                            stroke="transparent" 
+                                            stroke="#000000" strokeWidth={1.5}
                                             className="cursor-pointer hover:opacity-80 outline-none"
                                             onClick={() => {
                                                 if(onFilterSelect && entry.name) onFilterSelect('category', entry.name);
@@ -383,7 +383,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                         }}
                                     >
                                         {stats.storeData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={getColorForName(entry.name)} className="cursor-pointer hover:opacity-80" />
+                                            <Cell key={`cell-${index}`} fill={PASTEL_COLORS[index % PASTEL_COLORS.length]} stroke="#000000" strokeWidth={1.5} className="cursor-pointer hover:opacity-80" />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -423,7 +423,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                                 <Cell 
                                                     key={`cell-${entry.name}`} 
                                                     fill={shade} 
-                                                    stroke="transparent" 
+                                                    stroke="#000000" strokeWidth={1.5}
                                                     className="cursor-pointer hover:opacity-80 outline-none"
                                                     onClick={() => {
                                                         if(onFilterSelect && entry.name) onFilterSelect('payment', entry.name);

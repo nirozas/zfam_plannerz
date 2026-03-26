@@ -205,7 +205,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex flex-col">
                                 <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">Savings Power</span>
-                                <h3 className="text-xl font-black text-emerald-600">${Math.max(0, stats.net).toLocaleString()}</h3>
+                                <h3 className="text-xl font-black text-emerald-600">${totalSavedComputed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             </div>
                             <div className="w-8 h-8 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center">
                                 <ArrowDown size={16} />

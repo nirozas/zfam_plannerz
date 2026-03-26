@@ -1,7 +1,7 @@
 import React from 'react';
 import { FinanceEntry, useFinanceStore } from '@/store/financeStore';
 import { motion } from 'framer-motion';
-import { Trash2, Edit3, FileText, Download, Tag } from 'lucide-react';
+import { Trash2, Edit3, FileText, Download, Tag, ChevronUp, ChevronDown } from 'lucide-react';
 import { getIconByName } from './financeIcons';
 
 interface Props {
@@ -20,9 +20,18 @@ import { getColorForName } from '@/utils/financeColors';
 
 export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paymentFilter, categoryFilter, fromDate, toDate, fontSize = 11 }) => {
     const { entries, loading, deleteEntry, exportToCSV, categories } = useFinanceStore();
+    const [sortConfig, setSortConfig] = React.useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const filteredEntries = React.useMemo(() => {
-        return entries.filter(e => {
+        const filtered = entries.filter(e => {
             const dateObj = new Date(e.date);
             const matchesSearch = e.store_name?.toLowerCase().includes(search.toLowerCase()) ||
                 e.category?.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -42,8 +51,41 @@ export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paym
             const parentName = e.category?.parent_id ? categories.find(c => c.id === e.category?.parent_id)?.name.toLowerCase() || '' : '';
             const matchesCategory = !categoryFilter || catName.includes(categoryFilter.toLowerCase()) || parentName.includes(categoryFilter.toLowerCase());
             return matchesSearch && matchesDate && matchesPayment && matchesCategory;
-        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [entries, search, month, year, paymentFilter, categoryFilter, fromDate, toDate, categories]);
+        });
+
+        if (sortConfig) {
+            filtered.sort((a, b) => {
+                let aValue: any = a[sortConfig.key as keyof FinanceEntry];
+                let bValue: any = b[sortConfig.key as keyof FinanceEntry];
+
+                if (sortConfig.key === 'category') {
+                    const aParent = a.category?.parent_id ? categories.find(c => c.id === a.category?.parent_id) : a.category;
+                    const bParent = b.category?.parent_id ? categories.find(c => c.id === b.category?.parent_id) : b.category;
+                    aValue = aParent?.name?.toLowerCase() || '';
+                    bValue = bParent?.name?.toLowerCase() || '';
+                } else if (sortConfig.key === 'subcategory') {
+                    aValue = a.category?.parent_id ? a.category.name.toLowerCase() : '';
+                    bValue = b.category?.parent_id ? b.category.name.toLowerCase() : '';
+                } else if (sortConfig.key === 'amount') {
+                    aValue = Number(aValue);
+                    bValue = Number(bValue);
+                } else if (sortConfig.key === 'date') {
+                    aValue = new Date(aValue).getTime();
+                    bValue = new Date(bValue).getTime();
+                } else {
+                    aValue = String(aValue || '').toLowerCase();
+                    bValue = String(bValue || '').toLowerCase();
+                }
+
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+            filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+        return filtered;
+    }, [entries, search, month, year, paymentFilter, categoryFilter, fromDate, toDate, categories, sortConfig]);
 
 
     if (loading && entries.length === 0) {
@@ -69,13 +111,28 @@ export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paym
                 <table className="w-full text-left border-collapse table-fixed">
                     <thead>
                         <tr className="border-b border-gray-50/50">
-                            <th className="w-[20%] px-4 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Item Title</th>
-                            <th className="w-[12%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Category</th>
-                            <th className="w-[12%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Sub.</th>
-                            <th className="w-[12%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Merchant</th>
-                            <th className="w-[12%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Payment</th>
-                            <th className="w-[10%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Date</th>
-                            <th className="w-[10%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">Amount</th>
+                            {[
+                                { key: 'title', label: 'Item Title', width: 'w-[20%]', align: 'text-left' },
+                                { key: 'category', label: 'Category', width: 'w-[12%]', align: 'text-left' },
+                                { key: 'subcategory', label: 'Sub.', width: 'w-[12%]', align: 'text-left' },
+                                { key: 'store_name', label: 'Merchant', width: 'w-[12%]', align: 'text-left' },
+                                { key: 'payment_method', label: 'Payment', width: 'w-[12%]', align: 'text-left' },
+                                { key: 'date', label: 'Date', width: 'w-[10%]', align: 'text-left' },
+                                { key: 'amount', label: 'Amount', width: 'w-[10%]', align: 'text-right' },
+                            ].map((col) => (
+                                <th 
+                                    key={col.key}
+                                    onClick={() => handleSort(col.key)}
+                                    className={`${col.width} px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-indigo-600 transition-colors ${col.align}`}
+                                >
+                                    <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : ''}`}>
+                                        {col.label}
+                                        {sortConfig?.key === col.key && (
+                                            sortConfig.direction === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                                        )}
+                                    </div>
+                                </th>
+                            ))}
                             <th className="w-[6%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Note</th>
                             <th className="w-[6%] px-3 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right pr-6">Op</th>
                         </tr>
@@ -166,7 +223,7 @@ export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paym
 
                                     {/* Date */}
                                     <td className="px-3 py-3">
-                                        <span className="text-[9px] font-black text-slate-900 uppercase whitespace-nowrap">
+                                        <span className="text-[9px] font-black text-slate-900 dark:text-slate-100 uppercase whitespace-nowrap">
                                             {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                         </span>
                                     </td>

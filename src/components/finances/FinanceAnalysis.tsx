@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useFinanceStore } from '@/store/financeStore';
 import { 
-    BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     Cell, PieChart, Pie
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { ArrowUp, ArrowDown, AlertCircle, PieChart as PieIcon, BarChart3, TrendingUp, Calendar } from 'lucide-react';
+import { ArrowUp, ArrowDown, AlertCircle, PieChart as PieIcon, BarChart3, TrendingUp, Calendar, Store, CreditCard } from 'lucide-react';
 import { getColorForName } from '@/utils/financeColors';
 
 interface Props {
@@ -76,7 +76,41 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
             return { name: cat.name, value: spent };
         }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
 
-        return { income, expenses, net, totalSpendingPlan, savingPlan, categoryUsage: categoryData, subcategories: subcategoryData };
+        // Merchant/Store Breakdown
+        const storeMap = new Map<string, number>();
+        // Payment Method Breakdown
+        const paymentMap = new Map<string, number>();
+
+        filteredEntries.forEach(e => {
+            if (!e.is_income) {
+                const store = e.store_name?.trim() || 'Unknown';
+                storeMap.set(store, (storeMap.get(store) || 0) + Number(e.amount));
+
+                const method = e.payment_method || 'Cash';
+                paymentMap.set(method, (paymentMap.get(method) || 0) + Number(e.amount));
+            }
+        });
+
+        const storeData = Array.from(storeMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10); // Top 10 stores
+
+        const paymentData = Array.from(paymentMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+
+        return { 
+            income, 
+            expenses, 
+            net, 
+            totalSpendingPlan, 
+            savingPlan, 
+            categoryUsage: categoryData, 
+            subcategories: subcategoryData,
+            storeData,
+            paymentData
+        };
     }, [filteredEntries, budgets, month, year, categories]);
 
     const spendingPercent = stats.totalSpendingPlan > 0 ? Math.min((stats.expenses / stats.totalSpendingPlan) * 100, 100) : 0;
@@ -296,6 +330,71 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                     </div>
                 </div>
             )}
+
+            {/* Store and Payment Method Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {stats.storeData.length > 0 && (
+                    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-gray-100 dark:border-slate-800 rounded-[40px] p-6 shadow-xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <Store size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Purchases per Store</span>
+                            </div>
+                        </div>
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.storeData} layout="vertical" margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="5 5" horizontal={false} stroke="#E5E7EB" />
+                                    <XAxis type="number" hide />
+                                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#6366f1', opacity: 0.8 }} />
+                                    <Tooltip cursor={{ fill: '#F9FAFB', opacity: 0.5 }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900, fontSize: 10 }} />
+                                    <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20} fill="#6366f1">
+                                        {stats.storeData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={getColorForName(entry.name)} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {stats.paymentData.length > 0 && (
+                    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-gray-100 dark:border-slate-800 rounded-[40px] p-6 shadow-xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <CreditCard size={18} />
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-950/60 dark:text-slate-100">Exp. per Payment</span>
+                            </div>
+                        </div>
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats.paymentData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={50}
+                                        outerRadius={70}
+                                        paddingAngle={5}
+                                    >
+                                        {stats.paymentData.map((entry) => (
+                                            <Cell key={`cell-${entry.name}`} fill={getColorForName(entry.name)} stroke="transparent" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ borderRadius: '16px', fontWeight: 900, fontSize: 9 }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

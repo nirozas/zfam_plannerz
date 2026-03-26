@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FinanceEntry, useFinanceStore } from '@/store/financeStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Store, DollarSign, Calendar, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag } from 'lucide-react';
+import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 
 interface Props {
@@ -15,6 +15,8 @@ const PAYMENT_METHODS = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', '
 export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry }) => {
     const { addEntry, updateEntry } = useFinanceStore();
     const [loading, setLoading] = useState(false);
+    const [showCalc, setShowCalc] = useState(false);
+    const [calcInput, setCalcInput] = useState('');
     
     // Form state
     const [title, setTitle] = useState('');
@@ -171,18 +173,100 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
-                                <div className="group">
+                                <div className="group relative">
                                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Amount</label>
-                                    <div className="relative">
-                                        <DollarSign size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                        />
+                                    <div className="relative flex items-center gap-2">
+                                        <div className="relative flex-1">
+                                            <DollarSign size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                                className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCalc(!showCalc)}
+                                            className="w-16 h-16 flex items-center justify-center bg-gray-50 dark:bg-slate-800/80 rounded-[28px] hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:text-indigo-600 transition-colors shrink-0 border-2 border-transparent focus:border-indigo-100 dark:text-slate-400"
+                                        >
+                                            <Calculator size={24} className="group-hover:text-indigo-500 hover:text-indigo-600 transition-colors" />
+                                        </button>
+
+                                        {/* Calculator Popover */}
+                                        <AnimatePresence>
+                                            {showCalc && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    className="absolute top-[80px] left-0 z-50 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-3xl shadow-2xl w-[260px]"
+                                                >
+                                                    <div className="flex flex-col gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            value={calcInput} 
+                                                            readOnly 
+                                                            placeholder="0"
+                                                            className="w-full h-12 px-4 bg-gray-50 dark:bg-slate-900 rounded-2xl text-right font-mono font-bold text-lg outline-none text-slate-700 dark:text-slate-200 mb-2"
+                                                        />
+                                                        <div className="grid grid-cols-4 gap-2">
+                                                            {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
+                                                                <button
+                                                                    key={btn}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        if (btn === 'C') setCalcInput('');
+                                                                        else setCalcInput(prev => prev + btn);
+                                                                    }}
+                                                                    className={`h-10 rounded-xl font-bold flex items-center justify-center transition-colors ${
+                                                                        ['/','*','-','+'].includes(btn) 
+                                                                            ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900' 
+                                                                            : btn === 'C'
+                                                                                ? 'bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900'
+                                                                                : 'bg-gray-50 border border-gray-100 dark:bg-slate-700/50 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:border-gray-200'
+                                                                    }`}
+                                                                >
+                                                                    {btn}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex gap-2 mt-2">
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => setShowCalc(false)}
+                                                                className="flex-1 h-10 bg-gray-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    try {
+                                                                        // Basic eval for calc. Secure enough for just client-side digits.
+                                                                        // eslint-disable-next-line
+                                                                        const result = Function('"use strict";return (' + calcInput + ')')();
+                                                                        if (isNaN(result) || !isFinite(result)) throw new Error('Invalid');
+                                                                        setAmount(Number(result).toFixed(2));
+                                                                        setCalcInput('');
+                                                                        setShowCalc(false);
+                                                                    } catch {
+                                                                        const old = calcInput;
+                                                                        setCalcInput('Error');
+                                                                        setTimeout(() => setCalcInput(old), 1000);
+                                                                    }
+                                                                }}
+                                                                className="flex-[2] h-10 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-colors"
+                                                            >
+                                                                Apply
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 </div>
 
@@ -207,7 +291,7 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                 <div className="group">
                                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Date</label>
                                     <div className="relative">
-                                        <Calendar size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                        <CalendarIcon size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
                                         <input
                                             type="date"
                                             value={date}

@@ -296,7 +296,18 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#6366f1', opacity: 0.6 }} dy={10} />
                             <Tooltip cursor={{ fill: '#F9FAFB', opacity: 0.5 }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900, fontSize: 10 }} />
                             <Bar dataKey="total" radius={[12, 12, 0, 0]} barSize={44} animationDuration={2000}>
-                                {stats.categoryUsage.map((u) => <Cell key={`cell-${u.name}`} fill={getColorForName(u.name)} stroke="#000000" strokeWidth={1.5} />)}
+                                {stats.categoryUsage.map((u) => (
+                                    <Cell 
+                                        key={`cell-${u.name}`} 
+                                        fill={getColorForName(u.name)} 
+                                        stroke="#000000" 
+                                        strokeWidth={1.5} 
+                                        className="cursor-pointer hover:opacity-80"
+                                        onClick={() => {
+                                            if(onFilterSelect && u.name) onFilterSelect('category', u.name);
+                                        }}
+                                    />
+                                ))}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
@@ -343,11 +354,17 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {stats.subcategories.slice(0, 4).map(sub => (
-                            <div key={sub.name} className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorForName(sub.name), outline: '1.5px solid #000000' }} />
-                                <span className="text-[8px] font-black uppercase text-indigo-950/40 dark:text-slate-300 truncate">{sub.name}</span>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mt-4 px-2">
+                        {stats.subcategories.map(sub => (
+                            <div 
+                                key={sub.name} 
+                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-70 transition-opacity"
+                                onClick={() => {
+                                    if(onFilterSelect && sub.name) onFilterSelect('category', sub.name);
+                                }}
+                            >
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getColorForName(sub.name), outline: '1.5px solid #000000' }} />
+                                <span className="text-[8px] font-black uppercase text-indigo-950/40 dark:text-slate-300 truncate" title={sub.name}>{sub.name}</span>
                             </div>
                         ))}
                     </div>
@@ -378,12 +395,18 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                         radius={[0, 8, 8, 0]} 
                                         barSize={20} 
                                         fill="#6366f1"
-                                        onClick={(data) => {
-                                            if(onFilterSelect && data && data.name) onFilterSelect('store', data.name);
-                                        }}
                                     >
-                                        {stats.storeData.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={PASTEL_COLORS[index % PASTEL_COLORS.length]} stroke="#000000" strokeWidth={1.5} className="cursor-pointer hover:opacity-80" />
+                                        {stats.storeData.map((entry, index) => (
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={PASTEL_COLORS[index % PASTEL_COLORS.length]} 
+                                                stroke="#000000" 
+                                                strokeWidth={1.5} 
+                                                className="cursor-pointer hover:opacity-80" 
+                                                onClick={() => {
+                                                    if(onFilterSelect && entry.name) onFilterSelect('store', entry.name);
+                                                }}
+                                            />
                                         ))}
                                     </Bar>
                                 </BarChart>

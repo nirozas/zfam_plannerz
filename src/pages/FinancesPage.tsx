@@ -247,6 +247,11 @@ const FinancesPage: React.FC = () => {
                              month={!isCustomRange ? selectedMonth : 'all'}
                              year={!isCustomRange ? selectedYear : 'all'}
                              categoryFilter={categoryFilter}
+                             onFilterSelect={(type, value) => {
+                                 if (type === 'category') setCategoryFilter(value);
+                                 if (type === 'store') setSearch(value);
+                                 if (type === 'payment') setPaymentFilter(value);
+                             }}
                         />
                     </div>
                 </div>

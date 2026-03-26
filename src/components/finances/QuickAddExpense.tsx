@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FinanceEntry, useFinanceStore } from '@/store/financeStore';
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
@@ -10,13 +11,18 @@ interface Props {
     editEntry?: FinanceEntry;
 }
 
-const PAYMENT_METHODS = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Mobile Pay', 'PayPal', 'Venmo', 'Chase Credit', 'American Express', 'Bank'];
+
 
 export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry }) => {
     const { addEntry, updateEntry } = useFinanceStore();
     const [loading, setLoading] = useState(false);
     const [showCalc, setShowCalc] = useState(false);
     const [calcInput, setCalcInput] = useState('');
+    
+    // Derived options from existing entries
+    const { entries } = useFinanceStore();
+    const storeOptions = useMemo(() => Array.from(new Set(entries.map(e => e.store_name).filter(Boolean))), [entries]);
+    const paymentOptions = useMemo(() => Array.from(new Set(entries.map(e => e.payment_method).filter(Boolean))), [entries]);
     
     // Form state
     const [title, setTitle] = useState('');
@@ -164,11 +170,15 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                     <Store size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
                                     <input
                                         type="text"
+                                        list="store-options"
                                         placeholder="Where did it go/come from?"
                                         value={storeName}
                                         onChange={(e) => setStoreName(e.target.value)}
                                         className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
                                     />
+                                    <datalist id="store-options">
+                                        {storeOptions.map(s => <option key={s} value={s} />)}
+                                    </datalist>
                                 </div>
                             </div>
 
@@ -195,76 +205,103 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                             <Calculator size={24} className="group-hover:text-indigo-500 hover:text-indigo-600 transition-colors" />
                                         </button>
 
-                                        {/* Calculator Popover */}
+                                        {/* Calculator Modal */}
                                         <AnimatePresence>
                                             {showCalc && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    className="absolute top-[80px] left-0 z-50 p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-3xl shadow-2xl w-[260px]"
-                                                >
-                                                    <div className="flex flex-col gap-2">
-                                                        <input 
-                                                            type="text" 
-                                                            value={calcInput} 
-                                                            readOnly 
-                                                            placeholder="0"
-                                                            className="w-full h-12 px-4 bg-gray-50 dark:bg-slate-900 rounded-2xl text-right font-mono font-bold text-lg outline-none text-slate-700 dark:text-slate-200 mb-2"
-                                                        />
-                                                        <div className="grid grid-cols-4 gap-2">
-                                                            {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
-                                                                <button
-                                                                    key={btn}
-                                                                    type="button"
+                                                <>
+                                                    <motion.div
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1010]"
+                                                        onClick={() => setShowCalc(false)}
+                                                    />
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                                                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1011] p-6 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[35px] shadow-2xl w-[300px]"
+                                                    >
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex items-center justify-between px-2 mb-2">
+                                                                <span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Calculator</span>
+                                                                <button onClick={() => setShowCalc(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+                                                            </div>
+                                                            <input 
+                                                                type="text" 
+                                                                value={calcInput} 
+                                                                readOnly 
+                                                                placeholder="0"
+                                                                className="w-full h-14 px-5 bg-gray-50 dark:bg-slate-900 rounded-[20px] text-right font-mono font-bold text-2xl outline-none text-slate-700 dark:text-slate-200 mb-2 shadow-inner"
+                                                            />
+                                                            <div className="grid grid-cols-4 gap-2">
+                                                                {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
+                                                                    <button
+                                                                        key={btn}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (btn === 'C') setCalcInput('');
+                                                                            else setCalcInput(prev => prev + btn);
+                                                                        }}
+                                                                        className={`h-12 rounded-[16px] font-bold text-lg flex items-center justify-center transition-all ${
+                                                                            ['/','*','-','+'].includes(btn) 
+                                                                                ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 active:scale-95' 
+                                                                                : btn === 'C'
+                                                                                    ? 'bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 active:scale-95'
+                                                                                    : 'bg-gray-50 border border-gray-100 dark:bg-slate-700/50 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:border-gray-200 active:scale-95'
+                                                                        }`}
+                                                                    >
+                                                                        {btn}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex gap-2 mt-2">
+                                                                <button 
+                                                                    type="button" 
                                                                     onClick={() => {
-                                                                        if (btn === 'C') setCalcInput('');
-                                                                        else setCalcInput(prev => prev + btn);
+                                                                        try {
+                                                                            // eslint-disable-next-line
+                                                                            const result = Function('"use strict";return (' + calcInput + ')')();
+                                                                            if (isNaN(result) || !isFinite(result)) throw new Error('Invalid');
+                                                                            setCalcInput(String(Number(result).toFixed(2)));
+                                                                        } catch {
+                                                                            const old = calcInput;
+                                                                            setCalcInput('Error');
+                                                                            setTimeout(() => setCalcInput(old), 1000);
+                                                                        }
                                                                     }}
-                                                                    className={`h-10 rounded-xl font-bold flex items-center justify-center transition-colors ${
-                                                                        ['/','*','-','+'].includes(btn) 
-                                                                            ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900' 
-                                                                            : btn === 'C'
-                                                                                ? 'bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900'
-                                                                                : 'bg-gray-50 border border-gray-100 dark:bg-slate-700/50 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:border-gray-200'
-                                                                    }`}
+                                                                    className="flex-1 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-[16px] font-black text-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-all active:scale-95"
                                                                 >
-                                                                    {btn}
+                                                                    =
                                                                 </button>
-                                                            ))}
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => {
+                                                                        try {
+                                                                            // eslint-disable-next-line
+                                                                            let resStr = calcInput;
+                                                                            // eslint-disable-next-line
+                                                                            const result = Function('"use strict";return (' + calcInput + ')')();
+                                                                            if (!isNaN(result) && isFinite(result)) {
+                                                                                resStr = Number(result).toFixed(2);
+                                                                            }
+                                                                            setAmount(resStr);
+                                                                            setCalcInput('');
+                                                                            setShowCalc(false);
+                                                                        } catch {
+                                                                            setAmount(calcInput);
+                                                                            setCalcInput('');
+                                                                            setShowCalc(false);
+                                                                        }
+                                                                    }}
+                                                                    className="flex-[2] h-12 bg-indigo-600 text-white rounded-[16px] font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95"
+                                                                >
+                                                                    Apply
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => setShowCalc(false)}
-                                                                className="flex-1 h-10 bg-gray-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => {
-                                                                    try {
-                                                                        // Basic eval for calc. Secure enough for just client-side digits.
-                                                                        // eslint-disable-next-line
-                                                                        const result = Function('"use strict";return (' + calcInput + ')')();
-                                                                        if (isNaN(result) || !isFinite(result)) throw new Error('Invalid');
-                                                                        setAmount(Number(result).toFixed(2));
-                                                                        setCalcInput('');
-                                                                        setShowCalc(false);
-                                                                    } catch {
-                                                                        const old = calcInput;
-                                                                        setCalcInput('Error');
-                                                                        setTimeout(() => setCalcInput(old), 1000);
-                                                                    }
-                                                                }}
-                                                                className="flex-[2] h-10 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-colors"
-                                                            >
-                                                                Apply
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
+                                                    </motion.div>
+                                                </>
                                             )}
                                         </AnimatePresence>
                                     </div>
@@ -274,13 +311,20 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
                                     <div className="relative">
                                         <Wallet size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                        <select
+                                        <input
+                                            type="text"
+                                            list="payment-options"
+                                            placeholder="Method (e.g. Card, Cash)"
                                             value={paymentMethod}
                                             onChange={(e) => setPaymentMethod(e.target.value)}
-                                            className="w-full h-16 pl-14 pr-10 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200 appearance-none cursor-pointer"
-                                        >
-                                            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
+                                            className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                        />
+                                        <datalist id="payment-options">
+                                            {paymentOptions.map(m => <option key={m} value={m} />)}
+                                            {!paymentOptions.includes('Cash') && <option value="Cash" />}
+                                            {!paymentOptions.includes('Credit Card') && <option value="Credit Card" />}
+                                            {!paymentOptions.includes('Debit Card') && <option value="Debit Card" />}
+                                        </datalist>
                                     </div>
                                 </div>
                             </div>

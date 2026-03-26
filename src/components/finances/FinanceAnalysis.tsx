@@ -14,12 +14,13 @@ interface Props {
     month: number | 'all';
     year: number | 'all';
     categoryFilter?: string;
+    onFilterSelect?: (type: 'category' | 'store' | 'payment', value: string) => void;
 }
 
-export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year, categoryFilter }) => {
+export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year, categoryFilter, onFilterSelect }) => {
     const { entries, categories, budgets } = useFinanceStore();
     const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
-    const [showSub, setShowSub] = useState(false);
+    const [analyzedCategory, setAnalyzedCategory] = useState<string>('all');
 
     const filteredEntries = useMemo(() => {
         let base = entries;
@@ -37,8 +38,11 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
     }, [entries, fromDate, toDate, month, year, viewMode]);
 
     const stats = useMemo(() => {
-        const income = filteredEntries.filter(e => e.is_income).reduce((sum, e) => sum + Number(e.amount), 0);
-        const expenses = filteredEntries.filter(e => !e.is_income).reduce((sum, e) => sum + Number(e.amount), 0);
+        const isSaving = (e: any) => e.category?.name.toLowerCase().includes('saving');
+        
+        const income = filteredEntries.filter(e => e.is_income && !isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
+        const expenses = filteredEntries.filter(e => !e.is_income && !isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
+        const explicitSavings = filteredEntries.filter(e => isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
         const net = income - expenses;
         
         const currentMonth = month === 'all' ? new Date().getMonth() : month;
@@ -48,12 +52,16 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
         const savingPlan = budgets.find(b => b.type === 'saving' && b.month === currentMonth && b.year === currentYear)?.amount || 0;
 
         // Category Trends
-        const baseCats = showSub ? categories : categories.filter(c => !c.parent_id);
+        const isAllCats = analyzedCategory === 'all';
+        const baseCats = isAllCats 
+            ? categories.filter(c => !c.parent_id) 
+            : categories.filter(c => c.parent_id === analyzedCategory);
+            
         const categoryData = baseCats.map(cat => {
-            const childrenIds = showSub ? [] : categories.filter(c => c.parent_id === cat.id).map(c => c.id);
+            const childrenIds = isAllCats ? categories.filter(c => c.parent_id === cat.id).map(c => c.id) : [];
             const spent = filteredEntries.filter(e => {
                 const isMatch = e.category_id === cat.id || childrenIds.includes(e.category_id || '');
-                return !e.is_income && isMatch;
+                return !e.is_income && isMatch && !isSaving(e);
             }).reduce((sum, e) => sum + Number(e.amount), 0);
             
             const budget = budgets.find(b => b.type === 'spending' && b.category_id === cat.id && b.month === currentMonth && b.year === currentYear)?.amount;
@@ -71,8 +79,8 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
         }).sort((a, b) => b.spent - a.spent);
 
         // Subcategory Breakdown (Used in the second graph)
-        const subcategoryData = categories.filter(c => c.parent_id).map(cat => {
-            const spent = filteredEntries.filter(e => !e.is_income && e.category_id === cat.id).reduce((sum, e) => sum + Number(e.amount), 0);
+        const subcategoryData = categories.filter(c => c.parent_id && (isAllCats || c.parent_id === analyzedCategory)).map(cat => {
+            const spent = filteredEntries.filter(e => !e.is_income && e.category_id === cat.id && !isSaving(e)).reduce((sum, e) => sum + Number(e.amount), 0);
             return { name: cat.name, value: spent };
         }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
 
@@ -82,7 +90,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
         const paymentMap = new Map<string, number>();
 
         filteredEntries.forEach(e => {
-            if (!e.is_income) {
+            if (!e.is_income && !isSaving(e)) {
                 const store = e.store_name?.trim() || 'Unknown';
                 storeMap.set(store, (storeMap.get(store) || 0) + Number(e.amount));
 
@@ -109,12 +117,15 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
             categoryUsage: categoryData, 
             subcategories: subcategoryData,
             storeData,
-            paymentData
+            paymentData,
+            explicitSavings
         };
-    }, [filteredEntries, budgets, month, year, categories]);
+    }, [filteredEntries, budgets, month, year, categories, analyzedCategory, categoryFilter]);
 
     const spendingPercent = stats.totalSpendingPlan > 0 ? Math.min((stats.expenses / stats.totalSpendingPlan) * 100, 100) : 0;
-    const savingPercent = stats.savingPlan > 0 ? Math.min((Math.max(0, stats.net) / stats.savingPlan) * 100, 100) : 0;
+    const totalSavedComputed = stats.explicitSavings + Math.max(0, stats.net);
+    const savingPercent = stats.savingPlan > 0 ? Math.min((totalSavedComputed / stats.savingPlan) * 100, 100) : 0;
+    const parentCatsOnly = categories.filter(c => !c.parent_id);
 
     return (
         <div className="flex flex-col gap-8 w-full font-bold">
@@ -124,26 +135,30 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                     <Calendar size={18} className="text-indigo-400" />
                     <span className="text-[10px] font-black uppercase text-indigo-950/60 dark:text-slate-100 tracking-widest">Time Window</span>
                 </div>
-                <div className="flex bg-white/60 p-1 rounded-2xl border border-gray-50 shadow-sm">
-                    <button 
-                        onClick={() => setViewMode('monthly')}
-                        className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === 'monthly' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400'}`}
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-white/60 p-1 rounded-2xl border border-gray-50 shadow-sm">
+                        <button 
+                            onClick={() => setViewMode('monthly')}
+                            className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === 'monthly' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400'}`}
+                        >
+                            Monthly
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('annual')}
+                            className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === 'annual' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400'}`}
+                        >
+                            Annual
+                        </button>
+                    </div>
+                    <select 
+                        value={analyzedCategory}
+                        onChange={(e) => setAnalyzedCategory(e.target.value)}
+                        className="ml-2 h-8 pl-3 pr-8 bg-white/60 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 text-[8px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer rounded-xl text-indigo-950/60 dark:text-slate-300 shadow-sm"
                     >
-                        Monthly
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('annual')}
-                        className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === 'annual' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400'}`}
-                    >
-                        Annual
-                    </button>
+                        <option value="all">All Categories</option>
+                        {parentCatsOnly.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                 </div>
-                <button 
-                    onClick={() => setShowSub(!showSub)}
-                    className={`ml-2 px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${showSub ? 'bg-amber-400 border-amber-500 text-amber-950' : 'bg-white border-gray-100 text-slate-400'}`}
-                >
-                    Show Sub.
-                </button>
             </div>
 
             {/* Summary Row */}
@@ -313,7 +328,15 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                     paddingAngle={8}
                                 >
                                     {stats.subcategories.map((entry) => (
-                                        <Cell key={`cell-${entry.name}`} fill={getColorForName(entry.name)} stroke="transparent" />
+                                        <Cell 
+                                            key={`cell-${entry.name}`} 
+                                            fill={getColorForName(entry.name)} 
+                                            stroke="transparent" 
+                                            className="cursor-pointer hover:opacity-80 outline-none"
+                                            onClick={() => {
+                                                if(onFilterSelect && entry.name) onFilterSelect('category', entry.name);
+                                            }}
+                                        />
                                     ))}
                                 </Pie>
                                 <Tooltip contentStyle={{ borderRadius: '16px', fontWeight: 900, fontSize: 9 }} />
@@ -350,9 +373,17 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                     <XAxis type="number" hide />
                                     <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#6366f1', opacity: 0.8 }} />
                                     <Tooltip cursor={{ fill: '#F9FAFB', opacity: 0.5 }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900, fontSize: 10 }} />
-                                    <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20} fill="#6366f1">
+                                    <Bar 
+                                        dataKey="value" 
+                                        radius={[0, 8, 8, 0]} 
+                                        barSize={20} 
+                                        fill="#6366f1"
+                                        onClick={(data) => {
+                                            if(onFilterSelect && data && data.name) onFilterSelect('store', data.name);
+                                        }}
+                                    >
                                         {stats.storeData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={getColorForName(entry.name)} />
+                                            <Cell key={`cell-${index}`} fill={getColorForName(entry.name)} className="cursor-pointer hover:opacity-80" />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -384,9 +415,22 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                         outerRadius={70}
                                         paddingAngle={5}
                                     >
-                                        {stats.paymentData.map((entry) => (
-                                            <Cell key={`cell-${entry.name}`} fill={getColorForName(entry.name)} stroke="transparent" />
-                                        ))}
+                                        {stats.paymentData.map((entry) => {
+                                            const shades = ['#D1FAE5', '#DCFCE7', '#F0FDF4', '#ECFCCB', '#CCFBF1'];
+                                            const hash = entry.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                            const shade = shades[hash % shades.length];
+                                            return (
+                                                <Cell 
+                                                    key={`cell-${entry.name}`} 
+                                                    fill={shade} 
+                                                    stroke="transparent" 
+                                                    className="cursor-pointer hover:opacity-80 outline-none"
+                                                    onClick={() => {
+                                                        if(onFilterSelect && entry.name) onFilterSelect('payment', entry.name);
+                                                    }}
+                                                />
+                                            );
+                                        })}
                                     </Pie>
                                     <Tooltip contentStyle={{ borderRadius: '16px', fontWeight: 900, fontSize: 9 }} />
                                 </PieChart>

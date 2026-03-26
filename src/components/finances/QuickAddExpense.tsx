@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
+import { AutocompleteSearch } from './AutocompleteSearch';
 
 interface Props {
     isOpen: boolean;
@@ -167,18 +168,14 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                             <div className="group">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Merchant / Source</label>
                                 <div className="relative">
-                                    <Store size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                    <input
-                                        type="text"
-                                        list="store-options"
-                                        placeholder="Where did it go/come from?"
+                                    <AutocompleteSearch
                                         value={storeName}
-                                        onChange={(e) => setStoreName(e.target.value)}
-                                        className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                        onChange={setStoreName}
+                                        options={storeOptions}
+                                        placeholder="Where did it go/come from?"
+                                        icon={Store}
+                                        inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
                                     />
-                                    <datalist id="store-options">
-                                        {storeOptions.map(s => <option key={s} value={s} />)}
-                                    </datalist>
                                 </div>
                             </div>
 
@@ -310,21 +307,14 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                 <div className="group">
                                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
                                     <div className="relative">
-                                        <Wallet size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                        <input
-                                            type="text"
-                                            list="payment-options"
-                                            placeholder="Method (e.g. Card, Cash)"
+                                        <AutocompleteSearch
                                             value={paymentMethod}
-                                            onChange={(e) => setPaymentMethod(e.target.value)}
-                                            className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                            onChange={setPaymentMethod}
+                                            options={Array.from(new Set([...paymentOptions, 'Cash', 'Credit Card', 'Debit Card']))}
+                                            placeholder="Method (e.g. Card, Cash)"
+                                            icon={Wallet}
+                                            inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
                                         />
-                                        <datalist id="payment-options">
-                                            {paymentOptions.map(m => <option key={m} value={m} />)}
-                                            {!paymentOptions.includes('Cash') && <option value="Cash" />}
-                                            {!paymentOptions.includes('Credit Card') && <option value="Credit Card" />}
-                                            {!paymentOptions.includes('Debit Card') && <option value="Debit Card" />}
-                                        </datalist>
                                     </div>
                                 </div>
                             </div>

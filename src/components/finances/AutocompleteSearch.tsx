@@ -7,16 +7,17 @@ interface Props {
     options: string[];
     placeholder: string;
     icon: any;
+    inputClassName?: string;
 }
 
-export const AutocompleteSearch: React.FC<Props> = ({ value, onChange, options, placeholder, icon: Icon }) => {
+export const AutocompleteSearch: React.FC<Props> = ({ value, onChange, options, placeholder, icon: Icon, inputClassName }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (value.trim() === '') {
-            setSuggestions([]);
+            setSuggestions(options.slice(0, 5));
         } else {
             const filtered = options.filter(opt => 
                 opt.toLowerCase().includes(value.toLowerCase()) && 
@@ -49,7 +50,7 @@ export const AutocompleteSearch: React.FC<Props> = ({ value, onChange, options, 
                 }}
                 onFocus={() => setIsOpen(true)}
                 placeholder={placeholder}
-                className="w-full h-14 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/50 rounded-2xl font-black text-xs outline-none focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 border-2 border-transparent focus:border-indigo-600/20 transition-all dark:text-slate-200"
+                className={inputClassName || "w-full h-14 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/50 rounded-2xl font-black text-xs outline-none focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 border-2 border-transparent focus:border-indigo-600/20 transition-all dark:text-slate-200"}
             />
 
             {value && (

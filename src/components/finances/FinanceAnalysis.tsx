@@ -342,14 +342,14 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                 <Tooltip contentStyle={{ borderRadius: '16px', fontWeight: 900, fontSize: 9 }} />
                             </PieChart>
                         </ResponsiveContainer>
-                        <div className="grid grid-cols-2 gap-2 mt-4">
-                            {stats.subcategories.slice(0, 4).map(sub => (
-                                <div key={sub.name} className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorForName(sub.name) }} />
-                                    <span className="text-[8px] font-black uppercase text-indigo-950/40 dark:text-slate-300 truncate">{sub.name}</span>
-                                </div>
-                            ))}
-                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                        {stats.subcategories.slice(0, 4).map(sub => (
+                            <div key={sub.name} className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getColorForName(sub.name), outline: '1.5px solid #000000' }} />
+                                <span className="text-[8px] font-black uppercase text-indigo-950/40 dark:text-slate-300 truncate">{sub.name}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -382,7 +382,7 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                                             if(onFilterSelect && data && data.name) onFilterSelect('store', data.name);
                                         }}
                                     >
-                                        {stats.storeData.map((entry, index) => (
+                                        {stats.storeData.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={PASTEL_COLORS[index % PASTEL_COLORS.length]} stroke="#000000" strokeWidth={1.5} className="cursor-pointer hover:opacity-80" />
                                         ))}
                                     </Bar>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFinanceStore } from '@/store/financeStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Target, DollarSign, Wallet, Tag, Plus, TrendingUp } from 'lucide-react';
+import { X, Target, DollarSign, Wallet, Tag, Plus, TrendingUp, Calendar, Trash2 } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -11,33 +11,58 @@ interface Props {
 }
 
 export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) => {
-    const { budgets, setBudget, categories } = useFinanceStore();
+    const { budgets, setBudget, deleteBudget, categories } = useFinanceStore();
     const [type, setType] = React.useState<'spending' | 'saving'>('spending');
     const [amount, setAmount] = React.useState('');
     const [categoryId, setCategoryId] = React.useState<string | null>(null);
+    const [selectedMonths, setSelectedMonths] = React.useState<number[]>([month]);
+    const [selectedYear, setSelectedYear] = React.useState(year);
     const [loading, setLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        if (isOpen) {
+            setSelectedMonths([month]);
+            setSelectedYear(year);
+        }
+    }, [isOpen, month, year]);
+
+    const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
 
     // Filter budgets for the current selected month/year
     const currentBudgets = budgets.filter(b => b.month === month && b.year === year);
 
     const handleSave = async () => {
-        if (!amount) return;
+        if (!amount || selectedMonths.length === 0) return;
         setLoading(true);
         try {
-            await setBudget({
-                type,
-                amount: parseFloat(amount),
-                category_id: categoryId || undefined,
-                month,
-                year
-            });
+            await Promise.all(selectedMonths.map(m => 
+                setBudget({
+                    type,
+                    amount: parseFloat(amount),
+                    category_id: categoryId || null,
+                    month: m,
+                    year: selectedYear
+                })
+            ));
             setAmount('');
             setCategoryId(null);
+            // Don't reset selectedMonths/year as user might want to add another plan for same period
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const toggleMonth = (m: number) => {
+        setSelectedMonths(prev => 
+            prev.includes(m) 
+                ? prev.filter(item => item !== m)
+                : [...prev, m]
+        );
     };
 
     return (
@@ -115,17 +140,58 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                                 )}
 
                                 {/* Amount */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="group">
+                                        <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-2 block">Target Amount</label>
+                                        <div className="relative">
+                                            <DollarSign size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                            <input
+                                                type="number"
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full h-14 pl-12 pr-6 bg-white dark:bg-slate-900 rounded-2xl text-sm font-bold outline-none border border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="group">
+                                        <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-2 block">Year</label>
+                                        <div className="relative">
+                                            <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                            <select 
+                                                value={selectedYear}
+                                                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                                className="w-full h-14 pl-12 pr-4 bg-white dark:bg-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-indigo-100 transition-all dark:text-slate-200 appearance-none cursor-pointer"
+                                            >
+                                                {[year - 1, year, year + 1, year + 2].map(y => (
+                                                    <option key={y} value={y}>{y}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Month Multi-select */}
                                 <div className="group">
-                                    <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-2 block">Target Amount</label>
-                                    <div className="relative">
-                                        <DollarSign size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                                        <input
-                                            type="number"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            placeholder="0.00"
-                                            className="w-full h-14 pl-12 pr-6 bg-white dark:bg-slate-900 rounded-2xl text-sm font-bold outline-none border border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                        />
+                                    <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-3 block">Target Months</label>
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {monthNames.map((name, index) => {
+                                            const isSelected = selectedMonths.includes(index);
+                                            return (
+                                                <button
+                                                    key={name}
+                                                    onClick={() => toggleMonth(index)}
+                                                    className={`h-10 rounded-xl text-[8px] font-black uppercase transition-all border ${
+                                                        isSelected 
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100' 
+                                                            : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200'
+                                                    }`}
+                                                >
+                                                    {name}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -172,7 +238,13 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                                             </div>
                                             <div className="flex flex-col items-end">
                                                <span className="text-sm font-black text-indigo-950 dark:text-slate-100">${Number(budget.amount).toLocaleString()}</span>
-                                               <button className="text-[8px] font-black uppercase text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1">Delete</button>
+                                               <button 
+                                                onClick={() => deleteBudget(budget.id)}
+                                                className="text-[8px] font-black uppercase text-rose-500 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all mt-1 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-lg"
+                                               >
+                                                <Trash2 size={10} />
+                                                Delete
+                                               </button>
                                             </div>
                                         </motion.div>
                                     );

@@ -21,6 +21,16 @@ import { getColorForName } from '@/utils/financeColors';
 export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paymentFilter, categoryFilter, fromDate, toDate, fontSize = 11 }) => {
     const { entries, loading, deleteEntry, exportToCSV, categories } = useFinanceStore();
     const [sortConfig, setSortConfig] = React.useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -159,9 +169,12 @@ export const FinanceList: React.FC<Props> = ({ search, onEdit, month, year, paym
                                 >
                                     {/* Item Title */}
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <Tag size={12} className="text-slate-200 shrink-0" />
-                                            <span className="font-bold text-indigo-950 dark:text-slate-100 truncate" title={entry.title || ''}>
+                                        <div 
+                                            className="flex items-center gap-2 cursor-pointer group/title"
+                                            onClick={() => toggleExpand(entry.id)}
+                                        >
+                                            <Tag size={12} className="text-slate-200 shrink-0 group-hover/title:text-indigo-400 transition-colors" />
+                                            <span className={`font-bold text-indigo-950 dark:text-slate-100 ${expandedIds.has(entry.id) ? 'whitespace-normal break-words overflow-visible block' : 'truncate'}`} title={entry.title || ''}>
                                                 {entry.title || 'Untitled'}
                                             </span>
                                         </div>

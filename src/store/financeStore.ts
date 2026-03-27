@@ -38,7 +38,7 @@ export interface FinanceBudget {
     user_id: string;
     type: 'spending' | 'saving';
     amount: number;
-    category_id?: string;
+    category_id?: string | null;
     month: number;
     year: number;
 }
@@ -61,6 +61,7 @@ interface FinanceStore {
     deleteCategory: (id: string) => Promise<{ success: boolean; error?: string }>;
     fetchBudgets: () => Promise<void>;
     setBudget: (budget: Omit<FinanceBudget, 'id' | 'user_id'>) => Promise<void>;
+    deleteBudget: (id: string) => Promise<void>;
     exportToCSV: () => void;
     fetchPaymentMethods: () => Promise<void>;
     addPaymentMethod: (name: string) => Promise<void>;
@@ -273,6 +274,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
                 .from('finance_budgets')
                 .upsert({
                     ...budgetData,
+                    category_id: budgetData.category_id || null,
                     user_id: user.id
                 }, { 
                     onConflict: 'user_id,type,category_id,month,year' 
@@ -282,6 +284,20 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
             get().fetchBudgets();
         } catch (error) {
             console.error('Error setting budget:', error);
+        }
+    },
+
+    deleteBudget: async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('finance_budgets')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            set({ budgets: get().budgets.filter(b => b.id !== id) });
+        } catch (error) {
+            console.error('Error deleting budget:', error);
         }
     },
 

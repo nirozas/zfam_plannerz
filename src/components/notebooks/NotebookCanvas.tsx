@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Text as KonvaText, Line, Image as KonvaImage, Transformer, Group, Rect } from 'react-konva';
 import useImage from 'use-image';
 import Konva from 'konva';
@@ -29,7 +29,7 @@ interface NotebookCanvasProps {
 }
 
 // Improved Background Removal Filter
-const CustomBackgroundRemoval = function (imageData: any) {
+const CustomBackgroundRemoval = function (this: any, imageData: any) {
   const data = imageData.data;
   const threshold = this.getAttr('bgThreshold') || 240;
   
@@ -45,7 +45,6 @@ const CustomBackgroundRemoval = function (imageData: any) {
 };
 
 export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
-  pageId,
   elements,
   template,
   orientation,
@@ -156,7 +155,7 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
         dir: textSettings.dir || 'ltr',
         fill: textSettings.fill,
         backgroundColor: textSettings.backgroundColor || 'transparent',
-        outlineStyle: textSettings.outlineStyle || 'none',
+        outlineStyle: (textSettings.outlineStyle as 'none' | 'solid' | 'dashed' | 'double') || 'none',
         outlineColor: textSettings.outlineColor || '#cbd5e1',
         zIndex: elements.length,
       };
@@ -267,6 +266,11 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                       setEditingValue(el.text || '');
                       onSelectElement(el.id);
                     }}
+                    onDblTap={() => {
+                      setEditingTextId(el.id);
+                      setEditingValue(el.text || '');
+                      onSelectElement(el.id);
+                    }}
                   />
                 </Group>
               );
@@ -320,6 +324,48 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
           )}
         </Layer>
       </Stage>
+
+      {/* HTML Overlay for Text Editing */}
+      {editingTextId && elements.find(el => el.id === editingTextId) && (() => {
+        const el = elements.find(el => el.id === editingTextId)!;
+        return (
+          <textarea
+            value={editingValue}
+            onChange={(e) => setEditingValue(e.target.value)}
+            onBlur={handleTextBlur}
+            autoFocus
+            style={{
+              position: 'absolute',
+              top: el.y + 'px',
+              left: el.x + 'px',
+              width: (el.width || 100) + 'px',
+              height: Math.max(el.height || 50, 50) + 'px',
+              fontSize: el.fontSize + 'px',
+              fontFamily: el.fontFamily,
+              fontStyle: el.fontStyle || 'normal',
+              textAlign: (el.align as any) || 'left',
+              color: el.fill,
+              backgroundColor: el.backgroundColor || 'rgba(255, 255, 255, 0.9)',
+              border: '2px dashed #4f46e5',
+              padding: '12px',
+              outline: 'none',
+              resize: 'both',
+              zIndex: 1000,
+              lineHeight: 1.2,
+              boxSizing: 'border-box',
+              transform: `rotate(${el.rotation || 0}deg)`,
+              transformOrigin: 'top left',
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                handleTextBlur();
+              }
+              // Prevent parent keydown from deleting element
+              e.stopPropagation();
+            }}
+          />
+        );
+      })()}
     </div>
   );
 });

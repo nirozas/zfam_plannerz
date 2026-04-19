@@ -113,8 +113,15 @@ const MonthGrid = ({ date, pages, onPageClick }: any) => {
       const current = new Date(year, month, d);
       const isToday = current.toDateString() === new Date().toDateString();
       
+      const safeParseDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        if (dateStr.includes('T')) return new Date(dateStr);
+        const [y, m, d] = dateStr.split('-');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+      };
+      
       const createdPages = pages.filter((p: any) => new Date(p.createdAt).toDateString() === current.toDateString());
-      const duePages = pages.filter((p: any) => p.dueDate && new Date(p.dueDate).toDateString() === current.toDateString());
+      const duePages = pages.filter((p: any) => p.dueDate && safeParseDate(p.dueDate)?.toDateString() === current.toDateString());
 
       days.push(
         <div key={d} className={`min-h-[120px] bg-white border-b border-r border-slate-100 p-2 hover:bg-slate-50/50 transition-colors group relative ${isToday ? 'ring-1 ring-inset ring-indigo-100 bg-indigo-50/10' : ''}`}>
@@ -153,8 +160,15 @@ const WeekGrid = ({ date, pages, onPageClick }: any) => {
   for (let i = 0; i < 7; i++) {
     const current = new Date(startOfWeek);
     current.setDate(startOfWeek.getDate() + i);
+    const safeParseDate = (dateStr: string) => {
+      if (!dateStr) return null;
+      if (dateStr.includes('T')) return new Date(dateStr);
+      const [y, m, d] = dateStr.split('-');
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    };
+
     const createdPages = pages.filter((p: any) => new Date(p.createdAt).toDateString() === current.toDateString());
-    const duePages = pages.filter((p: any) => p.dueDate && new Date(p.dueDate).toDateString() === current.toDateString());
+    const duePages = pages.filter((p: any) => p.dueDate && safeParseDate(p.dueDate)?.toDateString() === current.toDateString());
 
     days.push(
       <div key={i} className="flex-1 min-w-[150px] border-r border-slate-100 bg-white">
@@ -176,8 +190,15 @@ const WeekGrid = ({ date, pages, onPageClick }: any) => {
 };
 
 const DayGrid = ({ date, pages, onPageClick }: any) => {
+  const safeParseDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    if (dateStr.includes('T')) return new Date(dateStr);
+    const [y, m, d] = dateStr.split('-');
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  };
+
   const createdPages = pages.filter((p: any) => new Date(p.createdAt).toDateString() === date.toDateString());
-  const duePages = pages.filter((p: any) => p.dueDate && new Date(p.dueDate).toDateString() === date.toDateString());
+  const duePages = pages.filter((p: any) => p.dueDate && safeParseDate(p.dueDate)?.toDateString() === date.toDateString());
 
   return (
     <div className="p-8 max-w-4xl mx-auto">

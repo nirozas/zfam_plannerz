@@ -20,7 +20,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
-  Download
+  Download,
+  Menu,
+  X
 } from 'lucide-react';
 import '../components/notebooks/Notebooks.css';
 
@@ -40,6 +42,7 @@ const NotebooksPage: React.FC = () => {
     updateElement,
     setActivePage,
     setActiveNotebook,
+    addPage,
     goToNextPage,
     goToPrevPage
   } = useNotebookStore();
@@ -84,6 +87,7 @@ const NotebooksPage: React.FC = () => {
     title: ''
   });
   const [activeSectionGroupId, setActiveSectionGroupId] = useState<string | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Handle Routing Sync
   useEffect(() => {
@@ -118,15 +122,16 @@ const NotebooksPage: React.FC = () => {
 
   const handleAutoFit = () => {
     if (!viewerRef.current) return;
-    const { offsetWidth, offsetHeight } = viewerRef.current;
+    const { offsetWidth } = viewerRef.current;
     const activePage = getActivePage();
     if (!activePage) return;
     
     const pageW = activePage.orientation === 'portrait' ? 794 : 1123;
-    
-    // Fit to width with some padding (60px)
-    const scale = (offsetWidth - 60) / pageW;
-    setZoom(Math.min(scale, 1.5)); // Cap at 1.5x to prevent extreme blurring
+    const isMobile = offsetWidth < 768;
+    const padding = isMobile ? 16 : 60;
+    const scale = (offsetWidth - padding) / pageW;
+    // On mobile: always fit, no cap. On desktop: cap at 1.5x.
+    setZoom(isMobile ? scale : Math.min(scale, 1.5));
   };
 
   const getActivePage = () => {
@@ -142,6 +147,18 @@ const NotebooksPage: React.FC = () => {
 
   const activeNotebook = notebooks.find(n => n.id === activeNotebookId);
   const activePage = getActivePage();
+
+  const handleAddSubpage = () => {
+    if (!activeSectionId || !activePage) return;
+    const newPageId = addPage(
+      activeSectionId,
+      'New Subpage',
+      activePage.orientation,
+      activePage.template,
+      true
+    );
+    setActivePage(newPageId);
+  };
 
   const handleUpdateElements = (elements: any[]) => {
     if (!activePageId) return;
@@ -306,15 +323,31 @@ const NotebooksPage: React.FC = () => {
 
   return (
     <div className="notebooks-container">
+      {/* Mobile sidebar overlay */}
+      <div 
+        className={`notebook-sidebar-overlay ${isMobileSidebarOpen ? 'visible' : ''}`}
+        onClick={() => setIsMobileSidebarOpen(false)}
+      />
+
       <NotebookSidebar 
         onOpenCreateModal={() => setIsCreateModalOpen(true)} 
         onOpenEditModal={(type, id, title) => setEditModalState({ isOpen: true, type, id, title })}
         activeSectionGroupId={activeSectionGroupId}
+        className={isMobileSidebarOpen ? 'mobile-open' : ''}
+        onClose={() => setIsMobileSidebarOpen(false)}
       />
 
       <main className="notebook-main">
         {/* Top Navigation */}
         <div className="notebook-top-nav">
+          {/* Mobile hamburger */}
+          <button 
+            className="sidebar-toggle-btn"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            title="Open Sections"
+          >
+            <Menu size={20} />
+          </button>
           <div className="flex-1 flex items-center gap-6 overflow-x-auto no-scrollbar pr-4">
             <h1 
               className="text-xl font-black text-slate-800 whitespace-nowrap cursor-pointer hover:text-indigo-600 transition-colors"
@@ -448,37 +481,46 @@ const NotebooksPage: React.FC = () => {
               <NotebookCalendar onPageSelect={handleCalendarPageSelect} />
             </div>
           ) : activePage ? (
-            <div className="flex flex-col items-center gap-10 py-10" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-              <NotebookCanvas 
-                ref={canvasRef}
-                pageId={activePage.id}
-                elements={activePage.elements}
-                template={activePage.template}
-                orientation={activePage.orientation}
-                onUpdateElements={handleUpdateElements}
-                onSelectElement={setSelectedElementId}
-                activeTool={activeTool}
-                brushSettings={brushSettings}
-                textSettings={textSettings}
-                selectedId={selectedElementId}
-              />
+              <div className="flex flex-col items-center gap-10 py-10 inline-page-nav-wrapper" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                <NotebookCanvas 
+                  ref={canvasRef}
+                  pageId={activePage.id}
+                  elements={activePage.elements}
+                  template={activePage.template}
+                  orientation={activePage.orientation}
+                  onUpdateElements={handleUpdateElements}
+                  onSelectElement={setSelectedElementId}
+                  activeTool={activeTool}
+                  brushSettings={brushSettings}
+                  textSettings={textSettings}
+                  selectedId={selectedElementId}
+                />
 
 
-              <div className="flex items-center gap-4 py-8">
-                <button 
-                  onClick={() => goToPrevPage()}
-                  className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                >
-                  <ArrowLeft size={24} />
-                </button>
-                <button 
-                  onClick={() => goToNextPage()}
-                  className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                >
-                  <ArrowRight size={24} />
-                </button>
+                <div className="inline-page-nav flex items-center gap-4 py-8">
+                  <button 
+                    onClick={() => goToPrevPage()}
+                    className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                    title="Previous Page"
+                  >
+                    <ArrowLeft size={24} />
+                  </button>
+                  <button 
+                    onClick={handleAddSubpage}
+                    className="tool-btn rounded-full bg-indigo-600 shadow-md shadow-indigo-200 w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-white"
+                    title="Add Subpage"
+                  >
+                    <Plus size={24} />
+                  </button>
+                  <button 
+                    onClick={() => goToNextPage()}
+                    className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                    title="Next Page"
+                  >
+                    <ArrowRight size={24} />
+                  </button>
+                </div>
               </div>
-            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <Book size={64} className="mb-4 opacity-10" />
@@ -487,6 +529,28 @@ const NotebooksPage: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Mobile floating page navigation */}
+      <div className="mobile-page-nav">
+        <button 
+          onClick={() => goToPrevPage()}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 text-slate-500 active:bg-indigo-50 active:text-indigo-600 transition-all"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <button 
+          onClick={handleAddSubpage}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 text-white shadow-md shadow-indigo-200 active:scale-95 transition-all"
+        >
+          <Plus size={20} />
+        </button>
+        <button 
+          onClick={() => goToNextPage()}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 text-slate-500 active:bg-indigo-50 active:text-indigo-600 transition-all"
+        >
+          <ArrowRight size={20} />
+        </button>
+      </div>
 
       <NotebookCreateModal 
         isOpen={isCreateModalOpen}

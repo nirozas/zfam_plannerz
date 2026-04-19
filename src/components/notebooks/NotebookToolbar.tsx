@@ -58,9 +58,10 @@ interface ToolbarProps {
 const FONTS = [
   'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 
   'Poppins', 'Raleway', 'Playfair Display', 'Merriweather', 
-  'Ubuntu', 'Oswald', 'Source Sans Pro', 'PT Sans', 'Noto Sans',
-  'Arvo', 'Lora', 'Muli', 'Nunito', 'Karla', 'Work Sans',
-  'Pacifico', 'Dancing Script', 'Shadows Into Light'
+  'Ubuntu', 'Oswald', 'Nunito', 'Pacifico', 'Dancing Script', 
+  'Shadows Into Light', 'Caveat', 'Indie Flower',
+  // Arabic Fonts
+  'Cairo', 'Tajawal', 'Amiri', 'Changa', 'Almarai'
 ];
 
 export const NotebookToolbar: React.FC<ToolbarProps> = ({
@@ -179,7 +180,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* Properties (Contextual) */}
-        {(activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'text' || (selectedElement && selectedElement.type === 'image')) && (
+        {(activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'text' || (selectedElement && (selectedElement.type === 'image' || selectedElement.type === 'text'))) && (
           <div className="toolbar-group">
             <div className="flex items-center gap-1.5 px-2">
               {activeTool === 'pen' && (
@@ -210,10 +211,10 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
 
               <input 
                 type="color" 
-                value={activeTool === 'text' ? (selectedElement?.fill || textSettings.fill) : brushSettings.color}
+                value={(activeTool === 'text' || selectedElement?.type === 'text') ? (selectedElement?.fill || textSettings.fill) : brushSettings.color}
                 onChange={(e) => {
                   const color = e.target.value;
-                  if (activeTool === 'text') {
+                  if (activeTool === 'text' || selectedElement?.type === 'text') {
                     setTextSettings({ ...textSettings, fill: color });
                     if (selectedElement?.id.includes('text')) onUpdateElement?.(selectedElement.id, { fill: color });
                   } else {
@@ -228,9 +229,9 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               <button 
                 className="p-1 hover:bg-slate-100 rounded"
                 onClick={() => {
-                  const val = activeTool === 'text' ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width;
+                  const val = (activeTool === 'text' || selectedElement?.type === 'text') ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width;
                   const newVal = Math.max(1, val - 1);
-                  if (activeTool === 'text') {
+                  if (activeTool === 'text' || selectedElement?.type === 'text') {
                     setTextSettings({ ...textSettings, fontSize: newVal });
                     if (selectedElement?.id.includes('text')) onUpdateElement?.(selectedElement.id, { fontSize: newVal });
                   } else {
@@ -241,14 +242,14 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
                 <Minus size={14} />
               </button>
               <span className="text-[10px] font-black w-6 text-center">
-                {activeTool === 'text' ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width}
+                {(activeTool === 'text' || selectedElement?.type === 'text') ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width}
               </span>
               <button 
                 className="p-1 hover:bg-slate-100 rounded"
                 onClick={() => {
-                  const val = activeTool === 'text' ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width;
+                  const val = (activeTool === 'text' || selectedElement?.type === 'text') ? (selectedElement?.fontSize || textSettings.fontSize) : brushSettings.width;
                   const newVal = Math.max(1, val + 1);
-                  if (activeTool === 'text') {
+                  if (activeTool === 'text' || selectedElement?.type === 'text') {
                     setTextSettings({ ...textSettings, fontSize: newVal });
                     if (selectedElement?.id.includes('text')) onUpdateElement?.(selectedElement.id, { fontSize: newVal });
                   } else {
@@ -281,7 +282,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
 
-            {activeTool === 'text' && (
+            {(activeTool === 'text' || selectedElement?.type === 'text') && (
               <select 
                 className="bg-transparent border-none text-[10px] font-bold outline-none px-2 uppercase"
                 value={selectedElement?.fontFamily || textSettings.fontFamily}
@@ -295,11 +296,11 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               </select>
             )}
 
-            {activeTool === 'text' && (
+            {(activeTool === 'text' || selectedElement?.type === 'text') && (
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                 <ToolButton 
                   icon={<Bold size={14} />} 
-                  active={selectedElement?.fontStyle?.includes('bold') || textSettings.fontStyle?.includes('bold')} 
+                  active={selectedElement?.fontStyle?.includes('bold') || (!selectedElement && textSettings.fontStyle?.includes('bold'))} 
                   onClick={() => {
                     const current = selectedElement?.fontStyle || textSettings.fontStyle || '';
                     const next = current.includes('bold') ? current.replace('bold', '').trim() : (current + ' bold').trim();
@@ -310,7 +311,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
                 />
                 <ToolButton 
                   icon={<Italic size={14} />} 
-                  active={selectedElement?.fontStyle?.includes('italic') || textSettings.fontStyle?.includes('italic')} 
+                  active={selectedElement?.fontStyle?.includes('italic') || (!selectedElement && textSettings.fontStyle?.includes('italic'))} 
                   onClick={() => {
                     const current = selectedElement?.fontStyle || textSettings.fontStyle || '';
                     const next = current.includes('italic') ? current.replace('italic', '').trim() : (current + ' italic').trim();
@@ -322,7 +323,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
 
-            {activeTool === 'text' && (
+            {(activeTool === 'text' || selectedElement?.type === 'text') && (
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                 <ToolButton 
                   icon={<AlignLeft size={14} />} 
@@ -351,7 +352,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
 
-            {activeTool === 'text' && (
+            {(activeTool === 'text' || selectedElement?.type === 'text') && (
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                 <ToolButton 
                   icon={<Languages size={14} />} 
@@ -366,7 +367,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
 
-            {activeTool === 'text' && selectedElement && (
+            {(activeTool === 'text' || selectedElement?.type === 'text') && selectedElement && (
               <ToolButton 
                 icon={<Maximize2 size={16} />} 
                 onClick={() => onUpdateElement?.(selectedElement.id, { _fitToContent: true })} 
@@ -378,7 +379,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
         )}
 
         {/* Text Box Styling */}
-        {activeTool === 'text' && (
+        {(activeTool === 'text' || selectedElement?.type === 'text') && (
           <div className="toolbar-group">
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-[7px] font-black uppercase text-slate-400">BG</span>

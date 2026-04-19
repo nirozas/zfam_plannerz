@@ -69,6 +69,14 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
+                    to="/notebooks"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Notebooks"
+                >
+                    <Book size={22} />
+                </NavLink>
+
+                <NavLink
                     to="/trips"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     title="Adventure Trips"
@@ -106,14 +114,6 @@ export const AppSidebar: React.FC = () => {
                     title="Planners"
                 >
                     <LayoutGrid size={22} />
-                </NavLink>
-
-                <NavLink
-                    to="/notebooks"
-                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Notebooks"
-                >
-                    <Book size={22} />
                 </NavLink>
 
                 {/* Bug Report Button - Moved to popover */}

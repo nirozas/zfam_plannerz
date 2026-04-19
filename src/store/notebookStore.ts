@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 import { 
   Notebook, 
   NotebookSection, 
-  NotebookSectionGroup, 
   NotebookPage, 
   NotebookElement,
   PageTemplate,
@@ -14,10 +13,8 @@ import {
   downloadFileFromDrive, 
   checkIsSignedIn, 
   signIn, 
-  getOrCreateAppFolder,
   findNotebookFiles,
-  deleteFileFromDrive,
-  listFilesInAppFolder
+  deleteFileFromDrive
 } from '../lib/googleDrive';
 import { supabase } from '../supabase/client';
 
@@ -449,8 +446,8 @@ export const useNotebookStore = create<NotebookState>()(
         if (notebookId) get().saveToDrive(notebookId);
       },
 
-      movePage: (pageId, newSectionId) => get().saveToDrive(),
-      moveSection: (sectionId, newNotebookId, newGroupId) => get().saveToDrive(),
+      movePage: (_pageId, _newSectionId) => get().saveToDrive(),
+      moveSection: (_sectionId, _newNotebookId, _newGroupId) => get().saveToDrive(),
 
       getAllPagesWithMetadata: () => {
         const { notebooks } = get();

@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlannerStore } from '../../store/plannerStore';
-import { CheckSquare, Plane, Sparkles, BookOpen, Clock, Image as ImageIcon, Edit3, Check, X, Link as LinkIcon, StickyNote, AlertTriangle } from 'lucide-react';
+import { 
+  CheckSquare, 
+  Plane, 
+  Sparkles, 
+  BookOpen, 
+  Clock, 
+  Image as ImageIcon, 
+  Edit3, 
+  Check, 
+  X, 
+  Link as LinkIcon, 
+  StickyNote, 
+  AlertTriangle,
+  Wallet,
+  Book,
+  Library
+} from 'lucide-react';
 import './HomePage.css';
 
 const HomePage: React.FC = () => {
@@ -113,13 +129,14 @@ const HomePage: React.FC = () => {
 
     const categories = [
         {
-            id: 'planners',
-            title: 'Digital Planners',
-            description: 'Organize your notebooks, journals, and dedicated planners.',
-            icon: <BookOpen size={32} />,
-            color: 'from-blue-500 to-indigo-600',
-            path: '/planners',
-            active: true
+            id: 'notebooks',
+            title: 'Creative Notebooks',
+            description: 'Beautifully structured notebooks for your notes and sketches.',
+            icon: <Book size={32} />,
+            color: 'from-rose-500 to-pink-600',
+            path: '/notebooks',
+            active: true,
+            defaultImage: '/images/home/notebooks.png'
         },
         {
             id: 'tasks',
@@ -128,7 +145,8 @@ const HomePage: React.FC = () => {
             icon: <CheckSquare size={32} />,
             color: 'from-violet-500 to-purple-600',
             path: '/tasks',
-            active: true
+            active: true,
+            defaultImage: '/images/home/tasks.png'
         },
         {
             id: 'trips',
@@ -137,7 +155,8 @@ const HomePage: React.FC = () => {
             icon: <Plane size={32} />,
             color: 'from-emerald-500 to-teal-600',
             path: '/trips',
-            active: true
+            active: true,
+            defaultImage: '/images/home/trips.png'
         },
         {
             id: 'cards',
@@ -146,7 +165,28 @@ const HomePage: React.FC = () => {
             icon: <StickyNote size={32} />,
             color: 'from-amber-400 to-orange-500',
             path: '/cards',
-            active: true
+            active: true,
+            defaultImage: '/images/home/cards.png'
+        },
+        {
+            id: 'finances',
+            title: 'Vault & Finances',
+            description: 'Securely manage your budget, goals, and financial planning.',
+            icon: <Wallet size={32} />,
+            color: 'from-slate-700 to-slate-900',
+            path: '/finances',
+            active: true,
+            defaultImage: '/images/home/finances.png'
+        },
+        {
+            id: 'planners',
+            title: 'Digital Planners',
+            description: 'Organize your notebooks, journals, and dedicated planners.',
+            icon: <BookOpen size={32} />,
+            color: 'from-blue-500 to-indigo-600',
+            path: '/planners',
+            active: true,
+            defaultImage: '/images/home/planners.png'
         }
     ];
 
@@ -394,9 +434,14 @@ const HomePage: React.FC = () => {
                                 ) : null}
 
                                 <div className="card-visual">
-                                    <div className={`visual-surface ${boxImg ? 'has-image' : `bg-gradient-to-br ${cat.color}`}`}>
-                                        {boxImg ? (
-                                            <img src={boxImg} alt={cat.title} referrerPolicy="no-referrer" className="card-main-image" />
+                                    <div className={`visual-surface ${boxImg || (cat as any).defaultImage ? 'has-image' : `bg-gradient-to-br ${cat.color}`}`}>
+                                        {(boxImg || (cat as any).defaultImage) ? (
+                                            <img 
+                                                src={boxImg || (cat as any).defaultImage} 
+                                                alt={cat.title} 
+                                                referrerPolicy="no-referrer" 
+                                                className="card-main-image" 
+                                            />
                                         ) : (
                                             <div className="icon-wrapper">
                                                 {cat.icon}

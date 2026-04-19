@@ -1,19 +1,27 @@
 /* Stable Toolbar Layout */
 .notebook-toolbar-stable {
   width: 100%;
-  height: 64px;
+  height: 56px;
   background: white;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  gap: 24px;
+  padding: 0 16px;
+  gap: 16px;
   z-index: 100;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notebook-toolbar-stable::-webkit-scrollbar {
+  display: none;
 }
 
 .toolbar-metadata {
-  width: 30%;
+  flex-shrink: 0;
+  min-width: 120px;
+  max-width: 200px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -21,7 +29,7 @@
 }
 
 .metadata-title-input {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 900;
   color: #1e293b;
   border: none;
@@ -34,8 +42,8 @@
 .metadata-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 10px;
+  gap: 8px;
+  font-size: 9px;
   font-weight: 700;
   color: #64748b;
 }
@@ -45,7 +53,7 @@
   border: none;
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   color: #e11d48;
   outline: none;
@@ -53,25 +61,29 @@
 
 .toolbar-divider {
   width: 1px;
-  height: 32px;
+  height: 28px;
   background: #f1f5f9;
+  flex-shrink: 0;
 }
 
 .toolbar-tools {
-  width: 70%;
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
   background: #f8fafc;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
 
 /* Original floating styles removal */
@@ -79,7 +91,7 @@
   display: none;
 }
 
-/* Page Viewer Adjustment */
+/* Page Viewer */
 .page-viewer {
   flex: 1;
   overflow: auto;
@@ -90,6 +102,7 @@
   scroll-behavior: smooth;
   position: relative;
   padding-top: 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Canvas & Page styles */
@@ -136,19 +149,23 @@
   background-size: 30px 30px;
 }
 
-/* Sidebar & Main Layout */
+/* ─── Core Layout ──────────────────────────────────────────────── */
 .notebooks-container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   background: #f8fafc;
+  overflow: hidden;
 }
 
 .notebook-sidebar {
   width: 280px;
+  min-width: 280px;
   background: white;
   border-right: 1px solid #f1f5f9;
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 50;
 }
 
 .notebook-main {
@@ -156,14 +173,190 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .notebook-top-nav {
-  height: 64px;
+  height: 56px;
   background: white;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  gap: 24px;
+  padding: 0 16px;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
 }
+
+/* ─── Tablet (768px - 1024px) ──────────────────────────────────── */
+@media (max-width: 1024px) {
+  .notebook-sidebar {
+    width: 240px;
+    min-width: 240px;
+  }
+
+  .notebook-toolbar-stable {
+    padding: 0 12px;
+    gap: 10px;
+    height: 52px;
+  }
+
+  .toolbar-metadata {
+    max-width: 140px;
+    min-width: 100px;
+  }
+}
+
+/* ─── Mobile (< 768px) ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar becomes a slide-in overlay from the left */
+  .notebook-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 85vw;
+    max-width: 320px;
+    transform: translateX(-100%);
+    z-index: 200;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* JS-toggled class to show sidebar on mobile */
+  .notebook-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Dim overlay when sidebar is open */
+  .notebook-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+    backdrop-filter: blur(2px);
+  }
+
+  .notebook-sidebar-overlay.visible {
+    display: block;
+  }
+
+  .notebooks-container {
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .notebook-main {
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Compact mobile top nav */
+  .notebook-top-nav {
+    height: auto;
+    min-height: 52px;
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  /* Compact mobile toolbar */
+  .notebook-toolbar-stable {
+    height: auto;
+    min-height: 48px;
+    padding: 6px 10px;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .toolbar-metadata {
+    display: none; /* hide metadata on very small screens — shown in top nav instead */
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+
+  /* Make the canvas viewer fill remaining height */
+  .page-viewer {
+    flex: 1;
+    padding-top: 8px;
+    padding-bottom: env(safe-area-inset-bottom, 60px); /* space for bottom nav */
+  }
+
+  /* Bottom floating navigation buttons on mobile */
+  .mobile-page-nav {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 100px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    z-index: 100;
+    border: 1px solid #f1f5f9;
+  }
+}
+
+/* ─── Sidebar Toggle Button (mobile only) ─────────────────────── */
+.sidebar-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.sidebar-toggle-btn:active {
+  background: #e2e8f0;
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+}
+
+/* Hide bottom page-nav buttons on desktop (they appear inline) */
+.mobile-page-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-page-nav {
+    display: flex;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    align-items: center;
+    gap: 16px;
+    z-index: 100;
+    border: 1px solid #f1f5f9;
+  }
+
+  /* Hide the inline bottom arrows on mobile since floating ones replace them */
+  .inline-page-nav {
+    display: none;
+  }
+}
+

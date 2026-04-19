@@ -971,7 +971,7 @@ async function uploadAttachmentFiles(
     const urls: string[] = [];
     for (const file of files) {
         try {
-            const result = await uploadFileToDrive(file, file.name, file.type || 'application/octet-stream', false, undefined, 'Task Attachments');
+            const result = await uploadFileToDrive(file, file.name, file.type || 'application/octet-stream', false);
             urls.push(result.url);
         } catch (err) {
             console.error('[taskStore] uploadAttachmentFiles error:', err);

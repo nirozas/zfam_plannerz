@@ -147,6 +147,8 @@ export async function uploadFileToDrive(
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', file);
 
+    if (!token) throw new Error('Not authenticated');
+
     const response = await fetch(url, {
         method,
         headers: { Authorization: `Bearer ${token.access_token}` },

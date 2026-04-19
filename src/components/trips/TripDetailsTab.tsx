@@ -63,7 +63,7 @@ const TripDetailsTab: React.FC<TripDetailsTabProps> = ({ tripId }) => {
         try {
             const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
             if (!checkIsSignedIn()) await signIn();
-            const result = await uploadFileToDrive(file, `trip-cover-${Date.now()}`, file.type, true, undefined, 'Trip Covers');
+            const result = await uploadFileToDrive(file, `trip-cover-${Date.now()}`, file.type, true);
             return result.url;
         } catch (err) {
             console.error('[TripDetailsTab] Cover upload error:', err);

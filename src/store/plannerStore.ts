@@ -1946,9 +1946,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 blob,
                 `cover - ${id} -${Date.now()}.png`,
                 'image/png',
-                false,
-                undefined,
-                'Planner Covers'
+                false
             );
 
             // Update Planner Record
@@ -2165,9 +2163,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 file,
                 file.name,
                 file.type || 'application/octet-stream',
-                isPublic, // Public assets get "anyone with link" permission on Drive
-                (progress) => set({ uploadProgress: progress }),
-                subfolderName
+                isPublic // Public assets get "anyone with link" permission on Drive
             );
 
             const { error: dbError } = await supabase
@@ -2271,9 +2267,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 blob,
                 asset.title + '-edited',
                 'image/png',
-                asset.user_id === null, // public if it's a public asset
-                (progress) => set({ uploadProgress: progress }),
-                subfolderName
+                asset.user_id === null // public if it's a public asset
             );
 
             // Update DB with new Drive URL (thumbnail_url set to null as it's computed dynamically)
@@ -2504,9 +2498,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 file,
                 `avatar-${user.id}`,
                 file.type,
-                false,
-                (progress) => set({ uploadProgress: progress }),
-                'User Media'
+                false
             );
 
             // Update profile with Drive URL and metadata
@@ -2546,9 +2538,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
                 file,
                 `hero-${page}-${user.id}`,
                 file.type,
-                true,
-                (progress) => set({ uploadProgress: progress }),
-                'User Media'
+                true
             );
 
             // Update hero_config in profile

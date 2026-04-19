@@ -9,13 +9,15 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowLeft,
-  Folder
+  Folder,
+  Trash2
 } from 'lucide-react';
 import { useNotebookStore } from '../../store/notebookStore';
 
 interface NotebookSidebarProps {
   onOpenCreateModal: () => void;
   onOpenEditModal: (type: 'notebook' | 'group' | 'section' | 'page', id: string, title: string) => void;
+  onOpenTrash: () => void;
   activeSectionGroupId: string | null;
   className?: string;
   onClose?: () => void;
@@ -24,6 +26,7 @@ interface NotebookSidebarProps {
 export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({ 
   onOpenCreateModal, 
   onOpenEditModal,
+  onOpenTrash,
   className = '',
   onClose
 }) => {
@@ -34,14 +37,75 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
     activePageId,
     setActiveNotebook,
     setActiveSection,
-    setActivePage
+    setActivePage,
+    deletePage,
+    deleteSection,
+    deleteSectionGroup,
+    trashedItems,
+    movePageDragDrop
   } = useNotebookStore();
 
   const navigate = useNavigate();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   
   const toggleSection = (id: string) => {
     setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleDeletePage = (e: React.MouseEvent, pageId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Move this page to Trash?')) {
+      deletePage(pageId);
+    }
+  };
+
+  const handleDeleteSection = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Move this section and all its pages to Trash?')) {
+      deleteSection(sectionId);
+    }
+  };
+
+  const handleDeleteGroup = (e: React.MouseEvent, groupId: string) => {
+    e.stopPropagation();
+    if (window.confirm('Move this group and all its sections to Trash?')) {
+      deleteSectionGroup(groupId);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, pageId: string, sourceSectionId: string, index: number) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ pageId, sourceSectionId, index }));
+    // Use setTimeout so the drag image renders before we set state
+    setTimeout(() => setDraggedPageId(pageId), 0);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPageId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, destinationSectionId: string, destinationIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedPageId(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      if (data.sourceSectionId && typeof data.index === 'number') {
+        // Adjust destination index if dropping in the same section after the source index
+        let targetIndex = destinationIndex;
+        if (data.sourceSectionId === destinationSectionId && data.index < destinationIndex) {
+          targetIndex -= 1;
+        }
+        if (data.sourceSectionId !== destinationSectionId || data.index !== targetIndex) {
+          movePageDragDrop(data.sourceSectionId, data.index, destinationSectionId, targetIndex);
+        }
+      }
+    } catch (err) {}
   };
 
   const renderSection = (section: any) => (
@@ -62,26 +126,54 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
         }`}>
           {section.name}
         </span>
+        <button
+          onClick={(e) => handleDeleteSection(e, section.id)}
+          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 hover:text-red-400 rounded text-slate-300 transition-all"
+          title="Delete section"
+        >
+          <Trash2 size={11} />
+        </button>
         {collapsedSections[section.id] ? <ChevronRight size={14} className="text-slate-300" /> : <ChevronDown size={14} className="text-slate-300" />}
       </div>
 
       {!collapsedSections[section.id] && (
-        <div className="ml-4 space-y-1 animate-in slide-in-from-top-1">
-          {section.pages.map((page: any) => (
-            <button 
-              key={page.id}
-              className={`page-item w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                activePageId === page.id 
-                  ? 'bg-indigo-50 text-indigo-700' 
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
-              style={{ marginLeft: page.isSubpage ? '12px' : '0' }}
-              onClick={() => setActivePage(page.id)}
-              onDoubleClick={() => onOpenEditModal('page', page.id, page.title)}
+        <div className="ml-4 space-y-1 animate-in slide-in-from-top-1 min-h-[10px]"
+             onDragOver={handleDragOver}
+             onDrop={(e) => {
+               // Drop at the end of the section if dropped on the empty space
+               handleDrop(e, section.id, section.pages.length);
+             }}>
+          {section.pages.map((page: any, index: number) => (
+            <div 
+              key={page.id} 
+              className={`group/page relative flex items-center transition-all ${draggedPageId === page.id ? 'opacity-50' : 'opacity-100'}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, page.id, section.id, index)}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, section.id, index)}
             >
-              <FileText size={12} className="opacity-50" />
-              <span className="truncate flex-1 text-left">{page.title}</span>
-            </button>
+              <button 
+                className={`page-item flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                  activePageId === page.id 
+                    ? 'bg-indigo-50 text-indigo-700' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+                style={{ marginLeft: page.isSubpage ? '12px' : '0' }}
+                onClick={() => setActivePage(page.id)}
+                onDoubleClick={() => onOpenEditModal('page', page.id, page.title)}
+              >
+                <FileText size={12} className="opacity-50 flex-shrink-0" />
+                <span className="truncate flex-1 text-left">{page.title}</span>
+              </button>
+              <button
+                onClick={(e) => handleDeletePage(e, page.id)}
+                className="opacity-0 group-hover/page:opacity-100 p-1 hover:bg-red-50 hover:text-red-400 rounded text-slate-300 transition-all mr-1"
+                title="Delete page"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -110,7 +202,6 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
             </button>
           </div>
         </div>
-        {/* Close button - only visible on mobile via CSS */}
         {onClose && (
           <button
             onClick={onClose}
@@ -144,7 +235,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
                 {notebook.sectionGroups?.map(group => (
                   <div key={group.id} className="space-y-1">
                     <div 
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-50"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-50 group"
                       onClick={() => toggleSection(group.id)}
                       onDoubleClick={() => onOpenEditModal('group', group.id, group.name)}
                     >
@@ -152,6 +243,13 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
                       <span className="flex-1 text-[11px] font-bold truncate text-slate-600">
                         {group.name}
                       </span>
+                      <button
+                        onClick={(e) => handleDeleteGroup(e, group.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 hover:text-red-400 rounded text-slate-300 transition-all"
+                        title="Delete group"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                       {collapsedSections[group.id] ? <ChevronRight size={14} className="text-slate-300" /> : <ChevronDown size={14} className="text-slate-300" />}
                     </div>
                     {!collapsedSections[group.id] && (
@@ -191,7 +289,18 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
           <Settings size={16} />
           <span>Settings</span>
         </div>
-        <Hash size={16} className="text-slate-300" />
+        <button
+          onClick={onOpenTrash}
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors relative"
+          title="Trash"
+        >
+          <Trash2 size={16} />
+          {trashedItems.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">
+              {trashedItems.length > 9 ? '9+' : trashedItems.length}
+            </span>
+          )}
+        </button>
       </div>
     </aside>
   );

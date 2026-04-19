@@ -29,11 +29,7 @@ import {
   ChevronUp,
   ChevronDown,
   Trash2,
-  RefreshCcw,
-  Palette,
-  Sun as SunIcon,
-  FileText,
-  Download
+  RefreshCcw
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -78,9 +74,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
   onUpdateElement,
   activePage,
   onUpdatePage,
-  onDuplicateElement,
-  onAddImageFromUrl,
-  onOpenExport
+  onAddImageFromUrl
 }) => {
   return (
     <div className="notebook-toolbar-stable">

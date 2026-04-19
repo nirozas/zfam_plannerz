@@ -80,8 +80,18 @@ export interface Notebook {
   lastPageId?: string;
 }
 
+export interface TrashedItem {
+  id: string;
+  type: 'page' | 'section' | 'group';
+  item: NotebookPage | NotebookSection | NotebookSectionGroup;
+  originalParentId: string | null;
+  originalNotebookId: string;
+  deletedAt: string;
+}
+
 export interface NotebookStore {
   notebooks: Notebook[];
+  trashedItems: TrashedItem[];
   activeNotebookId: string | null;
   activeSectionId: string | null;
   activePageId: string | null;

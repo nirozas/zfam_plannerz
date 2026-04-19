@@ -24,16 +24,33 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
     renameSection, 
     renamePage,
     movePage,
-    moveSection
+    moveSection,
+    duplicatePage
   } = useNotebookStore();
 
   const [title, setTitle] = useState(initialTitle);
   const [parentId, setParentId] = useState<string>('');
+  const [duplicateSectionId, setDuplicateSectionId] = useState<string>('');
   const [targetNotebookId, setTargetNotebookId] = useState<string>('');
 
   useEffect(() => {
     setTitle(initialTitle);
   }, [initialTitle, itemId]);
+
+  const [dueDate, setDueDate] = useState('');
+  const [pageOrientation, setPageOrientation] = useState<PageOrientation>('portrait');
+  const [pageTemplate, setPageTemplate] = useState<PageTemplate>('blank');
+
+  useEffect(() => {
+    if (itemType === 'page') {
+      const page = notebooks.flatMap(nb => [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)]).flatMap(s => s.pages).find(p => p.id === itemId);
+      if (page) {
+        setDueDate(page.dueDate || '');
+        setPageOrientation(page.orientation);
+        setPageTemplate(page.template);
+      }
+    }
+  }, [itemId, itemType, notebooks]);
 
   if (!isOpen) return null;
 
@@ -67,20 +84,12 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
     onClose();
   };
 
-  const [dueDate, setDueDate] = useState('');
-  const [pageOrientation, setPageOrientation] = useState<PageOrientation>('portrait');
-  const [pageTemplate, setPageTemplate] = useState<PageTemplate>('blank');
-
-  useEffect(() => {
-    if (itemType === 'page') {
-      const page = notebooks.flatMap(nb => [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)]).flatMap(s => s.pages).find(p => p.id === itemId);
-      if (page) {
-        setDueDate(page.dueDate || '');
-        setPageOrientation(page.orientation);
-        setPageTemplate(page.template);
-      }
+  const handleDuplicate = () => {
+    if (itemType === 'page' && duplicateSectionId) {
+      duplicatePage(itemId, duplicateSectionId);
+      onClose();
     }
-  }, [itemId, itemType, notebooks]);
+  };
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -168,6 +177,34 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
                     <option key={sg.id} value={sg.id}>{sg.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          )}
+
+          {itemType === 'page' && (
+            <div className="pt-4 border-t border-slate-100">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Duplicate to Section</label>
+              <div className="flex gap-2">
+                <select 
+                  className="flex-1 bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold outline-none"
+                  value={duplicateSectionId}
+                  onChange={(e) => setDuplicateSectionId(e.target.value)}
+                >
+                  <option value="">Select destination section...</option>
+                  {notebooks.flatMap(nb => [
+                    ...nb.sections.map(s => ({ id: s.id, name: `${nb.name} > ${s.name}` })),
+                    ...nb.sectionGroups.flatMap(sg => sg.sections.map(s => ({ id: s.id, name: `${nb.name} > ${sg.name} > ${s.name}` })))
+                  ]).map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={handleDuplicate}
+                  disabled={!duplicateSectionId}
+                  className="px-6 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-black rounded-2xl shadow-xl transition-all"
+                >
+                  Clone
+                </button>
               </div>
             </div>
           )}

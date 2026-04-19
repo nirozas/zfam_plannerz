@@ -6,7 +6,8 @@ import {
   NotebookPage, 
   NotebookElement,
   PageTemplate,
-  PageOrientation
+  PageOrientation,
+  TrashedItem
 } from '../types/notebook';
 import { 
   uploadFileToDrive, 
@@ -21,6 +22,7 @@ import { supabase } from '../supabase/client';
 interface NotebookState {
   notebooks: Notebook[];
   notebookFileIds: Record<string, string>; // notebookId -> driveFileId
+  trashedItems: TrashedItem[];
   activeNotebookId: string | null;
   activeSectionId: string | null;
   activePageId: string | null;
@@ -58,7 +60,18 @@ interface NotebookState {
   updatePage: (pageId: string, updates: Partial<NotebookPage>) => void;
   renameSection: (sectionId: string, name: string) => void;
   renameSectionGroup: (groupId: string, name: string) => void;
+  deleteSection: (sectionId: string) => void;
+  deleteSectionGroup: (groupId: string) => void;
+  
+  // Trash Actions
+  restoreItem: (trashId: string) => void;
+  permanentlyDeleteItem: (trashId: string) => void;
+  emptyTrash: () => void;
+  cleanOldTrash: () => void;
+  
   movePage: (pageId: string, newSectionId: string) => void;
+  duplicatePage: (pageId: string, targetSectionId?: string) => string | null;
+  movePageDragDrop: (sourceSectionId: string, sourceIndex: number, destinationSectionId: string, destinationIndex: number) => void;
   moveSection: (sectionId: string, newNotebookId: string, newGroupId: string | null) => void;
   
   // Navigation
@@ -75,6 +88,7 @@ export const useNotebookStore = create<NotebookState>()(
     (set, get) => ({
       notebooks: [],
       notebookFileIds: {},
+      trashedItems: [],
       activeNotebookId: null,
       activeSectionId: null,
       activePageId: null,
@@ -382,21 +396,149 @@ export const useNotebookStore = create<NotebookState>()(
         if (notebookId) get().saveToDrive(notebookId);
       },
 
+      // Soft-delete page → moves to trash with context
       deletePage: (pageId) => {
         let notebookId = '';
-        set(state => ({
-          notebooks: state.notebooks.map(nb => {
-             const isTarget = nb.sections.some(s => s.pages.some(p => p.id === pageId)) || nb.sectionGroups.some(sg => sg.sections.some(s => s.pages.some(p => p.id === pageId)));
-            if (!isTarget) return nb;
+        let sectionId = '';
+        let pageToTrash: NotebookPage | null = null;
+        set(state => {
+          let updatedNotebooks = state.notebooks.map(nb => {
+            const allSections = [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)];
+            const sect = allSections.find(s => s.pages.some(p => p.id === pageId));
+            if (!sect) return nb;
             notebookId = nb.id;
+            sectionId = sect.id;
+            pageToTrash = sect.pages.find(p => p.id === pageId) || null;
             return {
               ...nb,
               sections: nb.sections.map(s => ({ ...s, pages: s.pages.filter(p => p.id !== pageId) })),
               sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(s => ({ ...s, pages: s.pages.filter(p => p.id !== pageId) })) }))
             };
-          })
-        }));
+          });
+          if (!pageToTrash) return { notebooks: updatedNotebooks };
+          const trashEntry: TrashedItem = {
+            id: crypto.randomUUID(),
+            type: 'page',
+            item: pageToTrash,
+            originalParentId: sectionId,
+            originalNotebookId: notebookId,
+            deletedAt: new Date().toISOString()
+          };
+          return { notebooks: updatedNotebooks, trashedItems: [trashEntry, ...state.trashedItems] };
+        });
         if (notebookId) get().saveToDrive(notebookId);
+      },
+
+      // Soft-delete section → moves section (with all pages) to trash
+      deleteSection: (sectionId) => {
+        let notebookId = '';
+        let parentGroupId: string | null = null;
+        let sectionToTrash: NotebookSection | null = null;
+        set(state => {
+          let updatedNotebooks = state.notebooks.map(nb => {
+            const rootSect = nb.sections.find(s => s.id === sectionId);
+            const groupSect = nb.sectionGroups.find(sg => sg.sections.some(s => s.id === sectionId));
+            if (!rootSect && !groupSect) return nb;
+            notebookId = nb.id;
+            if (rootSect) {
+              sectionToTrash = rootSect;
+              parentGroupId = null;
+            } else if (groupSect) {
+              sectionToTrash = groupSect.sections.find(s => s.id === sectionId) || null;
+              parentGroupId = groupSect.id;
+            }
+            return {
+              ...nb,
+              sections: nb.sections.filter(s => s.id !== sectionId),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.filter(s => s.id !== sectionId) }))
+            };
+          });
+          if (!sectionToTrash) return { notebooks: updatedNotebooks };
+          const trashEntry: TrashedItem = {
+            id: crypto.randomUUID(),
+            type: 'section',
+            item: sectionToTrash,
+            originalParentId: parentGroupId,
+            originalNotebookId: notebookId,
+            deletedAt: new Date().toISOString()
+          };
+          return { notebooks: updatedNotebooks, trashedItems: [trashEntry, ...state.trashedItems] };
+        });
+        if (notebookId) get().saveToDrive(notebookId);
+      },
+
+      // Soft-delete section group → moves entire group to trash
+      deleteSectionGroup: (groupId) => {
+        let notebookId = '';
+        let groupToTrash: import('../types/notebook').NotebookSectionGroup | null = null;
+        set(state => {
+          let updatedNotebooks = state.notebooks.map(nb => {
+            const grp = nb.sectionGroups.find(sg => sg.id === groupId);
+            if (!grp) return nb;
+            notebookId = nb.id;
+            groupToTrash = grp;
+            return { ...nb, sectionGroups: nb.sectionGroups.filter(sg => sg.id !== groupId) };
+          });
+          if (!groupToTrash) return { notebooks: updatedNotebooks };
+          const trashEntry: TrashedItem = {
+            id: crypto.randomUUID(),
+            type: 'group',
+            item: groupToTrash,
+            originalParentId: null,
+            originalNotebookId: notebookId,
+            deletedAt: new Date().toISOString()
+          };
+          return { notebooks: updatedNotebooks, trashedItems: [trashEntry, ...state.trashedItems] };
+        });
+        if (notebookId) get().saveToDrive(notebookId);
+      },
+
+      // Restore item from trash back to its original location (best-effort)
+      restoreItem: (trashId) => {
+        set(state => {
+          const entry = state.trashedItems.find(t => t.id === trashId);
+          if (!entry) return {};
+          const notebooks = state.notebooks.map(nb => {
+            if (nb.id !== entry.originalNotebookId) return nb;
+            if (entry.type === 'page') {
+              const page = entry.item as NotebookPage;
+              return {
+                ...nb,
+                sections: nb.sections.map(s => s.id === entry.originalParentId ? { ...s, pages: [...s.pages, page] } : s),
+                sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(s => s.id === entry.originalParentId ? { ...s, pages: [...s.pages, page] } : s) }))
+              };
+            } else if (entry.type === 'section') {
+              const section = entry.item as NotebookSection;
+              if (!entry.originalParentId) {
+                return { ...nb, sections: [...nb.sections, section] };
+              }
+              return { ...nb, sectionGroups: nb.sectionGroups.map(sg => sg.id === entry.originalParentId ? { ...sg, sections: [...sg.sections, section] } : sg) };
+            } else if (entry.type === 'group') {
+              const group = entry.item as import('../types/notebook').NotebookSectionGroup;
+              return { ...nb, sectionGroups: [...nb.sectionGroups, group] };
+            }
+            return nb;
+          });
+          return { notebooks, trashedItems: state.trashedItems.filter(t => t.id !== trashId) };
+        });
+        get().saveToDrive();
+      },
+
+      permanentlyDeleteItem: (trashId) => {
+        set(state => ({ trashedItems: state.trashedItems.filter(t => t.id !== trashId) }));
+      },
+
+      emptyTrash: () => {
+        set({ trashedItems: [] });
+      },
+
+      // Called on load — purges items older than 30 days
+      cleanOldTrash: () => {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        set(state => ({
+          trashedItems: state.trashedItems.filter(t => new Date(t.deletedAt) > cutoff)
+        }));
       },
 
       updatePage: (pageId, updates) => {
@@ -446,7 +588,166 @@ export const useNotebookStore = create<NotebookState>()(
         if (notebookId) get().saveToDrive(notebookId);
       },
 
-      movePage: (_pageId, _newSectionId) => get().saveToDrive(),
+      movePage: (pageId, newSectionId) => {
+        let notebookId = '';
+        set(state => {
+          let targetPage: NotebookPage | null = null;
+          let found = false;
+          
+          // First pass: extract the page and remove it from its old location
+          const notebooksAfterRemove = state.notebooks.map(nb => {
+            const hasPage = nb.sections.some(s => s.pages.some(p => p.id === pageId)) || 
+                            nb.sectionGroups.some(sg => sg.sections.some(s => s.pages.some(p => p.id === pageId)));
+            if (!hasPage) return nb;
+            
+            // Extract the page
+            const allSects = [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)];
+            const s = allSects.find(s => s.pages.some(p => p.id === pageId));
+            if (s) {
+              targetPage = s.pages.find(p => p.id === pageId) || null;
+            }
+
+            return {
+              ...nb,
+              sections: nb.sections.map(s => ({ ...s, pages: s.pages.filter(p => p.id !== pageId) })),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(s => ({ ...s, pages: s.pages.filter(p => p.id !== pageId) })) }))
+            };
+          });
+
+          if (!targetPage) return state;
+
+          // Second pass: insert the page into newSectionId
+          const notebooksAfterInsert = notebooksAfterRemove.map(nb => {
+            const hasSection = nb.sections.some(s => s.id === newSectionId) || 
+                               nb.sectionGroups.some(sg => sg.sections.some(s => s.id === newSectionId));
+            if (!hasSection) return nb;
+            notebookId = nb.id;
+            found = true;
+
+            return {
+              ...nb,
+              sections: nb.sections.map(s => s.id === newSectionId ? { ...s, pages: [...s.pages, targetPage!] } : s),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(s => s.id === newSectionId ? { ...s, pages: [...s.pages, targetPage!] } : s) }))
+            };
+          });
+
+          if (found) {
+            return { notebooks: notebooksAfterInsert };
+          }
+          return state; // If target section not found, probably failed, return original state
+        });
+        if (notebookId) get().saveToDrive(notebookId);
+      },
+
+      duplicatePage: (pageId, targetSectionId) => {
+        let notebookId = '';
+        let newPageId: string | null = null;
+        set(state => {
+          let sourcePage: NotebookPage | null = null;
+          let sourceSectionId = '';
+          
+          state.notebooks.forEach(nb => {
+            const allSects = [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)];
+            const s = allSects.find(s => s.pages.some(p => p.id === pageId));
+            if (s) {
+              sourcePage = s.pages.find(p => p.id === pageId) || null;
+              sourceSectionId = s.id;
+            }
+          });
+
+          if (!sourcePage) return state;
+
+          const destinationSectionId = targetSectionId || sourceSectionId;
+          const newPage: NotebookPage = {
+            ...sourcePage,
+            id: crypto.randomUUID(),
+            title: `${sourcePage.title} (Copy)`,
+            createdAt: new Date().toISOString()
+          };
+          newPageId = newPage.id;
+
+          const updatedNotebooks = state.notebooks.map(nb => {
+            const hasSection = nb.sections.some(s => s.id === destinationSectionId) || 
+                               nb.sectionGroups.some(sg => sg.sections.some(s => s.id === destinationSectionId));
+            if (!hasSection) return nb;
+            notebookId = nb.id;
+
+            return {
+              ...nb,
+              sections: nb.sections.map(s => s.id === destinationSectionId ? { ...s, pages: [...s.pages, newPage] } : s),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(s => s.id === destinationSectionId ? { ...s, pages: [...s.pages, newPage] } : s) }))
+            };
+          });
+
+          return { notebooks: updatedNotebooks };
+        });
+        if (notebookId) get().saveToDrive(notebookId);
+        return newPageId;
+      },
+
+      movePageDragDrop: (sourceSectionId, sourceIndex, destinationSectionId, destinationIndex) => {
+        let notebookId = '';
+        set(state => {
+          let movedPage: NotebookPage | null = null;
+          
+          // First pass: remove from source
+          const notebooksAfterRemove = state.notebooks.map(nb => {
+            const hasSource = nb.sections.some(s => s.id === sourceSectionId) || 
+                              nb.sectionGroups.some(sg => sg.sections.some(s => s.id === sourceSectionId));
+            if (!hasSource) return nb;
+
+            let sectionUpdated = false;
+
+            const mapSection = (s: import('../types/notebook').NotebookSection) => {
+              if (s.id === sourceSectionId) {
+                const pages = [...s.pages];
+                if (pages[sourceIndex]) {
+                  movedPage = pages[sourceIndex];
+                  pages.splice(sourceIndex, 1);
+                  sectionUpdated = true;
+                }
+                return { ...s, pages };
+              }
+              return s;
+            };
+
+            return {
+              ...nb,
+              sections: nb.sections.map(mapSection),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(mapSection) }))
+            };
+          });
+
+          if (!movedPage) return state;
+
+          // Second pass: insert at destination
+          const notebooksAfterInsert = notebooksAfterRemove.map(nb => {
+            const hasDest = nb.sections.some(s => s.id === destinationSectionId) || 
+                            nb.sectionGroups.some(sg => sg.sections.some(s => s.id === destinationSectionId));
+            if (!hasDest) return nb;
+            notebookId = nb.id;
+
+            const mapSection = (s: import('../types/notebook').NotebookSection) => {
+              if (s.id === destinationSectionId) {
+                const pages = [...s.pages];
+                pages.splice(destinationIndex, 0, movedPage!);
+                return { ...s, pages };
+              }
+              return s;
+            };
+
+            return {
+              ...nb,
+              sections: nb.sections.map(mapSection),
+              sectionGroups: nb.sectionGroups.map(sg => ({ ...sg, sections: sg.sections.map(mapSection) }))
+            };
+          });
+
+          return { notebooks: notebooksAfterInsert };
+        });
+        if (notebookId) get().saveToDrive(notebookId);
+      },
+
       moveSection: (_sectionId, _newNotebookId, _newGroupId) => get().saveToDrive(),
 
       getAllPagesWithMetadata: () => {
@@ -469,7 +770,7 @@ export const useNotebookStore = create<NotebookState>()(
     }),
     {
       name: 'notebook-storage',
-      partialize: (state) => ({ notebooks: state.notebooks, notebookFileIds: state.notebookFileIds }),
+      partialize: (state) => ({ notebooks: state.notebooks, notebookFileIds: state.notebookFileIds, trashedItems: state.trashedItems }),
     }
   )
 );

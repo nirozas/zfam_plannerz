@@ -8,6 +8,7 @@ import { NotebookCreateModal } from '../components/notebooks/NotebookCreateModal
 import { NotebookEditModal } from '../components/notebooks/NotebookEditModal';
 import { NotebookImageSidebar } from '../components/notebooks/NotebookImageSidebar';
 import { NotebookExportModal } from '../components/notebooks/NotebookExportModal';
+import { NotebookTrashModal } from '../components/notebooks/NotebookTrashModal';
 import { useNotebookStore } from '../store/notebookStore';
 import { 
   Cloud, 
@@ -21,8 +22,7 @@ import {
   ZoomOut,
   Maximize,
   Download,
-  Menu,
-  X
+  Menu
 } from 'lucide-react';
 import '../components/notebooks/Notebooks.css';
 
@@ -80,6 +80,7 @@ const NotebooksPage: React.FC = () => {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [editModalState, setEditModalState] = useState<{ isOpen: boolean; type: any; id: string; title: string }>({
     isOpen: false,
     type: 'page',
@@ -149,10 +150,50 @@ const NotebooksPage: React.FC = () => {
   const activePage = getActivePage();
 
   const handleAddSubpage = () => {
-    if (!activeSectionId || !activePage) return;
+    if (!activePage || !activeNotebook) return;
+
+    // Dynamically find section ID if activeSectionId is null
+    let sectionIdToUse = activeSectionId;
+    if (!sectionIdToUse) {
+      const allSections = [...activeNotebook.sections, ...activeNotebook.sectionGroups.flatMap(sg => sg.sections)];
+      for (const section of allSections) {
+        if (section.pages.some(p => p.id === activePageId)) {
+          sectionIdToUse = section.id;
+          break;
+        }
+      }
+    }
+
+    if (!sectionIdToUse) return;
+
+    const baseTitle = activePage.title.replace(/\s*\(Page\s*\d+\)$/i, '');
+    let nextNum = 2;
+    
+    const allSectionsForCount = [...activeNotebook.sections, ...activeNotebook.sectionGroups.flatMap(sg => sg.sections)];
+    const sectionToUse = allSectionsForCount.find(s => s.id === sectionIdToUse);
+    
+    if (sectionToUse) {
+      const safeBase = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`^${safeBase}(?:\\s*\\(Page\\s*(\\d+)\\))?$`, 'i');
+      
+      const existingNums = sectionToUse.pages.map(p => {
+        const match = p.title.match(regex);
+        if (match) {
+          return match[1] ? parseInt(match[1], 10) : 1;
+        }
+        return 0;
+      }).filter(n => n > 0);
+      
+      if (existingNums.length > 0) {
+        nextNum = Math.max(...existingNums) + 1;
+      }
+    }
+
+    const newTitle = `${baseTitle} (Page ${nextNum})`;
+
     const newPageId = addPage(
-      activeSectionId,
-      'New Subpage',
+      sectionIdToUse,
+      newTitle,
       activePage.orientation,
       activePage.template,
       true
@@ -332,6 +373,7 @@ const NotebooksPage: React.FC = () => {
       <NotebookSidebar 
         onOpenCreateModal={() => setIsCreateModalOpen(true)} 
         onOpenEditModal={(type, id, title) => setEditModalState({ isOpen: true, type, id, title })}
+        onOpenTrash={() => setIsTrashModalOpen(true)}
         activeSectionGroupId={activeSectionGroupId}
         className={isMobileSidebarOpen ? 'mobile-open' : ''}
         onClose={() => setIsMobileSidebarOpen(false)}
@@ -573,7 +615,7 @@ const NotebooksPage: React.FC = () => {
         onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
         onDuplicateElement={handleDuplicateElement}
         onDeleteElement={(id) => {
-          if (activePageId) {
+          if (activePageId && activePage) {
             updatePageElements(activePageId, activePage.elements.filter(el => el.id !== id));
             setSelectedElementId(null);
           }
@@ -588,6 +630,11 @@ const NotebooksPage: React.FC = () => {
         activeSectionId={activeSectionId}
         activePageId={activePageId}
         canvasRef={canvasRef}
+      />
+
+      <NotebookTrashModal 
+        isOpen={isTrashModalOpen}
+        onClose={() => setIsTrashModalOpen(false)}
       />
     </div>
   );

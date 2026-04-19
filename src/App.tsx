@@ -22,6 +22,8 @@ const TripsPage = lazy(() => import('@/components/trips/TripsPage'))
 const TripMasterPage = lazy(() => import('@/components/trips/TripMasterPage'))
 const CardsPage = lazy(() => import('@/components/dashboard/CardsPage'))
 const FinancesPage = lazy(() => import('@/pages/FinancesPage'))
+const NotebooksPage = lazy(() => import('@/pages/NotebooksPage'))
+const NotebookSelectorPage = lazy(() => import('@/components/notebooks/NotebookSelectorPage').then(m => ({ default: m.NotebookSelectorPage })))
 
 // Loading fallback for Suspense
 const PageLoader = () => (
@@ -125,6 +127,8 @@ function App() {
                         <Route path="/cards" element={<CardsPage />} />
                         <Route path="/cards/:folderId" element={<CardsPage />} />
                         <Route path="/finances" element={<FinancesPage />} />
+                        <Route path="/notebooks" element={<NotebookSelectorPage />} />
+                        <Route path="/notebooks/:notebookName" element={<NotebooksPage />} />
                     </Route>
 
                     {/* Standalone Pages */}

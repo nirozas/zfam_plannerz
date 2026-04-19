@@ -1,14 +1,20 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings, Wallet } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings, Wallet, Book } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
-import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { useNotebookStore } from '../../store/notebookStore';
 import { supabase } from '../../supabase/client';
 import './AppSidebar.css';
 
 export const AppSidebar: React.FC = () => {
     const { user, userProfile, setBugModalOpen } = usePlannerStore();
-    const { signedIn, loading: driveLoading, connect, disconnect } = useGoogleDrive();
+    const { isDriveConnected: signedIn, isLoading: driveLoading, connectDrive: connect } = useNotebookStore();
+    const disconnect = async () => {
+        const { signOut: clearDrive } = await import('../../lib/googleDrive');
+        await clearDrive();
+        useNotebookStore.setState({ isDriveConnected: false });
+    };
+
     const navigate = useNavigate();
 
     // Determine display name
@@ -100,6 +106,14 @@ export const AppSidebar: React.FC = () => {
                     title="Planners"
                 >
                     <LayoutGrid size={22} />
+                </NavLink>
+
+                <NavLink
+                    to="/notebooks"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Notebooks"
+                >
+                    <Book size={22} />
                 </NavLink>
 
                 {/* Bug Report Button - Moved to popover */}

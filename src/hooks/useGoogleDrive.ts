@@ -1,12 +1,5 @@
 /**
  * useGoogleDrive — React hook for Google Drive storage operations.
- *
- * Provides:
- *   - signedIn state + sign-in / sign-out
- *   - upload(file) → CloudStorageResult
- *   - pick() → CloudStorageResult[]
- *   - setPublic / setPrivate for admin sharing
- *   - migrate(url) for relinking legacy Supabase Storage URLs
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,11 +7,7 @@ import {
     signIn,
     signOut,
     uploadFileToDrive,
-    openGooglePicker,
     setFilePublic,
-    setFilePrivate,
-    migrateSupabaseFileToDrive,
-    initGapi,
     initGoogleAuth,
     loadToken,
     type CloudStorageResult,
@@ -31,10 +20,7 @@ interface UseGoogleDriveReturn {
     connect: () => Promise<void>;
     disconnect: () => Promise<void>;
     upload: (file: File | Blob, name?: string, makePublic?: boolean) => Promise<CloudStorageResult>;
-    pick: (options?: { mimeTypes?: string[]; title?: string; multiSelect?: boolean }) => Promise<CloudStorageResult[]>;
     makePublic: (fileId: string) => Promise<void>;
-    makePrivate: (fileId: string) => Promise<void>;
-    migrate: (url: string, name: string, makePublic?: boolean) => Promise<CloudStorageResult>;
 }
 
 export function useGoogleDrive(): UseGoogleDriveReturn {
@@ -42,17 +28,15 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Initialize on mount — load GIS for auth check, but defer GAPI (Drive API)
+    // Initialize on mount
     useEffect(() => {
         let cancelled = false;
         const init = async () => {
             try {
-                // Initialize Auth check - this is lightweight
                 await initGoogleAuth();
                 const token = loadToken();
                 if (!cancelled) setSignedIn(token !== null);
             } catch (e) {
-                // Ignore initialization errors on mount to prevent noisy UI errors
                 console.warn('Google Auth initialization deferred');
             }
         };
@@ -60,20 +44,10 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
         return () => { cancelled = true; };
     }, []);
 
-    const ensureGapi = async () => {
-        try {
-            await initGapi();
-        } catch (e) {
-            console.error('Failed to initialize Google Drive API (GAPI):', e);
-            throw new Error('Google Drive API is currently unavailable. Please check your connection.');
-        }
-    };
-
     const connect = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            await ensureGapi(); // Initialize GAPI only when user tries to connect
             await signIn();
             setSignedIn(true);
         } catch (e: any) {
@@ -109,47 +83,9 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
         }
     }, [signedIn, connect]);
 
-    const pick = useCallback(async (
-        options: { mimeTypes?: string[]; title?: string; multiSelect?: boolean } = {}
-    ): Promise<CloudStorageResult[]> => {
-        if (!signedIn) await connect();
-        setLoading(true);
-        setError(null);
-        try {
-            return await openGooglePicker(options);
-        } catch (e: any) {
-            setError(e?.message || 'Picker failed');
-            throw e;
-        } finally {
-            setLoading(false);
-        }
-    }, [signedIn, connect]);
-
     const makePublic = useCallback(async (fileId: string) => {
         await setFilePublic(fileId);
     }, []);
-
-    const makePrivate = useCallback(async (fileId: string) => {
-        await setFilePrivate(fileId);
-    }, []);
-
-    const migrate = useCallback(async (
-        url: string,
-        name: string,
-        makePublic = false
-    ): Promise<CloudStorageResult> => {
-        if (!signedIn) await connect();
-        setLoading(true);
-        setError(null);
-        try {
-            return await migrateSupabaseFileToDrive(url, name, makePublic);
-        } catch (e: any) {
-            setError(e?.message || 'Migration failed');
-            throw e;
-        } finally {
-            setLoading(false);
-        }
-    }, [signedIn, connect]);
 
     return {
         signedIn,
@@ -158,9 +94,6 @@ export function useGoogleDrive(): UseGoogleDriveReturn {
         connect,
         disconnect,
         upload,
-        pick,
         makePublic,
-        makePrivate,
-        migrate,
     };
 }

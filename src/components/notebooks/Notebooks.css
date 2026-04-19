@@ -1,0 +1,169 @@
+/* Stable Toolbar Layout */
+.notebook-toolbar-stable {
+  width: 100%;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+  z-index: 100;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-metadata {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.metadata-title-input {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #1e293b;
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+}
+
+.metadata-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.metadata-date-input {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #e11d48;
+  outline: none;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 32px;
+  background: #f1f5f9;
+}
+
+.toolbar-tools {
+  width: 70%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+}
+
+/* Original floating styles removal */
+.notebook-toolbar {
+  display: none;
+}
+
+/* Page Viewer Adjustment */
+.page-viewer {
+  flex: 1;
+  overflow: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  scroll-behavior: smooth;
+  position: relative;
+  padding-top: 20px;
+}
+
+/* Canvas & Page styles */
+.a4-page {
+  background: white;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.05);
+  margin-bottom: 40px;
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+.a4-page:hover {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+}
+
+.a4-page.portrait {
+  width: 794px;
+  min-height: 1123px;
+}
+
+.a4-page.landscape {
+  width: 1123px;
+  min-height: 794px;
+}
+
+/* Templates */
+.template-lined {
+  background-color: white;
+  background-image: linear-gradient(#cbd5e1 1.5px, transparent 1.5px);
+  background-size: 100% 30px;
+}
+
+.template-grid {
+  background-color: white;
+  background-image: 
+    linear-gradient(#cbd5e1 1.5px, transparent 1.5px),
+    linear-gradient(90deg, #cbd5e1 1.5px, transparent 1.5px);
+  background-size: 30px 30px;
+}
+
+.template-dotted {
+  background-color: white;
+  background-image: radial-gradient(#94a3b8 2px, transparent 2px);
+  background-size: 30px 30px;
+}
+
+/* Sidebar & Main Layout */
+.notebooks-container {
+  display: flex;
+  height: 100vh;
+  background: #f8fafc;
+}
+
+.notebook-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notebook-top-nav {
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+}

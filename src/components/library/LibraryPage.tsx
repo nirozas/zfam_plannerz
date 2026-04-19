@@ -162,14 +162,12 @@ const LibraryPage: React.FC = () => {
                                         try {
                                             const { uploadFileToDrive, signIn, checkIsSignedIn } = await import('../../lib/googleDrive');
                                             if (!checkIsSignedIn()) await signIn();
-                                            const subfolderName = `Library ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}s`;
                                             const thumbResult = await uploadFileToDrive(
                                                 thumbBlob,
                                                 `thumb-${generateUUID()}.png`,
                                                 'image/png',
                                                 true,
-                                                undefined,
-                                                subfolderName
+                                                undefined
                                             );
                                             thumbnailUrl = thumbResult.thumbnailUrl;
                                         } catch (thumbDriveErr) {

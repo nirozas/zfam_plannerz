@@ -15,8 +15,7 @@ import {
   StickyNote, 
   AlertTriangle,
   Wallet,
-  Book,
-  Library
+  Book
 } from 'lucide-react';
 import './HomePage.css';
 

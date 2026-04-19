@@ -12,7 +12,6 @@ import {
   Check,
   Loader2,
   PlusCircle,
-  Languages,
   Search,
   User,
   Info,
@@ -37,8 +36,6 @@ export const NotebookSelectorPage: React.FC = () => {
     updateNotebook, 
     notebookFileIds, 
     deleteNotebook, 
-    connectDrive, 
-    isDriveConnected,
     isLoading: isStoreLoading 
   } = useNotebookStore();
   

@@ -219,8 +219,7 @@ export function PDFImportModal({ isOpen, onClose, sourceUrl, externalId, pdfTitl
                     `planner-${plannerName}-p${page.pageNumber}-${generateUUID()}.png`,
                     'image/png',
                     false,
-                    undefined,
-                    'Planner Pages'
+                    undefined
                 );
 
                 uploadedPages.push({

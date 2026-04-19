@@ -10,7 +10,6 @@ import {
   MousePointer2,
   Columns,
   Rows,
-  FlipHorizontal,
   Sun,
   Calendar,
   Maximize2,
@@ -20,16 +19,7 @@ import {
   AlignCenter,
   AlignRight,
   Languages,
-  RotateCw,
-  PlusCircle,
-  MinusCircle,
-  Zap,
-  Copy,
-  Layers,
-  ChevronUp,
-  ChevronDown,
-  Trash2,
-  RefreshCcw
+  PlusCircle
 } from 'lucide-react';
 
 interface ToolbarProps {

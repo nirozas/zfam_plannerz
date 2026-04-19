@@ -33,7 +33,6 @@ function getItemTitle(item: TrashedItem): string {
 
 function getItemDetail(item: TrashedItem): string {
   if (item.type === 'page') {
-    const pages = 1;
     return `1 page`;
   }
   if (item.type === 'section') {

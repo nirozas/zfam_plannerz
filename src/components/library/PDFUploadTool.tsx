@@ -160,8 +160,7 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
                     `pdf-template-page-${page.pageNumber}-${generateUUID()}.png`,
                     'image/png',
                     true,
-                    undefined,
-                    'Library Templates'
+                    undefined
                 );
 
                 if (!user?.id) throw new Error('User ID missing');
@@ -208,8 +207,7 @@ export function PDFUploadTool({ isOpen, onClose, onSuccess }: PDFUploadToolProps
                     `planner-page-${Date.now()}-${generateUUID()}.png`,
                     'image/png',
                     false,
-                    undefined,
-                    'Library Planners' // Store individual planner pages in 'Library Planners' too
+                    undefined
                 );
 
                 formattedPages.push({

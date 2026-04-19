@@ -2156,7 +2156,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
             set({ uploadProgress: 0 });
 
             // Calculate subfolder name (e.g., 'Library Stickers')
-            const subfolderName = `Library ${type.charAt(0).toUpperCase() + type.slice(1)} s`;
 
             // Upload to Google Drive
             const result = await uploadFileToDrive(
@@ -2260,7 +2259,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
             set({ uploadProgress: 0 });
             // Calculate same subfolder for edited asset
-            const subfolderName = `Library ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)} s`;
 
             // Re-upload to Google Drive (new file to avoid cache issues)
             const result = await uploadFileToDrive(

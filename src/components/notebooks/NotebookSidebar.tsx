@@ -5,7 +5,6 @@ import {
   FileText, 
   Plus, 
   Settings,
-  Hash,
   ChevronDown,
   ChevronRight,
   ArrowLeft,

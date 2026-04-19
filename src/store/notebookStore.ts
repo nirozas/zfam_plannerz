@@ -658,10 +658,11 @@ export const useNotebookStore = create<NotebookState>()(
           if (!sourcePage) return state;
 
           const destinationSectionId = targetSectionId || sourceSectionId;
-          const newPage: NotebookPage = {
-            ...sourcePage,
+          const pageToCopy = sourcePage as import('../types/notebook').NotebookPage;
+          const newPage: import('../types/notebook').NotebookPage = {
+            ...pageToCopy,
             id: crypto.randomUUID(),
-            title: `${sourcePage.title} (Copy)`,
+            title: `${pageToCopy.title} (Copy)`,
             createdAt: new Date().toISOString()
           };
           newPageId = newPage.id;
@@ -696,15 +697,12 @@ export const useNotebookStore = create<NotebookState>()(
                               nb.sectionGroups.some(sg => sg.sections.some(s => s.id === sourceSectionId));
             if (!hasSource) return nb;
 
-            let sectionUpdated = false;
-
             const mapSection = (s: import('../types/notebook').NotebookSection) => {
               if (s.id === sourceSectionId) {
                 const pages = [...s.pages];
                 if (pages[sourceIndex]) {
                   movedPage = pages[sourceIndex];
                   pages.splice(sourceIndex, 1);
-                  sectionUpdated = true;
                 }
                 return { ...s, pages };
               }

@@ -4,15 +4,12 @@ import {
   FlipHorizontal, 
   MinusCircle, 
   PlusCircle, 
-  Zap, 
   Copy, 
   ChevronUp, 
   ChevronDown, 
   RefreshCcw,
   Trash2,
-  X,
-  Layers,
-  Maximize
+  X
 } from 'lucide-react';
 
 interface ImageSidebarProps {
@@ -140,11 +137,11 @@ export const NotebookImageSidebar: React.FC<ImageSidebarProps> = ({
             />
             <MinimalSlider 
               label="Light" value={Math.round((selectedElement.brightness || 0) * 100)} min={-50} max={50} 
-              onChange={(v) => onUpdateElement(selectedElement.id, { brightness: v / 100 })} 
+              onChange={(v: number) => onUpdateElement(selectedElement.id, { brightness: v / 100 })} 
             />
             <MinimalSlider 
               label="Opacity" value={Math.round((selectedElement.opacity || 1) * 100)} min={10} max={100} 
-              onChange={(v) => onUpdateElement(selectedElement.id, { opacity: v / 100 })} 
+              onChange={(v: number) => onUpdateElement(selectedElement.id, { opacity: v / 100 })} 
             />
           </div>
 

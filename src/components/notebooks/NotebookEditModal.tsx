@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Move, Type, Layers, Folder } from 'lucide-react';
+import { X, Save, Type } from 'lucide-react';
 import { useNotebookStore } from '../../store/notebookStore';
+import { PageOrientation, PageTemplate } from '../../types/notebook';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
     renameNotebook, 
     renameSectionGroup, 
     renameSection, 
-    renamePage,
+    updatePage,
     movePage,
     moveSection,
     duplicatePage
@@ -67,8 +68,6 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
         moveSection(itemId, targetNotebookId, parentId || null);
       }
     } else if (itemType === 'page') {
-      const page = notebooks.flatMap(nb => [...nb.sections, ...nb.sectionGroups.flatMap(sg => sg.sections)]).flatMap(s => s.pages).find(p => p.id === itemId);
-      
       updatePage(itemId, { 
         title, 
         dueDate: dueDate || undefined,

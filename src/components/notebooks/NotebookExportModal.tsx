@@ -1,8 +1,6 @@
 import { 
   X, 
   FileText, 
-  Download, 
-  Cloud, 
   Loader2, 
   Layers, 
   Book, 
@@ -11,7 +9,7 @@ import {
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { useNotebookStore } from '../../store/notebookStore';
-import { NotebookPage, NotebookElement } from '../../types/notebook';
+import { NotebookPage } from '../../types/notebook';
 import Konva from 'konva';
 
 interface ExportModalProps {

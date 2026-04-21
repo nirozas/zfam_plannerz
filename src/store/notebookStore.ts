@@ -760,10 +760,12 @@ export const useNotebookStore = create<NotebookState>()(
 
       uploadImage: async (file: File) => {
         try {
-          const { uploadFileToDrive } = await import('../lib/googleDrive');
           const result = await uploadFileToDrive(file, file.name, file.type, true);
           return { url: result.url };
-        } catch (e) { return null; }
+        } catch (e) { 
+          console.error("Upload image failed in store:", e);
+          return null; 
+        }
       },
     }),
     {

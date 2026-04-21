@@ -6,9 +6,10 @@ import { NotebookToolbar } from '../components/notebooks/NotebookToolbar';
 import { NotebookCalendar } from '../components/notebooks/NotebookCalendar';
 import { NotebookCreateModal } from '../components/notebooks/NotebookCreateModal';
 import { NotebookEditModal } from '../components/notebooks/NotebookEditModal';
-import { NotebookImageSidebar } from '../components/notebooks/NotebookImageSidebar';
+import { NotebookElementSidebar } from '../components/notebooks/NotebookElementSidebar';
 import { NotebookExportModal } from '../components/notebooks/NotebookExportModal';
 import { NotebookTrashModal } from '../components/notebooks/NotebookTrashModal';
+import { NotebookFloatingToolbar } from '../components/notebooks/NotebookFloatingToolbar';
 import { useNotebookStore } from '../store/notebookStore';
 import { 
   Cloud, 
@@ -60,11 +61,12 @@ const NotebooksPage: React.FC = () => {
 
   // Local UI State
   const [viewMode, setViewMode] = useState<'editor' | 'calendar'>('editor');
-  const [activeTool, setActiveTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'image'>('select');
-  const [brushSettings, setBrushSettings] = useState({ color: '#1e293b', width: 5, opacity: 0.3 });
+  const [activeTool, setActiveTool] = useState<string>('select');
+  const [brushSettings, setBrushSettings] = useState({ color: '#1e293b', width: 5, opacity: 0.3, penType: 'round' });
   
-  const handleSetTool = (tool: any) => {
+  const handleSetTool = (tool: string) => {
     setActiveTool(tool);
+    if (tool !== 'select') setSelectedElementId(null);
     if (tool === 'pen') setBrushSettings(s => ({ ...s, width: 5 }));
     if (tool === 'highlighter') setBrushSettings(s => ({ ...s, width: 17 }));
   };
@@ -207,23 +209,30 @@ const NotebooksPage: React.FC = () => {
   };
 
   const handleAddImage = async () => {
+    console.log("handleAddImage triggered");
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.onchange = async (e: any) => {
       const file = e.target.files[0];
+      console.log("File selected:", file?.name);
       if (file && activePageId) {
-        const result = await useNotebookStore.getState().uploadImage(file);
-        if (result) {
-          const newElement = {
-            id: `img-${Date.now()}`,
-            type: 'image' as const,
-            x: 100,
-            y: 100,
-            src: result.url,
-            zIndex: activePage?.elements.length || 0,
-          };
-          updatePageElements(activePageId, [...(activePage?.elements || []), newElement]);
+        try {
+          const result = await useNotebookStore.getState().uploadImage(file);
+          console.log("Upload result:", result);
+          if (result && result.url) {
+            const newElement = {
+              id: `img-${Date.now()}`,
+              type: 'image' as const,
+              x: 100,
+              y: 100,
+              src: result.url,
+              zIndex: activePage?.elements.length || 0,
+            };
+            updatePageElements(activePageId, [...(activePage?.elements || []), newElement]);
+          }
+        } catch (error) {
+          console.error("Image upload process failed:", error);
         }
       }
     };
@@ -533,10 +542,36 @@ const NotebooksPage: React.FC = () => {
                   onUpdateElements={handleUpdateElements}
                   onSelectElement={setSelectedElementId}
                   activeTool={activeTool}
+                  setActiveTool={handleSetTool}
                   brushSettings={brushSettings}
                   textSettings={textSettings}
                   selectedId={selectedElementId}
                 />
+
+                {selectedElementId && activePage?.elements.find(el => el.id === selectedElementId) && (
+                  <NotebookFloatingToolbar 
+                    element={activePage.elements.find(el => el.id === selectedElementId)}
+                    zoom={zoom}
+                    onUpdate={(updates) => activePageId && updateElement(activePageId, selectedElementId, updates)}
+                    onDelete={() => {
+                      if (activePageId && activePage) {
+                        updatePageElements(activePageId, activePage.elements.filter(el => el.id !== selectedElementId));
+                        setSelectedElementId(null);
+                      }
+                    }}
+                    onDuplicate={() => handleDuplicateElement(selectedElementId)}
+                    onMoveUp={() => {
+                      const el = activePage.elements.find(e => e.id === selectedElementId);
+                      const maxZ = Math.max(...activePage.elements.map(e => e.zIndex || 0));
+                      if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: maxZ + 1 });
+                    }}
+                    onMoveDown={() => {
+                      const el = activePage.elements.find(e => e.id === selectedElementId);
+                      const minZ = Math.min(...activePage.elements.map(e => e.zIndex || 0));
+                      if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: minZ - 1 });
+                    }}
+                  />
+                )}
 
 
                 <div className="inline-page-nav flex items-center gap-4 py-8">
@@ -610,7 +645,7 @@ const NotebooksPage: React.FC = () => {
         initialTitle={editModalState.title}
       />
 
-      <NotebookImageSidebar 
+      <NotebookElementSidebar 
         selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
         onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
         onDuplicateElement={handleDuplicateElement}

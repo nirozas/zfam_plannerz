@@ -3,7 +3,7 @@ export type PageOrientation = 'portrait' | 'landscape';
 
 export interface NotebookElement {
   id: string;
-  type: 'text' | 'path' | 'image';
+  type: 'text' | 'path' | 'image' | 'shape';
   x: number;
   y: number;
   width?: number;
@@ -27,6 +27,7 @@ export interface NotebookElement {
   opacity?: number;
   isHighlighter?: boolean;
   isEraser?: boolean;
+  penType?: string;
   
   // Image specific
   src?: string;
@@ -37,6 +38,7 @@ export interface NotebookElement {
   removeBg?: boolean;
   bgThreshold?: number;
   filter?: string;
+  shapeType?: 'rect' | 'circle' | 'triangle' | 'arrow' | 'star' | 'diamond' | 'hexagon' | 'line';
 
   // Formatting
   fontStyle?: string;

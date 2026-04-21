@@ -4,7 +4,6 @@ import {
   Circle, 
   Triangle, 
   Star, 
-  Type, 
   Trash2,
   Copy,
   ChevronUp,
@@ -35,8 +34,6 @@ export const NotebookFloatingToolbar: React.FC<FloatingToolbarProps> = ({
   if (!element) return null;
 
   const isShape = element.type === 'shape';
-  const isImage = element.type === 'image';
-  const isText = element.type === 'text';
 
   // Calculate position: above the element
   // We need to account for zoom and canvas offsets, but since this will be 

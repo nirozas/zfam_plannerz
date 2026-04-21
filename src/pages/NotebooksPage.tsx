@@ -561,12 +561,10 @@ const NotebooksPage: React.FC = () => {
                     }}
                     onDuplicate={() => handleDuplicateElement(selectedElementId)}
                     onMoveUp={() => {
-                      const el = activePage.elements.find(e => e.id === selectedElementId);
                       const maxZ = Math.max(...activePage.elements.map(e => e.zIndex || 0));
                       if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: maxZ + 1 });
                     }}
                     onMoveDown={() => {
-                      const el = activePage.elements.find(e => e.id === selectedElementId);
                       const minZ = Math.min(...activePage.elements.map(e => e.zIndex || 0));
                       if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: minZ - 1 });
                     }}

@@ -112,7 +112,6 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
   onOpenExport
 }) => {
   const [showBulletMenu, setShowBulletMenu] = React.useState(false);
-  const [showMultilevelMenu, setShowMultilevelMenu] = React.useState(false);
   const [showDrawMenu, setShowDrawMenu] = React.useState(false);
   const [showInsertMenu, setShowInsertMenu] = React.useState(false);
   const [showPageMenu, setShowPageMenu] = React.useState(false);
@@ -157,7 +156,7 @@ export const NotebookToolbar: React.FC<ToolbarProps> = ({
     });
 
     onUpdateElement?.(selectedElement.id, { text: newLines.join('\n') });
-    setShowMultilevelMenu(false);
+    setShowNumberingMenu(false);
   };
 
   const applyBullet = (bullet: typeof BULLETS[0]) => {

@@ -12,7 +12,6 @@ import {
   Bold,
   Italic,
   AlignLeft,
-  PlusCircle,
   List,
   Square,
   ChevronDown,
@@ -83,7 +82,6 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
 }) => {
   const [showShapeMenu, setShowShapeMenu] = React.useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
-  const [emojiCallback, setEmojiCallback] = React.useState<((e: string) => void) | null>(null);
 
   // Close menus when clicking away
   React.useEffect(() => {

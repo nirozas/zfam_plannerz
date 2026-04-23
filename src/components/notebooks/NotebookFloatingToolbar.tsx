@@ -6,13 +6,10 @@ import {
   Star, 
   Trash2,
   Copy,
-  ChevronUp,
-  ChevronDown,
   ArrowRight,
   Hexagon,
   Bold,
   Palette,
-  Layers,
   ArrowUp,
   ArrowDown
 } from 'lucide-react';

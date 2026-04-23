@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Stage, Layer, Text as KonvaText, Line, Image as KonvaImage, Transformer, Group, Rect, Circle, RegularPolygon, Star, Arrow } from 'react-konva';
+import { Stage, Layer, Text as KonvaText, Line, Image as KonvaImage, Transformer, Group, Rect, Circle, RegularPolygon, Star, Arrow, Path } from 'react-konva';
+
 import useImage from 'use-image';
 import Konva from 'konva';
 import { NotebookElement, PageTemplate, PageOrientation } from '../../types/notebook';
@@ -60,8 +61,11 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [tempPoints, setTempPoints] = useState<number[]>([]);
+  const [tempType, setTempType] = useState<string>('pen');
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+
 
   // Expose getDataURL so parent can snapshot the live stage for export
   useImperativeHandle(ref, () => ({
@@ -86,31 +90,32 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   }, [selectedId, elements]);
 
   useEffect(() => {
-    const elToFit = elements.find(el => (el as any)._fitToContent);
-    if (elToFit && stageRef.current) {
+    const elToFit = elements.find(el => (el as any)._fitToContent === true);
+    if (!elToFit) return; // Only run when flag is set
+    if (stageRef.current) {
       const textNode = stageRef.current.findOne('#' + elToFit.id);
       if (textNode) {
-        // Temporarily set dimensions to auto to measure natural size
-        const oldWidth = textNode.width();
-        const oldHeight = textNode.height();
+        // Save current dimensions, temporarily auto-size to measure natural size
         textNode.width('auto');
         textNode.height('auto');
-        const naturalWidth = textNode.width();
-        const naturalHeight = textNode.height();
-        textNode.width(oldWidth);
-        textNode.height(oldHeight);
-        
-        onUpdateElements(elements.map(el => 
-          el.id === elToFit.id ? { 
-            ...el, 
-            width: Math.ceil(naturalWidth), 
-            height: Math.ceil(naturalHeight),
-            _fitToContent: undefined 
+        const naturalWidth = Math.max(60, textNode.width() + 8);
+        const naturalHeight = Math.max(24, textNode.height() + 8);
+        // Restore so the upcoming update takes effect
+        textNode.width(elToFit.width || 250);
+        textNode.height(elToFit.height || 80);
+
+        onUpdateElements(elements.map(el =>
+          el.id === elToFit.id ? {
+            ...el,
+            width: naturalWidth,
+            height: naturalHeight,
+            _fitToContent: undefined
           } as any : el
         ));
       }
     }
-  }, [elements, onUpdateElements]);
+  }, [elements]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -152,32 +157,39 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
 
     if (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'eraser') {
       setIsDrawing(true);
-      const newPath: NotebookElement = {
-        id: `path-${Date.now()}`,
-        type: 'path',
-        x: 0,
-        y: 0,
-        points: [pos.x, pos.y],
-        stroke: activeTool === 'eraser' ? '#ffffff' : brushSettings.color,
-        strokeWidth: activeTool === 'eraser' ? 30 : brushSettings.width,
-        opacity: activeTool === 'highlighter' ? brushSettings.opacity : 1,
-        isHighlighter: activeTool === 'highlighter',
-        isEraser: activeTool === 'eraser',
-        penType: activeTool === 'pen' ? brushSettings.penType : undefined,
-        zIndex: elements.length,
-      };
-      onUpdateElements([...elements, newPath]);
+      setTempPoints([pos.x, pos.y]);
+      setTempType(activeTool);
     }
 
+
     if (activeTool === 'text') {
+      // Check if clicking on an existing text element
+      if (!clickedOnEmpty) {
+        let node = e.target;
+        while (node && node !== stage) {
+          const id = node.id();
+          // The KonvaText has the raw id, the Group has 'group-' + id
+          const targetId = id?.startsWith('group-') ? id.replace('group-', '') : id;
+          const existingEl = elements.find(el => el.id === targetId);
+          
+          if (existingEl && existingEl.type === 'text') {
+            setEditingTextId(existingEl.id);
+            setEditingValue(existingEl.text || '');
+            onSelectElement(existingEl.id);
+            return; // Exit early, don't create new
+          }
+          node = node.parent;
+        }
+      }
+
       const newText: NotebookElement = {
         id: `text-${Date.now()}`,
         type: 'text',
         x: pos.x,
         y: pos.y,
         width: 250,
-        height: 100,
-        text: 'Type something...',
+        height: 120,
+        text: '',
         fontSize: textSettings.fontSize,
         fontFamily: textSettings.fontFamily,
         fontStyle: textSettings.fontStyle || 'normal',
@@ -189,11 +201,14 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
         outlineColor: textSettings.outlineColor || '#cbd5e1',
         zIndex: elements.length,
       };
+
       onUpdateElements([...elements, newText]);
       onSelectElement(newText.id);
       setEditingTextId(newText.id);
-      setEditingValue('Type something...');
+      setEditingValue('');
     }
+
+
 
     if (activeTool.startsWith('shape:')) {
       const shapeType = activeTool.split(':')[1] as any;
@@ -201,12 +216,12 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
         id: `shape-${Date.now()}`,
         type: 'shape',
         shapeType: shapeType,
-        x: pos.x,
-        y: pos.y,
-        width: shapeType === 'line' ? 100 : 100,
-        height: shapeType === 'line' ? 2 : 100,
-        fill: brushSettings.color,
-        stroke: brushSettings.color,
+        x: pos.x - 50,
+        y: pos.y - 50,
+        width: 100,
+        height: 100,
+        fill: '#4f46e5', // Default to Indigo instead of slate/black
+        stroke: '#4f46e5',
         strokeWidth: 2,
         zIndex: elements.length,
       };
@@ -216,20 +231,110 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
     }
   };
 
+  // Listen for emoji insertion events
+  useEffect(() => {
+    const handleEmoji = (e: any) => {
+      const emoji = e.detail;
+      const pos = { x: 100, y: 100 }; // Default position
+      if (stageRef.current) {
+        const stagePos = stageRef.current.getPointerPosition();
+        if (stagePos) {
+          pos.x = stagePos.x;
+          pos.y = stagePos.y;
+        }
+      }
+
+      const newEmoji: NotebookElement = {
+        id: `emoji-${Date.now()}`,
+        type: 'text',
+        text: emoji,
+        x: pos.x,
+        y: pos.y,
+        fontSize: 48,
+        fontFamily: 'Inter',
+        fill: '#000',
+        zIndex: elements.length,
+      };
+      onUpdateElements([...elements, newEmoji]);
+      onSelectElement(newEmoji.id);
+    };
+
+    window.addEventListener('insert-emoji', handleEmoji);
+    return () => window.removeEventListener('insert-emoji', handleEmoji);
+  }, [elements, onUpdateElements, onSelectElement]);
+
+  // Listen for text formatting events (bullets/checkboxes) from toolbar
+  useEffect(() => {
+    const handleFormatList = (e: any) => {
+      const { type, bullet } = e.detail;
+      const targetId = editingTextId || selectedId;
+      if (!targetId) return;
+
+      const currentText = editingTextId ? editingValue : elements.find(el => el.id === targetId)?.text || '';
+      const lines = currentText.split('\n');
+
+      let newLines;
+      if (type === 'bullet') {
+        newLines = lines.map((line: string, index: number) => {
+          let cleaned = line.trimStart().replace(/^[•○■❖➢✓☐☑]\s*/, '').replace(/^([0-9A-Za-z.]+\.|\d+\)|[a-z]\))\s*/, '');
+          if (bullet.id === 'none') return cleaned;
+          if (bullet.id === 'num') return `${index + 1}. ${cleaned}`;
+          if (bullet.id === 'alpha') return `${String.fromCharCode(97 + index)}. ${cleaned}`;
+          if (bullet.id === 'ALPHA') return `${String.fromCharCode(65 + index)}. ${cleaned}`;
+          return `${bullet.char} ${cleaned}`;
+        });
+      } else if (type === 'checkbox') {
+        const hasCheck = lines.some((l: string) => l.trim().startsWith('☐') || l.trim().startsWith('☑'));
+        newLines = lines.map((line: string) => {
+          const cleaned = line.trimStart().replace(/^[☐☑]\s*/, '');
+          return hasCheck ? cleaned : `☐ ${cleaned}`;
+        });
+      }
+
+      const newText = newLines?.join('\n') || '';
+
+      if (editingTextId) {
+        setEditingValue(newText);
+      } else {
+        onUpdateElements(elements.map(el => el.id === targetId ? { ...el, text: newText } : el));
+      }
+    };
+
+    window.addEventListener('format-text-list', handleFormatList);
+    return () => window.removeEventListener('format-text-list', handleFormatList);
+  }, [elements, editingTextId, editingValue, selectedId, onUpdateElements]);
+
+
+
   const handleMouseMove = (e: any) => {
     if (!isDrawing) return;
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
-    const lastPath = elements[elements.length - 1];
-    if (lastPath && lastPath.type === 'path') {
-      const newPoints = [...(lastPath.points || []), pos.x, pos.y];
-      const newElements = [...elements];
-      newElements[newElements.length - 1] = { ...lastPath, points: newPoints };
-      onUpdateElements(newElements);
-    }
+    setTempPoints(prev => [...prev, pos.x, pos.y]);
   };
 
-  const handleMouseUp = () => setIsDrawing(false);
+  const handleMouseUp = () => {
+    if (isDrawing && tempPoints.length > 2) {
+      const newPath: NotebookElement = {
+        id: `path-${Date.now()}`,
+        type: 'path',
+        x: 0,
+        y: 0,
+        points: tempPoints,
+        stroke: tempType === 'eraser' ? '#ffffff' : brushSettings.color,
+        strokeWidth: tempType === 'eraser' ? 30 : brushSettings.width,
+        opacity: tempType === 'highlighter' ? brushSettings.opacity : 1,
+        isHighlighter: tempType === 'highlighter',
+        isEraser: tempType === 'eraser',
+        penType: tempType === 'pen' ? brushSettings.penType : undefined,
+        zIndex: elements.length,
+      };
+      onUpdateElements([...elements, newPath]);
+    }
+    setIsDrawing(false);
+    setTempPoints([]);
+  };
+
 
   const handleTextBlur = () => {
     if (editingTextId) {
@@ -306,11 +411,12 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                     fontSize={el.fontSize}
                     fontFamily={el.fontFamily}
                     fontStyle={el.fontStyle || 'normal'}
-                    align={el.align || 'left'}
+                    align={el.dir === 'rtl' ? 'right' : (el.align || 'left')}
                     fill={el.fill}
                     width={el.width || 100}
                     height={el.height || 50}
                     padding={4}
+                    wrap="word"
                     onDblClick={() => {
                       setEditingTextId(el.id);
                       setEditingValue(el.text || '');
@@ -378,20 +484,77 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                 width: el.width || 100,
                 height: el.height || 100,
                 fill: el.fill || '#4f46e5',
-                stroke: el.stroke || '#4f46e5',
-                strokeWidth: el.strokeWidth || 2,
+                stroke: el.stroke || el.fill || '#4f46e5',
+                strokeWidth: el.strokeWidth ?? 2,
+                opacity: el.opacity !== undefined ? el.opacity : 1,
               };
 
               const renderShape = () => {
+                const w = el.width || 100;
+                const h = el.height || 100;
+                
+                // Common icons & basic shapes
                 if (el.shapeType === 'rect') return <Rect {...commonProps} />;
-                if (el.shapeType === 'circle') return <Circle {...commonProps} radius={(el.width || 100) / 2} offsetX={-(el.width || 100) / 2} offsetY={-(el.height || 100) / 2} />;
-                if (el.shapeType === 'triangle') return <RegularPolygon {...commonProps} sides={3} radius={(el.width || 100) / 2} offsetX={-(el.width || 100) / 2} offsetY={-(el.height || 100) / 2} />;
-                if (el.shapeType === 'star') return <Star {...commonProps} numPoints={5} innerRadius={(el.width || 100) / 4} outerRadius={(el.width || 100) / 2} offsetX={-(el.width || 100) / 2} offsetY={-(el.height || 100) / 2} />;
-                if (el.shapeType === 'diamond') return <RegularPolygon {...commonProps} sides={4} radius={(el.width || 100) / 2} offsetX={-(el.width || 100) / 2} offsetY={-(el.height || 100) / 2} />;
-                if (el.shapeType === 'line') return <Line {...commonProps} points={[0, 0, el.width || 100, 0]} />;
-                if (el.shapeType === 'arrow') return <Arrow {...commonProps} points={[0, 0, el.width || 100, 0]} pointerLength={10} pointerWidth={10} />;
+                if (el.shapeType === 'circle') return <Circle {...commonProps} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'triangle') return <RegularPolygon {...commonProps} sides={3} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'diamond') return <RegularPolygon {...commonProps} sides={4} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'star') return <Star {...commonProps} numPoints={5} innerRadius={w / 4} outerRadius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                
+                // Lines & Arrows
+                if (el.shapeType === 'line') return <Line {...commonProps} points={[0, h/2, w, h/2]} />;
+                if (el.shapeType === 'arrow') return <Arrow {...commonProps} points={[0, h/2, w, h/2]} pointerLength={15} pointerWidth={15} />;
+                if (el.shapeType === 'arrow-left') return <Arrow {...commonProps} points={[w, h/2, 0, h/2]} pointerLength={15} pointerWidth={15} />;
+                if (el.shapeType === 'arrow-both') return <Arrow {...commonProps} points={[15, h/2, w-15, h/2]} pointerLength={15} pointerWidth={15} pointerAtBeginning={true} />;
+                if (el.shapeType === 'arrow-up') return <Arrow {...commonProps} points={[w/2, h, w/2, 0]} pointerLength={15} pointerWidth={15} />;
+                if (el.shapeType === 'arrow-down') return <Arrow {...commonProps} points={[w/2, 0, w/2, h]} pointerLength={15} pointerWidth={15} />;
+
+                // Chart Axes
+                if (el.shapeType === 'axis-xy') return (
+                  <Group>
+                    <Arrow {...commonProps} points={[0, h, w, h]} pointerLength={10} pointerWidth={10} />
+                    <Arrow {...commonProps} points={[0, h, 0, 0]} pointerLength={10} pointerWidth={10} />
+                  </Group>
+                );
+                if (el.shapeType === 'axis-x') return <Arrow {...commonProps} points={[0, h/2, w, h/2]} pointerLength={10} pointerWidth={10} />;
+
+                // Bubbles & Complex Paths
+                if (el.shapeType === 'heart') return (
+                  <Path 
+                    {...commonProps} 
+                    data="M50,88 C50,88 5,55 5,30 C5,15 15,5 30,5 C40,5 45,10 50,15 C55,10 60,5 70,5 C85,5 95,15 95,30 C95,55 50,88 50,88 Z" 
+                    scaleX={w/100} scaleY={h/100}
+                  />
+                );
+                if (el.shapeType === 'bubble-speech') return (
+                  <Path 
+                    {...commonProps} 
+                    data="M10,10 L90,10 L90,70 L40,70 L10,90 L10,70 L10,10 Z" 
+                    scaleX={w/100} scaleY={h/100}
+                  />
+                );
+                if (el.shapeType === 'bubble-thought') return (
+                  <Path 
+                    {...commonProps} 
+                    data="M50,10 C72,10 90,23 90,40 C90,57 72,70 50,70 C45,70 41,69 36,67 C30,75 18,82 10,85 C15,77 18,68 18,60 C12,54 10,47 10,40 C10,23 28,10 50,10 Z" 
+                    scaleX={w/100} scaleY={h/100}
+                  />
+                );
+                if (el.shapeType === 'bracket') return (
+                  <Group>
+                    <Line {...commonProps} points={[w/4, 0, 0, 0, 0, h, w/4, h]} strokeWidth={4} fill="transparent" />
+                    <Line {...commonProps} points={[3*w/4, 0, w, 0, w, h, 3*w/4, h]} strokeWidth={4} fill="transparent" />
+                  </Group>
+                );
+                if (el.shapeType === 'curly') return (
+                  <Group>
+                    <KonvaText {...commonProps} text="{" fontSize={h} width={w/2} align="left" />
+                    <KonvaText {...commonProps} x={w/2} text="}" fontSize={h} width={w/2} align="right" />
+                  </Group>
+                );
+
                 return <Rect {...commonProps} />;
               };
+
 
               return (
                 <Group
@@ -400,6 +563,7 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                   x={el.x}
                   y={el.y}
                   rotation={el.rotation || 0}
+                  opacity={el.opacity !== undefined ? el.opacity : 1}
                   draggable={activeTool === 'select'}
                   onDragEnd={(e) => {
                     onUpdateElements(elements.map(item => 
@@ -434,7 +598,22 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
           })}
         </Layer>
         <Layer>
+          {/* Temporary Drawing Layer for performance */}
+          {isDrawing && tempPoints.length > 0 && (
+            <Line
+              points={tempPoints}
+              stroke={tempType === 'eraser' ? '#ffffff' : brushSettings.color}
+              strokeWidth={tempType === 'eraser' ? 30 : brushSettings.width}
+              tension={0.5}
+              lineCap="round"
+              lineJoin="round"
+              opacity={tempType === 'highlighter' ? brushSettings.opacity : 1}
+              globalCompositeOperation={tempType === 'eraser' ? 'destination-out' : (tempType === 'highlighter' ? 'multiply' : 'source-over')}
+            />
+          )}
+
           {elements.filter(el => el.type === 'path').map((el) => (
+
             <Group
               key={el.id}
               id={'group-' + el.id}
@@ -481,52 +660,76 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
             </Group>
           ))}
         </Layer>
+
         <Layer>
-          {selectedId && activeTool === 'select' && (
+          {(selectedId && (activeTool === 'select' || activeTool === 'text')) && (
             <Transformer
               ref={transformerRef}
               padding={5}
               rotateEnabled={true}
+              anchorFill="#4f46e5"
+              anchorStroke="#fff"
+              anchorCornerRadius={10}
+              anchorSize={10}
+              borderStroke="#4f46e5"
+              borderStrokeWidth={1.5}
+              borderDash={activeTool === 'text' ? [4, 4] : undefined}
               enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right', 'top-center', 'bottom-center']}
               boundBoxFunc={(oldBox, newBox) => {
-                if (newBox.width < 20 || newBox.height < 20) return oldBox;
+                if (newBox.width < 40 || newBox.height < 20) return oldBox;
                 return newBox;
               }}
             />
           )}
+
         </Layer>
+
       </Stage>
 
       {/* HTML Overlay for Text Editing */}
       {editingTextId && elements.find(el => el.id === editingTextId) && (() => {
         const el = elements.find(el => el.id === editingTextId)!;
+        const minW = Math.max(el.width || 250, 120);
+        const minH = Math.max(el.height || 120, 60);
         return (
           <textarea
             value={editingValue}
-            onChange={(e) => setEditingValue(e.target.value)}
+            onChange={(e) => {
+              setEditingValue(e.target.value);
+              const ta = e.target as HTMLTextAreaElement;
+              ta.style.height = 'auto';
+              ta.style.height = Math.max(minH, ta.scrollHeight + 4) + 'px';
+            }}
             onBlur={handleTextBlur}
-            autoFocus
+            placeholder="Start typing..."
+            dir={el.dir || 'ltr'}
             style={{
               position: 'absolute',
               top: el.y + 'px',
               left: el.x + 'px',
-              width: (el.width || 100) + 'px',
-              height: Math.max(el.height || 50, 50) + 'px',
-              fontSize: el.fontSize + 'px',
-              fontFamily: el.fontFamily,
-              fontStyle: el.fontStyle || 'normal',
+              width: minW + 'px',
+              minHeight: minH + 'px',
+              fontSize: (el.fontSize || 18) + 'px',
+              fontFamily: el.fontFamily || 'Inter',
+              fontStyle: el.fontStyle?.includes('italic') ? 'italic' : 'normal',
+              fontWeight: el.fontStyle?.includes('bold') ? 'bold' : 'normal',
               textAlign: (el.align as any) || 'left',
-              color: el.fill,
-              backgroundColor: el.backgroundColor || 'rgba(255, 255, 255, 0.9)',
+              direction: (el.dir as any) || 'ltr',
+              color: el.fill || '#0f172a',
+              backgroundColor: (el.backgroundColor && el.backgroundColor !== 'transparent')
+                ? el.backgroundColor
+                : 'rgba(255,255,255,0.95)',
               border: '2px dashed #4f46e5',
-              padding: '12px',
+              borderRadius: '4px',
+              padding: '8px 10px',
               outline: 'none',
               resize: 'both',
               zIndex: 1000,
-              lineHeight: 1.2,
+              lineHeight: 1.4,
               boxSizing: 'border-box',
               transform: `rotate(${el.rotation || 0}deg)`,
               transformOrigin: 'top left',
+              overflow: 'hidden',
             }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {

@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { NotebookSidebar } from '../components/notebooks/NotebookSidebar';
 import { NotebookCanvas } from '../components/notebooks/NotebookCanvas';
-import { NotebookToolbar } from '../components/notebooks/NotebookToolbar';
+import { 
+  NotebookSideToolbar, 
+  NotebookPropertyBar 
+} from '../components/notebooks/NotebookToolbar';
 import { NotebookCalendar } from '../components/notebooks/NotebookCalendar';
 import { NotebookCreateModal } from '../components/notebooks/NotebookCreateModal';
 import { NotebookEditModal } from '../components/notebooks/NotebookEditModal';
@@ -18,13 +21,11 @@ import {
   ArrowRight, 
   Link, 
   Book, 
-  Folder,
   ZoomIn,
   ZoomOut,
-  Maximize,
-  Download,
-  Menu
+  Maximize
 } from 'lucide-react';
+
 import '../components/notebooks/Notebooks.css';
 
 import { loadToken } from '../lib/googleDrive';
@@ -37,7 +38,7 @@ const NotebooksPage: React.FC = () => {
     activePageId,
     isDriveConnected,
     connectDrive,
-    saveStatus,
+
     updatePageElements,
     updatePage,
     updateElement,
@@ -62,7 +63,8 @@ const NotebooksPage: React.FC = () => {
   // Local UI State
   const [viewMode, setViewMode] = useState<'editor' | 'calendar'>('editor');
   const [activeTool, setActiveTool] = useState<string>('select');
-  const [brushSettings, setBrushSettings] = useState({ color: '#1e293b', width: 5, opacity: 0.3, penType: 'round' });
+  const [brushSettings, setBrushSettings] = useState({ color: '#4f46e5', width: 5, opacity: 0.3, penType: 'round' });
+
   
   const handleSetTool = (tool: string) => {
     setActiveTool(tool);
@@ -89,7 +91,8 @@ const NotebooksPage: React.FC = () => {
     id: '',
     title: ''
   });
-  const [activeSectionGroupId, setActiveSectionGroupId] = useState<string | null>(null);
+  const [activeSectionGroupId] = useState<string | null>(null);
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Handle Routing Sync
@@ -110,8 +113,32 @@ const NotebooksPage: React.FC = () => {
 
   // Zoom & Scale State
   const [zoom, setZoom] = useState(1);
+  const [history, setHistory] = useState<any[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const viewerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<{ getDataURL: (pixelRatio?: number) => string | null; getStageSize: () => { width: number; height: number } }>(null);
+
+  // Pinch-to-zoom (trackpad/mousewheel)
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault(); // Prevent browser zoom
+        // smooth scaling
+        setZoom(prev => {
+          const delta = e.deltaY * -0.01;
+          const next = Math.min(Math.max(0.25, prev + delta), 4);
+          return next;
+        });
+      }
+    };
+
+    viewer.addEventListener('wheel', handleWheel, { passive: false });
+    return () => viewer.removeEventListener('wheel', handleWheel);
+  }, []);
+
 
   // Auto-fit logic
   useEffect(() => {
@@ -126,6 +153,10 @@ const NotebooksPage: React.FC = () => {
   const handleAutoFit = () => {
     if (!viewerRef.current) return;
     const { offsetWidth } = viewerRef.current;
+    if (offsetWidth === 0) {
+      setZoom(1);
+      return;
+    }
     const activePage = getActivePage();
     if (!activePage) return;
     
@@ -137,19 +168,27 @@ const NotebooksPage: React.FC = () => {
     setZoom(isMobile ? scale : Math.min(scale, 1.5));
   };
 
+
   const getActivePage = () => {
+    if (!activeNotebookId || !activePageId) return null;
     const activeNotebook = notebooks.find(n => n.id === activeNotebookId);
     if (!activeNotebook) return null;
-    const allSections = [...activeNotebook.sections, ...activeNotebook.sectionGroups.flatMap(sg => sg.sections)];
-    for (const section of allSections) {
-      const page = section.pages.find(p => p.id === activePageId);
-      if (page) return page;
-    }
+    
+    // Search in root sections
+    const rootPage = activeNotebook.sections?.flatMap(s => s.pages).find(p => p.id === activePageId);
+    if (rootPage) return rootPage;
+    
+    // Search in section groups
+    const groupPage = activeNotebook.sectionGroups?.flatMap(sg => sg.sections).flatMap(s => s.pages).find(p => p.id === activePageId);
+    if (groupPage) return groupPage;
+    
     return null;
   };
 
   const activeNotebook = notebooks.find(n => n.id === activeNotebookId);
   const activePage = getActivePage();
+
+
 
   const handleAddSubpage = () => {
     if (!activePage || !activeNotebook) return;
@@ -205,8 +244,87 @@ const NotebooksPage: React.FC = () => {
 
   const handleUpdateElements = (elements: any[]) => {
     if (!activePageId) return;
+    
+    // Add to local history for undo/redo
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(elements);
+    if (newHistory.length > 50) newHistory.shift(); // Limit history size
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
     updatePageElements(activePageId, elements);
   };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const elements = history[prevIndex];
+      setHistoryIndex(prevIndex);
+      if (activePageId) updatePageElements(activePageId, elements);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const elements = history[nextIndex];
+      setHistoryIndex(nextIndex);
+      if (activePageId) updatePageElements(activePageId, elements);
+    }
+  };
+
+  // Initialize history when page changes
+  useEffect(() => {
+    if (activePage) {
+      setHistory([activePage.elements]);
+      setHistoryIndex(0);
+    }
+  }, [activePageId]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'v': handleSetTool('select'); break;
+        case 't': handleSetTool('text'); break;
+        case 'p': handleSetTool('pen'); break;
+        case 'h': handleSetTool('highlighter'); break;
+        case 'e': handleSetTool('eraser'); break;
+        case 's': handleSetTool('select'); break; 
+
+        case 'z': 
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleUndo();
+          }
+          break;
+        case 'y': 
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleRedo();
+          }
+          break;
+        case 'delete':
+        case 'backspace':
+          if (selectedElementId) {
+
+            const page = getActivePage();
+            if (page) {
+              handleUpdateElements(page.elements.filter(el => el.id !== selectedElementId));
+              setSelectedElementId(null);
+            }
+          }
+          break;
+      }
+
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSetTool, handleUndo, handleRedo, selectedElementId, getActivePage, handleUpdateElements]);
+
 
   const handleAddImage = async () => {
     console.log("handleAddImage triggered");
@@ -371,6 +489,54 @@ const NotebooksPage: React.FC = () => {
     );
   }
 
+  const handleUpdatePageMetadata = (updates: { title?: string, dueDate?: string }) => {
+    if (activePageId) {
+      updatePage(activePageId, updates);
+    }
+  };
+
+  const handleDuplicatePage = () => {
+    if (!activePage || !activeNotebook) return;
+
+    // Find section ID
+    let sectionIdToUse = activeSectionId;
+    if (!sectionIdToUse) {
+      const allSections = [...activeNotebook.sections, ...activeNotebook.sectionGroups.flatMap(sg => sg.sections)];
+      for (const section of allSections) {
+        if (section.pages.some(p => p.id === activePageId)) {
+          sectionIdToUse = section.id;
+          break;
+        }
+      }
+    }
+
+    if (!sectionIdToUse) return;
+
+    const baseTitle = activePage.title.replace(/\s*\(Page\s*\d+\)$/i, '').replace(/\s*\(Copy\)$/i, '');
+    let nextNum = 2;
+    
+    const allSectionsForCount = [...activeNotebook.sections, ...activeNotebook.sectionGroups.flatMap(sg => sg.sections)];
+    const sectionToUse = allSectionsForCount.find(s => s.id === sectionIdToUse);
+    
+    if (sectionToUse) {
+      const safeBase = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`^${safeBase}(?:\\s*\\(Page\\s*(\\d+)\\))?$`, 'i');
+      const existingNums = sectionToUse.pages.map(p => {
+        const match = p.title.match(regex);
+        return match ? (match[1] ? parseInt(match[1], 10) : 1) : 0;
+      }).filter(n => n > 0);
+      
+      if (existingNums.length > 0) nextNum = Math.max(...existingNums) + 1;
+    }
+
+    const newTitle = `${baseTitle} (Page ${nextNum})`;
+    const newPageId = addPage(sectionIdToUse, newTitle, activePage.orientation, activePage.template, false);
+    
+    // Copy elements
+    updatePageElements(newPageId, JSON.parse(JSON.stringify(activePage.elements)));
+    setActivePage(newPageId);
+  };
+
   return (
     <div className="notebooks-container">
       {/* Mobile sidebar overlay */}
@@ -388,221 +554,150 @@ const NotebooksPage: React.FC = () => {
         onClose={() => setIsMobileSidebarOpen(false)}
       />
 
-      <main className="notebook-main">
-        {/* Top Navigation */}
-        <div className="notebook-top-nav">
-          {/* Mobile hamburger */}
-          <button 
-            className="sidebar-toggle-btn"
-            onClick={() => setIsMobileSidebarOpen(true)}
-            title="Open Sections"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex-1 flex items-center gap-6 overflow-x-auto no-scrollbar pr-4">
-            <h1 
-              className="text-xl font-black text-slate-800 whitespace-nowrap cursor-pointer hover:text-indigo-600 transition-colors"
-              onDoubleClick={() => activeNotebookId && setEditModalState({ 
-                isOpen: true, 
-                type: 'notebook', 
-                id: activeNotebookId, 
-                title: notebooks.find(n => n.id === activeNotebookId)?.name || '' 
-              })}
-            >
-              {notebooks.find(n => n.id === activeNotebookId)?.name || 'Notebooks'}
-            </h1>
+      {viewMode === 'editor' && (
+        <NotebookSideToolbar 
+          activeTool={activeTool}
+          setActiveTool={handleSetTool}
+          handleAddImage={handleAddImage}
+          onAddImageFromUrl={handleAddImageFromUrl}
+        />
+      )}
 
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              <button 
-                onClick={() => setViewMode('editor')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === 'editor' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Editor
-              </button>
-              <button 
-                onClick={() => setViewMode('calendar')}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Calendar
-              </button>
-            </div>
+      <main className="notebook-main flex-1 flex flex-col min-w-0 bg-white">
+        <NotebookPropertyBar 
+          activeTool={activeTool}
+          brushSettings={brushSettings}
+          setBrushSettings={setBrushSettings}
+          textSettings={textSettings}
+          setTextSettings={setTextSettings}
+          pageSettings={{
+            orientation: activePage?.orientation || 'portrait',
+            template: activePage?.template || 'blank'
+          }}
+          setPageSettings={(updates) => activePageId && updatePage(activePageId, updates)}
+          selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
+          onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
+          activePage={activePage}
+          onOpenExport={() => setIsExportModalOpen(true)}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
+          onAddImageFromUrl={handleAddImageFromUrl}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onDuplicatePage={handleDuplicatePage}
+          onUpdatePageMetadata={handleUpdatePageMetadata}
+        />
 
-            {activeNotebookId && activeNotebook && (
-              <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-10">
-                {activeNotebook.sectionGroups.map(sg => (
-                  <button 
-                    key={sg.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                      activeSectionGroupId === sg.id ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'text-slate-400 hover:bg-slate-50'
-                    }`}
-                    onClick={() => setActiveSectionGroupId(sg.id === activeSectionGroupId ? null : sg.id)}
-                    onDoubleClick={() => setEditModalState({ isOpen: true, type: 'group', id: sg.id, title: sg.name })}
-                  >
-                    <Folder size={14} /> {sg.name}
-                  </button>
-                ))}
 
-                <div className="h-6 w-px bg-slate-100 mx-2" />
-                
-                <button 
-                  className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-full transition-all"
-                  onClick={() => setIsCreateModalOpen(true)}
-                >
-                  <Plus size={18} />
-                </button>
+
+
+        <div className="notebook-editor-layout">
+          <div className="page-viewer no-scrollbar" ref={viewerRef}>
+            {viewMode === 'calendar' ? (
+              <div className="w-full h-full p-6">
+                <NotebookCalendar onPageSelect={handleCalendarPageSelect} />
+              </div>
+            ) : activePage ? (
+                <div className="flex flex-col items-center gap-10 py-10 inline-page-nav-wrapper" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                  <NotebookCanvas 
+                    ref={canvasRef}
+                    pageId={activePage.id}
+                    elements={activePage.elements}
+                    template={activePage.template}
+                    orientation={activePage.orientation}
+                    onUpdateElements={handleUpdateElements}
+                    onSelectElement={setSelectedElementId}
+                    activeTool={activeTool}
+                    setActiveTool={handleSetTool}
+                    brushSettings={brushSettings}
+                    textSettings={textSettings}
+                    selectedId={selectedElementId}
+                  />
+
+                  {selectedElementId && activePage?.elements.find(el => el.id === selectedElementId) && (
+                    <NotebookFloatingToolbar 
+                      element={activePage.elements.find(el => el.id === selectedElementId)}
+                      zoom={zoom}
+                      onUpdate={(updates) => activePageId && updateElement(activePageId, selectedElementId, updates)}
+                      onDelete={() => {
+                        if (activePageId && activePage) {
+                          updatePageElements(activePageId, activePage.elements.filter(el => el.id !== selectedElementId));
+                          setSelectedElementId(null);
+                        }
+                      }}
+                      onDuplicate={() => handleDuplicateElement(selectedElementId)}
+                      onMoveUp={() => {
+                        const maxZ = Math.max(...activePage.elements.map(e => e.zIndex || 0));
+                        if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: maxZ + 1 });
+                      }}
+                      onMoveDown={() => {
+                        const minZ = Math.min(...activePage.elements.map(e => e.zIndex || 0));
+                        if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: minZ - 1 });
+                      }}
+                    />
+                  )}
+
+                  <div className="inline-page-nav flex items-center gap-4 py-8">
+                    <button 
+                      onClick={() => goToPrevPage()}
+                      className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                      title="Previous Page"
+                    >
+                      <ArrowLeft size={24} />
+                    </button>
+                    <button 
+                      onClick={handleAddSubpage}
+                      className="tool-btn rounded-full bg-indigo-600 shadow-md shadow-indigo-200 w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-white"
+                      title="Add Subpage"
+                    >
+                      <Plus size={24} />
+                    </button>
+                    <button 
+                      onClick={() => goToNextPage()}
+                      className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
+                      title="Next Page"
+                    >
+                      <ArrowRight size={24} />
+                    </button>
+                  </div>
+                </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <Book size={64} className="mb-4 opacity-10" />
+                <p className="font-bold text-sm">Select a section and page to start creating</p>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Zoom Controls */}
-            {viewMode === 'editor' && (
-              <>
-                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-                  <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-1.5 hover:bg-white rounded-lg transition-all"><ZoomOut size={14} /></button>
-                  <div className="w-12 text-center text-[10px] font-black text-slate-600">{Math.round(zoom * 100)}%</div>
-                  <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-1.5 hover:bg-white rounded-lg transition-all"><ZoomIn size={14} /></button>
-                  <button onClick={handleAutoFit} className="p-1.5 hover:bg-white rounded-lg transition-all border-l border-slate-200 ml-1"><Maximize size={14} /></button>
-                </div>
-                
-                <div className="h-6 w-px bg-slate-100 mx-2" />
-                
-                <button 
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded-xl hover:bg-indigo-600 transition-all active:scale-95 group shadow-sm"
-                  title="Export to PDF"
-                >
-                  <Download size={14} />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Export</span>
-                </button>
-              </>
-            )}
-            
-            {saveStatus === 'saving' && (
-              <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" /> Saving...
-              </span>
-            )}
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => goToPrevPage()}
-                className="tool-btn p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                title="Previous Page"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <button 
-                onClick={() => goToNextPage()}
-                className="tool-btn p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                title="Next Page"
-              >
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {viewMode === 'editor' && (
-          <NotebookToolbar 
-            activeTool={activeTool}
-            setActiveTool={handleSetTool}
-            brushSettings={brushSettings}
-            setBrushSettings={setBrushSettings}
-            textSettings={textSettings}
-            setTextSettings={setTextSettings}
-            handleAddImage={handleAddImage}
-            pageSettings={{
-              orientation: activePage?.orientation || 'portrait',
-              template: activePage?.template || 'blank'
-            }}
-            setPageSettings={(updates) => activePageId && updatePage(activePageId, updates)}
+          <NotebookElementSidebar 
             selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
             onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
             onDuplicateElement={handleDuplicateElement}
-            onAddImageFromUrl={handleAddImageFromUrl}
+            onDeleteElement={(id) => {
+              if (activePageId && activePage) {
+                updatePageElements(activePageId, activePage.elements.filter(el => el.id !== id));
+                setSelectedElementId(null);
+              }
+            }}
             activePage={activePage}
-            onUpdatePage={(updates) => activePageId && updatePage(activePageId, updates)}
-            onOpenExport={() => setIsExportModalOpen(true)}
+            onClose={() => setSelectedElementId(null)}
           />
-        )}
 
-        <div className="page-viewer no-scrollbar" ref={viewerRef}>
-          {viewMode === 'calendar' ? (
-            <div className="w-full h-full p-6">
-              <NotebookCalendar onPageSelect={handleCalendarPageSelect} />
-            </div>
-          ) : activePage ? (
-              <div className="flex flex-col items-center gap-10 py-10 inline-page-nav-wrapper" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-                <NotebookCanvas 
-                  ref={canvasRef}
-                  pageId={activePage.id}
-                  elements={activePage.elements}
-                  template={activePage.template}
-                  orientation={activePage.orientation}
-                  onUpdateElements={handleUpdateElements}
-                  onSelectElement={setSelectedElementId}
-                  activeTool={activeTool}
-                  setActiveTool={handleSetTool}
-                  brushSettings={brushSettings}
-                  textSettings={textSettings}
-                  selectedId={selectedElementId}
-                />
-
-                {selectedElementId && activePage?.elements.find(el => el.id === selectedElementId) && (
-                  <NotebookFloatingToolbar 
-                    element={activePage.elements.find(el => el.id === selectedElementId)}
-                    zoom={zoom}
-                    onUpdate={(updates) => activePageId && updateElement(activePageId, selectedElementId, updates)}
-                    onDelete={() => {
-                      if (activePageId && activePage) {
-                        updatePageElements(activePageId, activePage.elements.filter(el => el.id !== selectedElementId));
-                        setSelectedElementId(null);
-                      }
-                    }}
-                    onDuplicate={() => handleDuplicateElement(selectedElementId)}
-                    onMoveUp={() => {
-                      const maxZ = Math.max(...activePage.elements.map(e => e.zIndex || 0));
-                      if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: maxZ + 1 });
-                    }}
-                    onMoveDown={() => {
-                      const minZ = Math.min(...activePage.elements.map(e => e.zIndex || 0));
-                      if (activePageId) updateElement(activePageId, selectedElementId, { zIndex: minZ - 1 });
-                    }}
-                  />
-                )}
-
-
-                <div className="inline-page-nav flex items-center gap-4 py-8">
-                  <button 
-                    onClick={() => goToPrevPage()}
-                    className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                    title="Previous Page"
-                  >
-                    <ArrowLeft size={24} />
-                  </button>
-                  <button 
-                    onClick={handleAddSubpage}
-                    className="tool-btn rounded-full bg-indigo-600 shadow-md shadow-indigo-200 w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-white"
-                    title="Add Subpage"
-                  >
-                    <Plus size={24} />
-                  </button>
-                  <button 
-                    onClick={() => goToNextPage()}
-                    className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                    title="Next Page"
-                  >
-                    <ArrowRight size={24} />
-                  </button>
-                </div>
-              </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <Book size={64} className="mb-4 opacity-10" />
-              <p className="font-bold text-sm">Select a section and page to start creating</p>
+          {/* Zoom Controls Overlay */}
+          {viewMode === 'editor' && (
+            <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-4">
+              <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomOut size={16} /></button>
+              <div className="w-12 text-center text-[10px] font-black text-slate-700">{Math.round(zoom * 100)}%</div>
+              <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomIn size={16} /></button>
+              <div className="w-px h-4 bg-slate-200 mx-1" />
+              <button onClick={handleAutoFit} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all" title="Fit to Screen"><Maximize size={16} /></button>
             </div>
           )}
         </div>
+
+
       </main>
 
       {/* Mobile floating page navigation */}
@@ -643,18 +738,7 @@ const NotebooksPage: React.FC = () => {
         initialTitle={editModalState.title}
       />
 
-      <NotebookElementSidebar 
-        selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
-        onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
-        onDuplicateElement={handleDuplicateElement}
-        onDeleteElement={(id) => {
-          if (activePageId && activePage) {
-            updatePageElements(activePageId, activePage.elements.filter(el => el.id !== id));
-            setSelectedElementId(null);
-          }
-        }}
-        activePage={activePage}
-      />
+
 
       <NotebookExportModal 
         isOpen={isExportModalOpen}

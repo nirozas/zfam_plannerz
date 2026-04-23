@@ -13,8 +13,11 @@ import {
   Square,
   Circle,
   Triangle,
-  Star
+  Star,
+  Minus,
+  ArrowRight
 } from 'lucide-react';
+
 
 interface ImageSidebarProps {
   selectedElement: any;
@@ -40,9 +43,10 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
   const isPath = selectedElement.type === 'path';
 
   return (
-    <div className="fixed right-8 top-1/2 -translate-y-1/2 w-[220px] bg-white/95 backdrop-blur-md border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-[9999] rounded-[2rem] flex flex-col p-5 animate-in fade-in slide-in-from-right-12 duration-500 ease-out">
+    <div className="w-[360px] h-full bg-white border-l border-slate-200 flex flex-col p-5 flex-shrink-0 animate-in fade-in slide-in-from-right-4 duration-300">
+
       {/* Mini Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
           <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-900">
@@ -57,7 +61,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
         </button>
       </div>
 
-      <div className="flex flex-col gap-8 overflow-y-auto no-scrollbar max-h-[70vh]">
+      <div className="flex flex-col gap-4 overflow-y-auto no-scrollbar max-h-[85vh]">
         {/* Arrangement */}
         <section className="space-y-3">
           <label className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Stacking</label>
@@ -83,8 +87,9 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-3">
           <label className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Transform</label>
+
           
           <div className="space-y-4">
             <MinimalSlider 
@@ -124,8 +129,9 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
         </section>
 
         {isShape && (
-          <section className="space-y-6">
+          <section className="space-y-3">
             <label className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Appearance</label>
+
             
             <div className="space-y-4">
               <div>
@@ -179,27 +185,29 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
               />
             </div>
 
+
             <div>
               <span className="text-[8px] font-black uppercase text-slate-400 block mb-2">Change Shape</span>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-7 gap-1.5">
                 {[
                   { id: 'rect', icon: <Square size={10} /> },
                   { id: 'circle', icon: <Circle size={10} /> },
                   { id: 'triangle', icon: <Triangle size={10} /> },
                   { id: 'star', icon: <Star size={10} /> },
                   { id: 'diamond', icon: <RotateCw size={10} /> },
-                  { id: 'line', icon: <RotateCw size={10} /> },
-                  { id: 'arrow', icon: <RotateCw size={10} /> }
+                  { id: 'line', icon: <Minus size={10} /> },
+                  { id: 'arrow', icon: <ArrowRight size={10} /> }
                 ].map(s => (
                   <button 
                     key={s.id}
                     onClick={() => onUpdateElement(selectedElement.id, { shapeType: s.id })}
-                    className={`aspect-square flex items-center justify-center rounded-lg border-2 transition-all ${selectedElement.shapeType === s.id ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
+                    className={`aspect-square flex items-center justify-center rounded-md border transition-all ${selectedElement.shapeType === s.id ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
                   >
-                    <span className="text-[8px] font-black uppercase">{s.id.substring(0, 3)}</span>
+                    {s.icon}
                   </button>
                 ))}
               </div>
+
             </div>
           </section>
         )}
@@ -334,16 +342,18 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
             rotation: 0, flipX: false,
             fill: '#4f46e5', stroke: '#4f46e5', strokeWidth: 2
           })}
-          className="w-full py-3 bg-slate-900 text-white rounded-2xl text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95"
+          className="w-full py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95"
         >
           <RefreshCcw size={10} className="inline mr-2" /> Reset
         </button>
+
         <button 
           onClick={() => onDeleteElement(selectedElement.id)}
-          className="w-full py-3 bg-red-50 text-red-500 rounded-2xl text-[8px] font-black uppercase tracking-widest hover:bg-red-100 transition-all"
+          className="w-full py-2 bg-red-50 text-red-500 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-red-100 transition-all"
         >
           <Trash2 size={10} className="inline mr-2" /> Delete
         </button>
+
       </div>
     </div>
   );
@@ -352,11 +362,12 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
 const ToolIconButton = ({ icon, onClick }: any) => (
   <button 
     onClick={onClick}
-    className="aspect-square flex items-center justify-center rounded-xl bg-slate-50 hover:bg-indigo-600 hover:text-white transition-all border border-slate-100 active:scale-90"
+    className="h-9 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-indigo-600 hover:text-white transition-all border border-slate-100 active:scale-90"
   >
     {icon}
   </button>
 );
+
 
 const MinimalSlider = ({ label, value, min = 0, max, onChange }: any) => (
   <div className="space-y-1.5">

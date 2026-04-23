@@ -9,7 +9,12 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowRight,
-  Hexagon
+  Hexagon,
+  Bold,
+  Palette,
+  Layers,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface FloatingToolbarProps {
@@ -34,11 +39,8 @@ export const NotebookFloatingToolbar: React.FC<FloatingToolbarProps> = ({
   if (!element) return null;
 
   const isShape = element.type === 'shape';
-
-  // Calculate position: above the element
-  // We need to account for zoom and canvas offsets, but since this will be 
-  // rendered inside the zoomed container or relative to it, we'll see.
-  // Actually, easier to render it fixed/absolute in NotebooksPage and pass coordinates.
+  const isText = element.type === 'text';
+  const isImage = element.type === 'image';
 
   const SHAPES = [
     { id: 'rect', icon: <Square size={14} /> },
@@ -52,36 +54,67 @@ export const NotebookFloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   return (
     <div 
-      className="absolute z-[6000] flex items-center gap-1 bg-white/90 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-1.5 animate-in fade-in zoom-in-95 duration-200"
+      className="absolute z-[6000] flex items-center gap-1 bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[20px] p-2 animate-in fade-in zoom-in-95 duration-200"
       style={{
         left: `${element.x}px`,
-        top: `${element.y - 70}px`, // Place it higher
+        top: `${element.y - 70}px`,
         transform: `scale(${1/zoom})`,
         transformOrigin: 'bottom left'
       }}
     >
-      {isShape && (
-        <div className="flex items-center gap-1 border-r border-slate-100 pr-2 mr-2">
-          <div className="text-[8px] font-black uppercase text-slate-400 px-2 tracking-widest">Swap</div>
-          {SHAPES.map(s => (
-            <button
-              key={s.id}
-              onClick={() => onUpdate({ shapeType: s.id })}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${element.shapeType === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-400'}`}
-              title={`Switch to ${s.id}`}
-            >
-              {s.icon}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Contextual Section */}
+      <div className="flex items-center gap-1 border-r border-slate-200/50 pr-2 mr-1">
+        {isShape && SHAPES.map(s => (
+          <button
+            key={s.id}
+            onClick={() => onUpdate({ shapeType: s.id })}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${element.shapeType === s.id ? 'bg-slate-900 text-white shadow-lg scale-110' : 'hover:bg-slate-100 text-slate-400'}`}
+          >
+            {s.icon}
+          </button>
+        ))}
 
+        {isText && (
+          <>
+            <button 
+              onClick={() => {
+                const s = element.fontStyle || '';
+                onUpdate({ fontStyle: s.includes('bold') ? s.replace('bold', '').trim() : (s + ' bold').trim() });
+              }}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${element.fontStyle?.includes('bold') ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 text-slate-500'}`}
+            >
+              <Bold size={16} />
+            </button>
+            <div className="relative">
+              <div className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-all">
+                 <input 
+                  type="color" 
+                  value={element.fill || '#000000'} 
+                  onChange={(e) => onUpdate({ fill: e.target.value })}
+                  className="w-5 h-5 p-0 border-none bg-transparent cursor-pointer rounded-full overflow-hidden"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {isImage && (
+          <button 
+            onClick={() => onUpdate({ filter: element.filter === 'grayscale' ? 'none' : 'grayscale' })}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${element.filter === 'grayscale' ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 text-slate-500'}`}
+          >
+            <Palette size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Layering & Actions */}
       <div className="flex items-center gap-1">
-        <button onClick={onMoveUp} className="p-2 hover:bg-slate-100 text-slate-400 rounded-xl transition-all" title="Bring to Front"><ChevronUp size={14} /></button>
-        <button onClick={onMoveDown} className="p-2 hover:bg-slate-100 text-slate-400 rounded-xl transition-all" title="Send to Back"><ChevronDown size={14} /></button>
-        <div className="w-px h-4 bg-slate-100 mx-1" />
-        <button onClick={onDuplicate} className="p-2 hover:bg-slate-100 text-slate-400 rounded-xl transition-all" title="Duplicate"><Copy size={14} /></button>
-        <button onClick={onDelete} className="p-2 hover:bg-red-50 text-red-400 rounded-xl transition-all" title="Delete"><Trash2 size={14} /></button>
+        <button onClick={onMoveUp} className="w-9 h-9 flex items-center justify-center hover:bg-slate-100 text-slate-500 rounded-xl transition-all" title="Bring Forward"><ArrowUp size={16} /></button>
+        <button onClick={onMoveDown} className="w-9 h-9 flex items-center justify-center hover:bg-slate-100 text-slate-500 rounded-xl transition-all" title="Send Backward"><ArrowDown size={16} /></button>
+        <div className="w-px h-6 bg-slate-200/50 mx-1" />
+        <button onClick={onDuplicate} className="w-9 h-9 flex items-center justify-center hover:bg-slate-100 text-slate-500 rounded-xl transition-all" title="Duplicate"><Copy size={16} /></button>
+        <button onClick={onDelete} className="w-9 h-9 flex items-center justify-center hover:bg-red-50 text-red-500 rounded-xl transition-all" title="Delete"><Trash2 size={16} /></button>
       </div>
     </div>
   );

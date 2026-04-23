@@ -38,7 +38,7 @@ export interface NotebookElement {
   removeBg?: boolean;
   bgThreshold?: number;
   filter?: string;
-  shapeType?: 'rect' | 'circle' | 'triangle' | 'arrow' | 'star' | 'diamond' | 'hexagon' | 'line';
+  shapeType?: 'rect' | 'circle' | 'triangle' | 'arrow' | 'star' | 'diamond' | 'hexagon' | 'line' | 'arrow-left' | 'arrow-both' | 'arrow-up' | 'arrow-down' | 'axis-xy' | 'axis-x' | 'heart' | 'bubble-speech' | 'bubble-thought' | 'bracket' | 'curly';
 
   // Formatting
   fontStyle?: string;

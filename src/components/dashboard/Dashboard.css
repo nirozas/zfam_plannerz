@@ -25,100 +25,7 @@
     overflow: hidden;
 }
 
-/* 1. PRIMARY SIDEBAR (Fixed Narrow) */
-.dashboard-sidebar {
-    width: 70px !important;
-    min-width: 70px !important;
-    max-width: 70px !important;
-    flex-shrink: 0;
-    background: linear-gradient(180deg, #fff0f5 0%, #f0f4ff 50%, #fdfbfb 100%);
-    border-right: 1px solid var(--glass-border);
-    display: flex;
-    flex-direction: column;
-    padding: 2rem 0.5rem;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
-    transition: width 0.3s ease;
-    align-items: center;
-}
 
-.dashboard-sidebar::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 3px;
-    height: 100%;
-    background: linear-gradient(to bottom, #ff9a9e, #fad0c4, #fad0c4, #a18cd1);
-}
-
-.brand-logo {
-    font-size: 0.75rem;
-    font-weight: 900;
-    letter-spacing: 0.05rem;
-    margin-bottom: 3rem;
-    background: linear-gradient(to right, #ff9a9e, #fecfef, #a18cd1);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
-}
-
-.nav-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    flex: 1;
-    width: 100%;
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem;
-    border-radius: 12px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-}
-
-.nav-item span {
-    display: none;
-    /* Forced icon-only as per spec */
-}
-
-.nav-item:hover,
-.nav-item.active {
-    background: linear-gradient(to right, rgba(255, 154, 158, 0.15), rgba(161, 140, 209, 0.15));
-    color: #e45f74;
-}
-
-.sidebar-footer {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--glass-border);
-    display: flex;
-    justify-content: center;
-    width: 100%;
-}
-
-.user-info {
-    display: none;
-}
-
-.avatar-circle {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: white;
-}
 
 /* 2. SECONDARY SIDEBAR (Fluid-Fixed Categories) */
 .library-secondary-sidebar {
@@ -480,10 +387,7 @@
 
 /* Mobile Adjustments */
 @media (max-width: 768px) {
-    .dashboard-sidebar {
-        width: 60px !important;
-        min-width: 60px !important;
-    }
+
 
     .library-secondary-sidebar.expanded {
         max-width: 140px;

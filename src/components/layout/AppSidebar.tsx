@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings, Wallet, Book } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
@@ -16,6 +16,22 @@ export const AppSidebar: React.FC = () => {
     };
 
     const navigate = useNavigate();
+    const [mobileShow, setMobileShow] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: Event) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setMobileShow(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, []);
 
     // Determine display name
     const displayName = userProfile?.full_name
@@ -176,17 +192,13 @@ export const AppSidebar: React.FC = () => {
             </nav >
 
 
-            <div className="user-mini-profile" title={user?.email || 'Guest User'}>
+            <div className="user-mini-profile" ref={profileRef} title={user?.email || 'Guest User'}>
                 <div
                     className="avatar-circle cursor-pointer"
                     onClick={(e) => {
                         e.stopPropagation();
                         if (window.innerWidth <= 768) {
-                            // Toggle popover on mobile instead of direct navigation
-                            const popover = e.currentTarget.nextElementSibling;
-                            if (popover) {
-                                popover.classList.toggle('mobile-show');
-                            }
+                            setMobileShow(prev => !prev);
                         } else {
                             navigate(user ? '/settings' : '/auth');
                         }
@@ -195,42 +207,61 @@ export const AppSidebar: React.FC = () => {
                     {user ? initial : '?'}
                 </div>
                 {user ? (
-                    <div className="user-info-popover">
+                    <div className={`user-info-popover ${mobileShow ? 'mobile-show' : ''}`}>
                         <div className="font-bold text-sm truncate">{displayName}</div>
                         <div className="text-xs text-gray-500 truncate mb-2">{user?.email}</div>
 
                         {/* Profile supplementary links */}
                         <div className="flex flex-col border-t border-gray-100 pt-2 gap-1 px-1">
                             <button
-                                onClick={() => navigate('/settings')}
+                                onClick={() => {
+                                    navigate('/settings');
+                                    setMobileShow(false);
+                                }}
                                 className="text-xs flex items-center gap-2 py-2 font-bold text-gray-600 hover:text-indigo-600 transition-colors"
                             >
                                 <Settings size={14} /> Profile Settings
                             </button>
                             <button
-                                onClick={() => setBugModalOpen(true)}
+                                onClick={() => {
+                                    setBugModalOpen(true);
+                                    setMobileShow(false);
+                                }}
                                 className="text-xs flex items-center gap-2 py-2 font-bold text-rose-400 hover:text-rose-600 transition-colors"
                             >
                                 <Bug size={14} /> Report a Bug
                             </button>
-                            <button onClick={handleDriveClick} className="text-xs flex items-center gap-2 py-2 font-bold" style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}>
+                            <button
+                                onClick={() => {
+                                    handleDriveClick();
+                                    setMobileShow(false);
+                                }}
+                                className="text-xs flex items-center gap-2 py-2 font-bold"
+                                style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}
+                            >
                                 <HardDrive size={14} /> {signedIn ? 'Drive Connected' : 'Connect Drive'}
                             </button>
                         </div>
 
                         <button
-                            onClick={handleSignOut}
+                            onClick={() => {
+                                handleSignOut();
+                                setMobileShow(false);
+                            }}
                             className="text-xs text-red-500 hover:text-red-700 mt-2 border-t border-gray-100 pt-2 flex items-center gap-1 font-bold"
                         >
                             <LogOut size={12} /> Sign Out Workspace
                         </button>
                     </div>
                 ) : (
-                    <div className="user-info-popover">
+                    <div className={`user-info-popover ${mobileShow ? 'mobile-show' : ''}`}>
                         <div className="font-bold text-sm truncate">Hello guest!</div>
                         <div className="text-xs text-gray-500 truncate">Sign in to sync your data</div>
                         <button
-                            onClick={() => navigate('/auth')}
+                            onClick={() => {
+                                navigate('/auth');
+                                setMobileShow(false);
+                            }}
                             className="text-xs text-indigo-500 hover:text-indigo-700 mt-2 flex items-center gap-1 font-bold uppercase"
                         >
                             <User size={12} /> Sign In

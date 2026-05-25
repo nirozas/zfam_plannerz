@@ -87,7 +87,8 @@ const AddStopModal: React.FC<AddStopModalProps> = ({ isOpen, onClose, tripId, de
         if (!address.trim()) return;
         setIsGeocoding(true);
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5&email=planner@zoabi.com`);
+            if (!res.ok) throw new Error('Geocoding request failed');
             const data = await res.json();
             if (data && data.length > 0) {
                 setSearchResults(data);
@@ -96,6 +97,7 @@ const AddStopModal: React.FC<AddStopModalProps> = ({ isOpen, onClose, tripId, de
             }
         } catch (err) {
             console.error('Geocoding failed:', err);
+            setSearchResults([]);
         } finally {
             setIsGeocoding(false);
         }

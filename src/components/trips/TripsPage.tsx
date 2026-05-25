@@ -122,12 +122,12 @@ const TripsPage: React.FC = () => {
                 if (statusFilter === 'past' && status !== 'past') return false;
             }
 
-            if (yearFilter !== 'all' && trip.start_date) {
-                if (new Date(trip.start_date).getFullYear().toString() !== yearFilter) return false;
+            if (yearFilter !== 'all') {
+                if (!trip.start_date || new Date(trip.start_date).getFullYear().toString() !== yearFilter) return false;
             }
 
-            if (monthFilter !== 'all' && trip.start_date) {
-                if (new Date(trip.start_date).getMonth().toString() !== monthFilter) return false;
+            if (monthFilter !== 'all') {
+                if (!trip.start_date || new Date(trip.start_date).getMonth().toString() !== monthFilter) return false;
             }
 
             if (countryFilter !== 'all') {

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Hash, Image as ImageIcon, Save, Loader2, Pencil, X, FileText, Plus, Trash2 } from 'lucide-react';
+import { MapPin, Calendar, Hash, Image as ImageIcon, Save, Loader2, Pencil, X, FileText, Plus, Trash2, Search } from 'lucide-react';
 
 interface TripDetailsTabProps {
     tripId: string;
@@ -28,6 +28,36 @@ const TripDetailsTab: React.FC<TripDetailsTabProps> = ({ tripId }) => {
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [coverUrl, setCoverUrl] = useState(activeTrip?.cover_url || '');
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+
+    const geocodeAddress = async () => {
+        if (!location.trim()) return;
+        setIsGeocoding(true);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=5&email=planner@zoabi.com`);
+            if (!res.ok) throw new Error('Geocoding request failed');
+            const data = await res.json();
+            if (data && data.length > 0) {
+                setSearchResults(data);
+            } else {
+                setSearchResults([]);
+            }
+        } catch (err) {
+            console.error('Geocoding failed:', err);
+            setSearchResults([]);
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
+
+    const selectAddress = (result: any) => {
+        setLocation(result.display_name);
+        if (!title) {
+            setTitle(result.display_name.split(',')[0]);
+        }
+        setSearchResults([]);
+    };
 
     if (!activeTrip) return null;
 
@@ -250,13 +280,45 @@ const TripDetailsTab: React.FC<TripDetailsTabProps> = ({ tripId }) => {
                                     <MapPin size={12} className="text-rose-400" /> Destination
                                 </label>
                                 {isEditing ? (
-                                    <input
-                                        type="text"
-                                        value={location}
-                                        onChange={e => setLocation(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold text-gray-700 border-none focus:ring-2 focus:ring-teal-500/30 outline-none"
-                                        placeholder="Where is this adventure taking you?"
-                                    />
+                                    <div className="relative">
+                                        <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-1 flex-1">
+                                            <input
+                                                type="text"
+                                                value={location}
+                                                onChange={e => {
+                                                    setLocation(e.target.value);
+                                                    if (searchResults.length > 0) setSearchResults([]);
+                                                }}
+                                                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), geocodeAddress())}
+                                                className="w-full py-2 bg-transparent text-sm font-bold text-gray-700 border-none focus:ring-0 outline-none"
+                                                placeholder="Where is this adventure taking you?"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={geocodeAddress}
+                                                disabled={isGeocoding || !location.trim()}
+                                                className="p-1.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all disabled:opacity-40 flex-shrink-0"
+                                            >
+                                                {isGeocoding ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                                            </button>
+                                        </div>
+                                        
+                                        {/* Search Results Dropdown */}
+                                        {searchResults.length > 0 && (
+                                            <div className="absolute top-12 left-0 w-full bg-white border border-gray-100 rounded-2xl shadow-xl z-[500] max-h-48 overflow-y-auto">
+                                                {searchResults.map((result, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => selectAddress(result)}
+                                                        className="px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer text-sm font-medium text-gray-700 flex items-start gap-3"
+                                                    >
+                                                        <MapPin size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                                        <span>{result.display_name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <p className="text-sm font-bold text-gray-700">{activeTrip.location || <span className="text-gray-300">No location set</span>}</p>
                                 )}

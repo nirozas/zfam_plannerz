@@ -75,6 +75,8 @@ const TripsPage: React.FC = () => {
     const [participantFilter, setParticipantFilter] = useState<string>('all');
     const [continentFilter, setContinentFilter] = useState<string>('all');
     const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+    const [sortBy, setSortBy] = useState<'date' | 'title' | 'country'>('date');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingTrip, setEditingTrip] = useState<any | null>(null);
     const [sharingTripId, setSharingTripId] = useState<string | null>(null);
@@ -147,12 +149,28 @@ const TripsPage: React.FC = () => {
 
             return true;
         }).sort((a, b) => {
-            if (!a.start_date && !b.start_date) return 0;
-            if (!a.start_date) return 1;
-            if (!b.start_date) return -1;
-            return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+            let valA: string | number = '';
+            let valB: string | number = '';
+            
+            if (sortBy === 'title') {
+                valA = a.title?.toLowerCase() || '';
+                valB = b.title?.toLowerCase() || '';
+            } else if (sortBy === 'country') {
+                valA = (a.location?.split(',').pop()?.trim().toLowerCase()) || '';
+                valB = (b.location?.split(',').pop()?.trim().toLowerCase()) || '';
+            } else {
+                if (!a.start_date && !b.start_date) return 0;
+                if (!a.start_date) return 1;
+                if (!b.start_date) return -1;
+                valA = new Date(a.start_date).getTime();
+                valB = new Date(b.start_date).getTime();
+            }
+
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
         });
-    }, [trips, searchTerm, statusFilter, yearFilter, monthFilter, countryFilter, continentFilter, participantFilter]);
+    }, [trips, searchTerm, statusFilter, yearFilter, monthFilter, countryFilter, continentFilter, participantFilter, sortBy, sortOrder]);
 
     const stats = useMemo(() => ({
         total: trips.length,
@@ -275,11 +293,29 @@ const TripsPage: React.FC = () => {
                         {availableParticipants.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
 
-                    {(yearFilter !== 'all' || monthFilter !== 'all' || countryFilter !== 'all' || continentFilter !== 'all' || participantFilter !== 'all') && (
+                    <select
+                        value={`${sortBy}-${sortOrder}`}
+                        onChange={(e) => {
+                            const [by, order] = e.target.value.split('-');
+                            setSortBy(by as 'date' | 'title' | 'country');
+                            setSortOrder(order as 'asc' | 'desc');
+                        }}
+                        className="px-2.5 py-1.5 bg-gray-50 border border-transparent hover:border-gray-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-teal-600 outline-none focus:ring-2 focus:ring-teal-500/20 transition-all cursor-pointer"
+                    >
+                        <option value="date-desc">Sort: Newest First</option>
+                        <option value="date-asc">Sort: Oldest First</option>
+                        <option value="title-asc">Sort: Title (A-Z)</option>
+                        <option value="title-desc">Sort: Title (Z-A)</option>
+                        <option value="country-asc">Sort: Country (A-Z)</option>
+                        <option value="country-desc">Sort: Country (Z-A)</option>
+                    </select>
+
+                    {(yearFilter !== 'all' || monthFilter !== 'all' || countryFilter !== 'all' || continentFilter !== 'all' || participantFilter !== 'all' || sortBy !== 'date' || sortOrder !== 'desc') && (
                         <button
                             onClick={() => {
                                 setYearFilter('all'); setMonthFilter('all'); setCountryFilter('all');
                                 setContinentFilter('all'); setParticipantFilter('all'); setStatusFilter('all'); setSearchTerm('');
+                                setSortBy('date'); setSortOrder('desc');
                             }}
                             className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                             title="Reset All Filters"

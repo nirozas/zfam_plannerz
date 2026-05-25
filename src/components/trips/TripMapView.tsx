@@ -6,6 +6,7 @@ import {
     useMap,
     useMapEvents,
     Popup,
+    Tooltip,
     LayersControl
 } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -34,6 +35,7 @@ interface TripMapViewProps {
     selectedStop?: TripStop | null;
     onMarkerClick?: (stop: TripStop) => void;
     showPath?: boolean;
+    showAllPopups?: boolean;
     renderPopup?: (stop: TripStop) => React.ReactNode;
 }
 
@@ -165,6 +167,7 @@ const TripMapView: React.FC<TripMapViewProps> = ({
     selectedStop,
     onMarkerClick,
     showPath = true,
+    showAllPopups = false,
     renderPopup
 }) => {
     const [mapStyle, setMapStyle] = useState('Streets (Default)');
@@ -229,10 +232,15 @@ const TripMapView: React.FC<TripMapViewProps> = ({
                             click: () => onMarkerClick && onMarkerClick(stop)
                         }}
                     >
-                        {renderPopup && (
+                        {renderPopup && !showAllPopups && (
                             <Popup className="polaroid-popup">
                                 {renderPopup(stop)}
                             </Popup>
+                        )}
+                        {renderPopup && showAllPopups && (
+                            <Tooltip permanent direction="top" className="polaroid-popup" offset={[0, -20]} interactive>
+                                {renderPopup(stop)}
+                            </Tooltip>
                         )}
                     </Marker>
                 ))}

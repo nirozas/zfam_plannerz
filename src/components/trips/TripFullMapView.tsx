@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import {
     X, Map as MapIcon, Layers, Calendar, Filter,
-    Minimize2, ChevronLeft, ChevronRight,
+    Minimize2, ChevronLeft, ChevronRight, ArrowLeft,
     Utensils, Bed, Landmark, Car, Ticket, ShoppingBag, MoreHorizontal,
     Compass, Info, Eye, EyeOff
 } from 'lucide-react';
@@ -30,6 +30,8 @@ const TripFullMapView: React.FC<TripFullMapViewProps> = ({ isOpen, onClose }) =>
     const { activeTripStops, activeTrip, filters, setFilter } = useTripStore();
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [showPath, setShowPath] = useState(true);
+    const [showAllCards, setShowAllCards] = useState(false);
+    const [cardSize, setCardSize] = useState(5);
 
     const days = useMemo(() => {
         const d = Array.from(new Set(activeTripStops.map(s => s.day_number)));
@@ -66,6 +68,13 @@ const TripFullMapView: React.FC<TripFullMapViewProps> = ({ isOpen, onClose }) =>
             `}>
                 <div className="p-6 border-b border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
+                        <button 
+                            onClick={onClose} 
+                            className="p-2.5 bg-gray-50 hover:bg-gray-100 rounded-2xl transition-all hover:-translate-x-1"
+                            title="Return"
+                        >
+                            <ArrowLeft size={20} className="text-gray-600" />
+                        </button>
                         <div className="p-2.5 bg-indigo-50 rounded-2xl">
                             <MapIcon size={20} className="text-indigo-600" />
                         </div>
@@ -96,6 +105,34 @@ const TripFullMapView: React.FC<TripFullMapViewProps> = ({ isOpen, onClose }) =>
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${showPath ? 'left-5' : 'left-1'}`} />
                             </button>
                         </div>
+
+                        {/* Toggle All Cards */}
+                        <div className={`flex items-center justify-between p-4 bg-gray-50 border border-gray-100 ${showAllCards ? 'rounded-t-2xl border-b-0 pb-2' : 'rounded-2xl'}`}>
+                            <div className="flex items-center gap-3">
+                                {showAllCards ? <Eye size={16} className="text-indigo-600" /> : <EyeOff size={16} className="text-gray-300" />}
+                                <span className={`text-[11px] font-black uppercase tracking-wider ${showAllCards ? 'text-gray-900' : 'text-gray-400'}`}>Show All Info Cards</span>
+                            </div>
+                            <button
+                                onClick={() => setShowAllCards(!showAllCards)}
+                                className={`w-10 h-6 rounded-full transition-all relative ${showAllCards ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${showAllCards ? 'left-5' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        {showAllCards && (
+                            <div className="px-4 pb-4 bg-gray-50 rounded-b-2xl border border-t-0 border-gray-100 flex flex-col gap-2">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Card Size</span>
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map(size => (
+                                        <button
+                                            key={size}
+                                            onClick={() => setCardSize(size)}
+                                            className={`h-1.5 flex-1 rounded-full transition-all ${cardSize >= size ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Days Filter */}
@@ -256,45 +293,55 @@ const TripFullMapView: React.FC<TripFullMapViewProps> = ({ isOpen, onClose }) =>
                 <TripMapView
                     stops={filteredStops}
                     showPath={showPath}
-                    renderPopup={(stop) => (
-                        <div style={{ minWidth: 220 }} className="p-1">
-                            {stop.image_url && (
-                                <div className="mb-3 rounded-xl overflow-hidden aspect-video bg-gray-100 shadow-inner">
-                                    <img
-                                        src={stop.image_url}
-                                        alt={stop.title}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                                    />
+                    showAllPopups={showAllCards}
+                    renderPopup={(stop) => {
+                        const getCardStyles = (size: number) => {
+                            switch (size) {
+                                case 1: return { width: 100, imgHeight: 'h-10', title: 'text-[9px]', text: 'text-[7px]', icon: 8, gap: 'gap-0.5', mb: 'mb-0.5', p: 'p-0.5' };
+                                case 2: return { width: 140, imgHeight: 'h-14', title: 'text-[11px]', text: 'text-[8px]', icon: 9, gap: 'gap-1', mb: 'mb-1', p: 'p-1' };
+                                case 3: return { width: 180, imgHeight: 'h-20', title: 'text-xs', text: 'text-[9px]', icon: 10, gap: 'gap-1', mb: 'mb-1.5', p: 'p-1' };
+                                case 4: return { width: 220, imgHeight: 'h-24', title: 'text-sm', text: 'text-[10px]', icon: 10, gap: 'gap-1.5', mb: 'mb-2', p: 'p-1' };
+                                case 5: return { width: 260, imgHeight: 'h-32', title: 'text-base', text: 'text-[11px]', icon: 12, gap: 'gap-2', mb: 'mb-3', p: 'p-1.5' };
+                                default: return { width: 260, imgHeight: 'h-32', title: 'text-base', text: 'text-[11px]', icon: 12, gap: 'gap-2', mb: 'mb-3', p: 'p-1.5' };
+                            }
+                        };
+                        const style = getCardStyles(cardSize);
+
+                        return (
+                            <div style={{ width: style.width }} className={style.p}>
+                                {stop.image_url && (
+                                    <div className={`${style.imgHeight} w-full rounded-xl bg-gray-100 shadow-inner overflow-hidden ${style.mb} relative group`}>
+                                        <img src={stop.image_url} alt={stop.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                    </div>
+                                )}
+                                <div className={`flex items-center justify-between ${style.mb}`}>
+                                    <div className={`font-black uppercase tracking-widest px-2 py-0.5 rounded-full text-white ${style.text}`} style={{ background: getDayColor(stop.day_number) }}>
+                                        Day {stop.day_number}
+                                    </div>
+                                    {stop.category && (
+                                        <div className={`flex items-center gap-1 font-bold text-gray-400 uppercase ${style.text}`}>
+                                            {CATEGORY_ICONS[stop.category]}
+                                            {stop.category}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full text-white" style={{ background: getDayColor(stop.day_number) }}>
-                                    Day {stop.day_number}
+                                <div className={`font-black text-gray-900 leading-tight ${style.mb} ${style.title}`}>
+                                    {stop.title}
                                 </div>
-                                {stop.category && (
-                                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase">
-                                        {CATEGORY_ICONS[stop.category]}
-                                        {stop.category}
+                                {stop.address && (
+                                    <div className={`font-medium text-gray-400 ${style.mb} flex items-start gap-1 ${style.text}`}>
+                                        <Info size={style.icon} className="mt-0.5 flex-shrink-0" />
+                                        <span className="line-clamp-2">{stop.address}</span>
+                                    </div>
+                                )}
+                                {stop.notes && cardSize >= 3 && (
+                                    <div className={`italic text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-100 ${style.text}`}>
+                                        <span className="line-clamp-2">{stop.notes}</span>
                                     </div>
                                 )}
                             </div>
-                            <div className="font-black text-gray-900 text-sm leading-tight mb-2">
-                                {stop.title}
-                            </div>
-                            {stop.address && (
-                                <div className="text-[10px] font-medium text-gray-400 mb-3 flex items-start gap-1">
-                                    <Info size={10} className="mt-0.5 flex-shrink-0" />
-                                    {stop.address}
-                                </div>
-                            )}
-                            {stop.notes && (
-                                <div className="text-[10px] italic text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-100">
-                                    {stop.notes}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        );
+                    }}
                 />
 
                 {/* Bottom Legend / HUD */}

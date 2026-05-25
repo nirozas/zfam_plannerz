@@ -55,7 +55,7 @@ const TripFullMapView: React.FC<TripFullMapViewProps> = ({ isOpen, onClose }) =>
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[3000] bg-white flex flex-col overflow-hidden animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[3000] bg-white flex flex-col md:flex-row overflow-hidden animate-in fade-in duration-300">
             {/* Sidebar / Controls — on mobile it's a slide-over overlay */}
             <div className={`
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}

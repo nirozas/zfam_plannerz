@@ -466,7 +466,7 @@ const AddStopModal: React.FC<AddStopModalProps> = ({ isOpen, onClose, tripId, de
                 </div>
 
                 {/* Editor Modal */}
-                {imageUrl && (
+                {imageUrl && isEditorOpen && (
                     <ImageEditorModal
                         isOpen={isEditorOpen}
                         onClose={() => setIsEditorOpen(false)}

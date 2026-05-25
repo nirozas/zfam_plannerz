@@ -130,12 +130,23 @@ const createStickerIcon = (stop: TripStop) => {
         ? `background-image: url(${stop.image_url}); background-size: cover; background-position: center; border: 2px solid white;`
         : `background-color: ${color}; border: 4px solid white;`;
 
+    let displayTime = '';
+    if (stop.arrival_time) {
+        try {
+            displayTime = new Date(stop.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch(e) {
+            displayTime = stop.arrival_time;
+        }
+    } else {
+        displayTime = 'Day ' + stop.day_number;
+    }
+
     const html = `
         <div class="relative flex items-center justify-center cursor-pointer group">
             <div class="w-10 h-10 rounded-full shadow-lg flex items-center justify-center text-[11px] font-black text-white hover:ring-4 hover:ring-indigo-500/20 transition-all transform hover:rotate-6 overflow-hidden" style="${backgroundStyle}">
                 ${!hasImage ? `<div class="bg-black/10 w-full h-full flex items-center justify-center shadow-inner"><span>${stop.day_number}</span></div>` : ''}
             </div>
-            ${!hasImage ? `<div class="absolute -bottom-1 text-[8px] font-black px-1.5 py-0.5 rounded-sm bg-gray-900 border border-white text-white whitespace-nowrap opacity-100 group-hover:-translate-y-1 transition-transform shadow-md">${stop.arrival_time || 'Day ' + stop.day_number}</div>` : ''}
+            ${!hasImage ? `<div class="absolute -bottom-1 text-[8px] font-black px-1.5 py-0.5 rounded-sm bg-gray-900 border border-white text-white whitespace-nowrap opacity-100 group-hover:-translate-y-1 transition-transform shadow-md">${displayTime}</div>` : ''}
         </div>
     `;
 

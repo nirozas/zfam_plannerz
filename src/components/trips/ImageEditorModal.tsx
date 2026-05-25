@@ -11,7 +11,8 @@ interface ImageEditorModalProps {
 }
 
 const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ isOpen, onClose, imageUrl, onSave }) => {
-    const [image] = useImage(imageUrl, 'anonymous');
+    const proxiedUrl = imageUrl ? `https://corsproxy.io/?url=${encodeURIComponent(imageUrl)}` : '';
+    const [image] = useImage(proxiedUrl, 'anonymous');
     const stageRef = useRef<any>(null);
     const [tool, setTool] = useState<'select' | 'pen' | 'text' | 'crop' | 'icon'>('select');
     const [color, setColor] = useState('#6366f1');

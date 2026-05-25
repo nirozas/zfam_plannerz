@@ -98,7 +98,7 @@ export const useTripStore = create<TripState>((set, get) => ({
             set({ trips: tripsWithRole, isLoading: false });
         } catch (error: any) {
             console.error('[tripStore] fetchTrips catch:', error);
-            set({ error: error.message, isLoading: false });
+            set({ error: error.message || JSON.stringify(error), isLoading: false });
         }
     },
 
@@ -163,7 +163,7 @@ export const useTripStore = create<TripState>((set, get) => ({
                 set({ userRole: trip.user_id === user.id ? 'owner' : 'viewer' });
             }
         } catch (error: any) {
-            set({ error: error.message, isLoading: false });
+            set({ error: error.message || JSON.stringify(error), isLoading: false });
         }
     },
 

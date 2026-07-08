@@ -138,6 +138,16 @@ const HomePage: React.FC = () => {
             defaultImage: '/images/home/notebooks.png'
         },
         {
+            id: 'planners',
+            title: 'Digital Planners',
+            description: 'Organize your notebooks, journals, and dedicated planners.',
+            icon: <BookOpen size={32} />,
+            color: 'from-blue-500 to-indigo-600',
+            path: '/planners',
+            active: true,
+            defaultImage: '/images/home/planners.png'
+        },
+        {
             id: 'tasks',
             title: 'Tasks & Rituals',
             description: 'Stay on top of your daily goals and habits.',
@@ -146,16 +156,6 @@ const HomePage: React.FC = () => {
             path: '/tasks',
             active: true,
             defaultImage: '/images/home/tasks.png'
-        },
-        {
-            id: 'trips',
-            title: 'Adventure Trips',
-            description: 'Plan your next journey and track your travel memories.',
-            icon: <Plane size={32} />,
-            color: 'from-emerald-500 to-teal-600',
-            path: '/trips',
-            active: true,
-            defaultImage: '/images/home/trips.png'
         },
         {
             id: 'cards',
@@ -168,6 +168,16 @@ const HomePage: React.FC = () => {
             defaultImage: '/images/home/cards.png'
         },
         {
+            id: 'trips',
+            title: 'Adventure Trips',
+            description: 'Plan your next journey and track your travel memories.',
+            icon: <Plane size={32} />,
+            color: 'from-emerald-500 to-teal-600',
+            path: '/trips',
+            active: true,
+            defaultImage: '/images/home/trips.png'
+        },
+        {
             id: 'finances',
             title: 'Vault & Finances',
             description: 'Securely manage your budget, goals, and financial planning.',
@@ -176,16 +186,6 @@ const HomePage: React.FC = () => {
             path: '/finances',
             active: true,
             defaultImage: '/images/home/finances.png'
-        },
-        {
-            id: 'planners',
-            title: 'Digital Planners',
-            description: 'Organize your notebooks, journals, and dedicated planners.',
-            icon: <BookOpen size={32} />,
-            color: 'from-blue-500 to-indigo-600',
-            path: '/planners',
-            active: true,
-            defaultImage: '/images/home/planners.png'
         }
     ];
 
@@ -266,7 +266,7 @@ const HomePage: React.FC = () => {
                                 <img
                                     src="/nexus_logo.png"
                                     alt="Zoabi Nexus Vault"
-                                    className="h-24 md:h-32 lg:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-3xl"
+                                    className="h-20 sm:h-24 md:h-32 lg:h-48 drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-3xl"
                                 />
                             </div>
                             <div className="welcome-tag">

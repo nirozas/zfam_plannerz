@@ -83,7 +83,7 @@ const FinancesPage: React.FC = () => {
                         <motion.h1 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="text-5xl md:text-7xl font-black text-indigo-950 dark:text-white tracking-tighter"
+                            className="text-4xl md:text-5xl lg:text-7xl font-black text-indigo-950 dark:text-white tracking-tighter"
                         >
                             Spending & <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#A0C4FF] to-[#BDB2FF]">Analytics</span>
                         </motion.h1>
@@ -92,14 +92,14 @@ const FinancesPage: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
                         <motion.button
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setIsPlansOpen(true)}
-                            className="bg-white dark:bg-slate-900 text-indigo-950 px-8 h-16 rounded-[40px] flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-100/20 hover:shadow-indigo-200/40 transition-all border border-indigo-50"
+                            className="bg-white dark:bg-slate-900 text-indigo-950 px-6 sm:px-8 h-14 sm:h-16 rounded-[40px] flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-100/20 hover:shadow-indigo-200/40 transition-all border border-indigo-50 w-full sm:w-auto"
                         >
                             <Target size={20} className="text-indigo-400" />
                             Set Plans
@@ -111,7 +111,7 @@ const FinancesPage: React.FC = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setIsAddOpen(true)}
-                            className="bg-indigo-950 text-white px-10 h-16 rounded-[40px] flex items-center justify-center gap-4 font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200/50 hover:shadow-indigo-300/40 transition-all active:scale-95"
+                            className="bg-indigo-950 text-white px-6 sm:px-10 h-14 sm:h-16 rounded-[40px] flex items-center justify-center gap-4 font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200/50 hover:shadow-indigo-300/40 transition-all active:scale-95 w-full sm:w-auto"
                         >
                             <Plus size={24} className="text-[#A0C4FF]" />
                             Add Record
@@ -151,8 +151,8 @@ const FinancesPage: React.FC = () => {
                             </div>
 
                             {/* Controls Row: Feed + Scale */}
-                            <div className="flex flex-col xl:flex-row items-center gap-3">
-                                <div className="flex-1 flex items-center justify-between gap-4 p-3 pr-4 bg-white/40 dark:bg-slate-800/20 backdrop-blur-2xl rounded-3xl border border-white/50 shadow-sm w-full">
+                            <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
+                                <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-3 pr-4 bg-white/40 dark:bg-slate-800/20 backdrop-blur-2xl rounded-3xl border border-white/50 shadow-sm w-full">
                                     <div className="flex items-center gap-3 ml-2">
                                         <div className="w-8 h-8 rounded-xl bg-[#9BF6FF]/20 flex items-center justify-center">
                                             <LayoutGrid size={16} className="text-[#9BF6FF]" />
@@ -160,7 +160,7 @@ const FinancesPage: React.FC = () => {
                                         <h2 className="text-[10px] font-black text-indigo-950/60 dark:text-slate-100 uppercase tracking-widest">Feed</h2>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                         <button 
                                             onClick={() => setIsCustomRange(!isCustomRange)}
                                             className={`h-9 px-4 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${isCustomRange ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-transparent text-slate-400'}`}
@@ -186,19 +186,19 @@ const FinancesPage: React.FC = () => {
                                                 </select>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 bg-white/60 p-1 rounded-xl border border-gray-50">
+                                            <div className="flex flex-wrap items-center gap-2 bg-white/60 p-1 rounded-xl border border-gray-50 w-full sm:w-auto">
                                                 <input 
                                                     type="date"
                                                     value={fromDate}
                                                     onChange={(e) => setFromDate(e.target.value)}
-                                                    className="h-7 px-3 bg-transparent text-[8px] font-black outline-none text-indigo-950"
+                                                    className="h-7 px-2 sm:px-3 bg-transparent text-[8px] font-black outline-none text-indigo-950 w-24 sm:w-auto flex-1"
                                                 />
-                                                <ArrowRight size={10} className="text-[#A0C4FF]" />
+                                                <ArrowRight size={10} className="text-[#A0C4FF] hidden sm:block" />
                                                 <input 
                                                     type="date"
                                                     value={toDate}
                                                     onChange={(e) => setToDate(e.target.value)}
-                                                    className="h-7 px-3 bg-transparent text-[8px] font-black outline-none text-indigo-950"
+                                                    className="h-7 px-2 sm:px-3 bg-transparent text-[8px] font-black outline-none text-indigo-950 w-24 sm:w-auto flex-1"
                                                 />
                                             </div>
                                         )}

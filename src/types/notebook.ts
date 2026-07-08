@@ -1,4 +1,4 @@
-export type PageTemplate = 'blank' | 'lined' | 'grid' | 'dotted';
+export type PageTemplate = 'blank' | 'lined' | 'grid' | 'dotted' | 'cornell' | 'music' | 'handwriting';
 export type PageOrientation = 'portrait' | 'landscape';
 
 export interface NotebookElement {
@@ -27,6 +27,7 @@ export interface NotebookElement {
   opacity?: number;
   isHighlighter?: boolean;
   isEraser?: boolean;
+  tension?: number;
   penType?: string;
   
   // Image specific
@@ -53,9 +54,19 @@ export interface NotebookPage {
   dueDate?: string;
   orientation: PageOrientation;
   template: PageTemplate;
+  pageBackgroundColor?: string;
+  templateSpacing?: number;
+  templateColor?: string;
+  backgroundImage?: string;
+  backgroundOpacity?: number;
   elements: NotebookElement[];
   isSubpage?: boolean;
   parentId?: string; // If it's a "next page"
+  titleSlot?: 'none' | 'left' | 'right';
+  titleFontFamily?: string;
+  titleFontSize?: number;
+  titleColor?: string;
+  titleText?: string;
 }
 
 export interface NotebookSection {

@@ -43,8 +43,14 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
   const isPath = selectedElement.type === 'path';
 
   return (
-    <div className="w-[360px] h-full bg-white border-l border-slate-200 flex flex-col p-5 flex-shrink-0 animate-in fade-in slide-in-from-right-4 duration-300">
-
+    <>
+      {/* Mobile Backdrop */}
+      <div 
+        className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[200] lg:hidden animate-in fade-in"
+        onClick={onClose}
+      />
+      {/* Sidebar */}
+      <div className="fixed lg:static right-0 top-0 bottom-0 z-[201] lg:z-auto w-[85vw] max-w-[360px] lg:w-[360px] h-full bg-white border-l border-slate-200 flex flex-col p-5 flex-shrink-0 animate-in fade-in slide-in-from-right-4 duration-300 shadow-2xl lg:shadow-none">
       {/* Mini Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -356,6 +362,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
 
       </div>
     </div>
+    </>
   );
 };
 

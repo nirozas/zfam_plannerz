@@ -39,7 +39,7 @@
 body {
   margin: 0;
   display: flex;
-  min-width: 320px;
+  min-width: 280px;
   min-height: 100vh;
   overflow: hidden;
   /* PWA Optimizations */
@@ -122,5 +122,20 @@ button,
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+}
+
+/* --- Galaxy Z Fold (Folded Mode) Optimizations --- */
+@media (max-width: 320px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .tracking-widest {
+    letter-spacing: 0.05em !important;
+  }
+  
+  .text-xs {
+    font-size: 0.65rem !important;
   }
 }

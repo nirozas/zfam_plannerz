@@ -118,7 +118,7 @@ const NotebooksPage: React.FC = () => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<{ getDataURL: (pixelRatio?: number) => string | null; getStageSize: () => { width: number; height: number } }>(null);
 
-  // Pinch-to-zoom (trackpad/mousewheel)
+  // Pinch-to-zoom (trackpad/mousewheel & touch devices)
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
@@ -135,8 +135,38 @@ const NotebooksPage: React.FC = () => {
       }
     };
 
+    let initialDist = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        initialDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const delta = (dist - initialDist) * 0.01;
+        setZoom(prev => Math.min(Math.max(0.25, prev + delta), 4));
+        initialDist = dist;
+      }
+    };
+
     viewer.addEventListener('wheel', handleWheel, { passive: false });
-    return () => viewer.removeEventListener('wheel', handleWheel);
+    viewer.addEventListener('touchstart', handleTouchStart, { passive: false });
+    viewer.addEventListener('touchmove', handleTouchMove, { passive: false });
+    
+    return () => {
+      viewer.removeEventListener('wheel', handleWheel);
+      viewer.removeEventListener('touchstart', handleTouchStart);
+      viewer.removeEventListener('touchmove', handleTouchMove);
+    };
   }, []);
 
 
@@ -572,7 +602,14 @@ const NotebooksPage: React.FC = () => {
           setTextSettings={setTextSettings}
           pageSettings={{
             orientation: activePage?.orientation || 'portrait',
-            template: activePage?.template || 'blank'
+            template: activePage?.template || 'blank',
+            pageBackgroundColor: activePage?.pageBackgroundColor,
+            templateSpacing: activePage?.templateSpacing,
+            templateColor: activePage?.templateColor,
+            titleSlot: activePage?.titleSlot,
+            titleFontFamily: activePage?.titleFontFamily,
+            titleFontSize: activePage?.titleFontSize,
+            titleColor: activePage?.titleColor
           }}
           setPageSettings={(updates) => activePageId && updatePage(activePageId, updates)}
           selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
@@ -588,6 +625,10 @@ const NotebooksPage: React.FC = () => {
           setViewMode={setViewMode}
           onDuplicatePage={handleDuplicatePage}
           onUpdatePageMetadata={handleUpdatePageMetadata}
+          onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onPrevPage={() => goToPrevPage()}
+          onNextPage={() => goToNextPage()}
+          onAddSubpage={handleAddSubpage}
         />
 
 
@@ -607,6 +648,19 @@ const NotebooksPage: React.FC = () => {
                     elements={activePage.elements}
                     template={activePage.template}
                     orientation={activePage.orientation}
+                    pageBackgroundColor={activePage.pageBackgroundColor}
+                    templateSpacing={activePage.templateSpacing}
+                    templateColor={activePage.templateColor}
+                    backgroundImage={activePage.backgroundImage}
+                    backgroundOpacity={activePage.backgroundOpacity}
+                    titleSlot={activePage.titleSlot}
+                    titleFontFamily={activePage.titleFontFamily}
+                    titleFontSize={activePage.titleFontSize}
+                    titleColor={activePage.titleColor}
+                    titleText={activePage.titleText}
+                    onUpdateTitleText={(text) => handleUpdatePageMetadata({ titleText: text })}
+                    pageTitle={activePage.title}
+                    onUpdatePageTitle={(title) => handleUpdatePageMetadata({ title })}
                     onUpdateElements={handleUpdateElements}
                     onSelectElement={setSelectedElementId}
                     activeTool={activeTool}
@@ -639,29 +693,6 @@ const NotebooksPage: React.FC = () => {
                     />
                   )}
 
-                  <div className="inline-page-nav flex items-center gap-4 py-8">
-                    <button 
-                      onClick={() => goToPrevPage()}
-                      className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                      title="Previous Page"
-                    >
-                      <ArrowLeft size={24} />
-                    </button>
-                    <button 
-                      onClick={handleAddSubpage}
-                      className="tool-btn rounded-full bg-indigo-600 shadow-md shadow-indigo-200 w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-white"
-                      title="Add Subpage"
-                    >
-                      <Plus size={24} />
-                    </button>
-                    <button 
-                      onClick={() => goToNextPage()}
-                      className="tool-btn rounded-full bg-white shadow-md w-12 h-12 hover:scale-110 transition-all flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                      title="Next Page"
-                    >
-                      <ArrowRight size={24} />
-                    </button>
-                  </div>
                 </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -687,7 +718,7 @@ const NotebooksPage: React.FC = () => {
 
           {/* Zoom Controls Overlay */}
           {viewMode === 'editor' && (
-            <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-4">
+            <div className="absolute bottom-32 md:bottom-6 right-6 flex items-center gap-2 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-xl z-[90] animate-in fade-in slide-in-from-bottom-4">
               <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomOut size={16} /></button>
               <div className="w-12 text-center text-[10px] font-black text-slate-700">{Math.round(zoom * 100)}%</div>
               <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomIn size={16} /></button>

@@ -299,29 +299,10 @@
 
 /* ─── Tablet (768px - 1024px) ──────────────────────────────────── */
 @media (max-width: 1024px) {
-  .notebook-sidebar {
-    width: 240px;
-    min-width: 240px;
-  }
-
-  .notebook-toolbar-stable {
-    padding: 0 12px;
-    gap: 10px;
-    height: 52px;
-  }
-
-  .toolbar-metadata {
-    max-width: 140px;
-    min-width: 100px;
-  }
-}
-
-/* ─── Mobile (< 768px) ─────────────────────────────────────────── */
-@media (max-width: 768px) {
   /* Sidebar becomes a slide-in overlay from the left */
   .notebook-sidebar {
     position: fixed;
-    left: 0;
+    left: 70px; /* Offset for App Sidebar */
     top: 0;
     bottom: 0;
     width: 85vw;
@@ -332,7 +313,7 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  /* JS-toggled class to show sidebar on mobile */
+  /* JS-toggled class to show sidebar */
   .notebook-sidebar.mobile-open {
     transform: translateX(0);
   }
@@ -349,6 +330,24 @@
 
   .notebook-sidebar-overlay.visible {
     display: block;
+  }
+
+  .notebook-toolbar-stable {
+    padding: 0 12px;
+    gap: 10px;
+    height: 52px;
+  }
+
+  .toolbar-metadata {
+    max-width: 140px;
+    min-width: 100px;
+  }
+}
+
+/* ─── Mobile (< 768px) ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .notebook-sidebar {
+    left: 0; /* App Sidebar moves to bottom, so no left offset needed */
   }
 
   .notebooks-container {

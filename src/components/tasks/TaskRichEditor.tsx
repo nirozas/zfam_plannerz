@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 // @ts-ignore
-import ReactQuill, { Quill } from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill, { Quill } from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 // @ts-ignore
 import ImageResize from 'quill-image-resize-module-react';
 import './TaskRichEditor.css';

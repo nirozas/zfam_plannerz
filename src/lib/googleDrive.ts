@@ -149,17 +149,35 @@ export async function uploadFileToDrive(
 
     if (!token) throw new Error('Not authenticated');
 
-    const response = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token.access_token}` },
-        body: form,
-    });
+    let response;
+    let retries = 3;
+    let delay = 1000;
+    
+    while (retries > 0) {
+        response = await fetch(url, {
+            method,
+            headers: { Authorization: `Bearer ${token.access_token}` },
+            body: form,
+        });
 
-    if (!response.ok) {
-        if (method === 'PATCH' && response.status === 404) {
+        if (response.ok) break;
+
+        if (response.status === 404 && method === 'PATCH') {
             return uploadFileToDrive(file, name, mimeType, makePublic);
         }
-        throw new Error('Failed to upload to Drive');
+
+        if (response.status >= 500 || response.status === 429) {
+            retries--;
+            if (retries === 0) break;
+            await new Promise(res => setTimeout(res, delay));
+            delay *= 2;
+        } else {
+            break;
+        }
+    }
+
+    if (!response || !response.ok) {
+        throw new Error(`Failed to upload to Drive: ${response?.status} ${response?.statusText}`);
     }
     const driveFile = await response.json();
 

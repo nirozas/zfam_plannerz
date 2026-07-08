@@ -118,7 +118,7 @@ const DashboardLayout: React.FC = () => {
         >
             {/* Incoming Connection Global Notice */}
             {pendingIncoming.length > 0 && (
-                <div className="absolute top-4 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full animate-in slide-in-from-right-8 duration-300">
+                <div className="absolute top-4 right-4 z-[9999] flex flex-col gap-3 max-w-[calc(100vw-2rem)] sm:max-w-sm w-full animate-in slide-in-from-right-8 duration-300">
                     {pendingIncoming.map(conn => (
                         <div key={conn.id} className="bg-white/90 backdrop-blur-xl border border-fuchsia-100 rounded-2xl shadow-2xl p-4 flex flex-col gap-3">
                             <div className="flex items-start justify-between">

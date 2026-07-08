@@ -304,7 +304,7 @@
 /* --- Mobile-specific responsive styles --- */
 @media (max-width: 768px) {
     .home-hero {
-        padding: 60px 24px 60px;
+        padding: 40px 16px;
         min-height: auto !important;
     }
 

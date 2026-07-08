@@ -93,11 +93,11 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
-                    to="/trips"
+                    to="/planners"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Adventure Trips"
+                    title="Planners"
                 >
-                    <Plane size={22} />
+                    <LayoutGrid size={22} />
                 </NavLink>
 
                 <NavLink
@@ -117,6 +117,14 @@ export const AppSidebar: React.FC = () => {
                 </NavLink>
 
                 <NavLink
+                    to="/trips"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Adventure Trips"
+                >
+                    <Plane size={22} />
+                </NavLink>
+
+                <NavLink
                     to="/finances"
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     title="Vault & Finances"
@@ -124,13 +132,7 @@ export const AppSidebar: React.FC = () => {
                     <Wallet size={22} />
                 </NavLink>
 
-                <NavLink
-                    to="/planners"
-                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    title="Planners"
-                >
-                    <LayoutGrid size={22} />
-                </NavLink>
+
 
                 {/* Bug Report Button - Moved to popover */}
 

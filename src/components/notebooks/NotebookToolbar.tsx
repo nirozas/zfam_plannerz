@@ -11,6 +11,7 @@ import {
   Rows,
   Bold,
   Italic,
+  Underline,
   AlignLeft,
   List,
   Square,
@@ -22,11 +23,14 @@ import {
   Undo2,
   Redo2,
   Search,
+  Menu,
   Type as TypeIcon,
   Edit3,
   Calendar as CalendarIcon,
   Clock,
-  Copy
+  Copy,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 
 
@@ -192,6 +196,10 @@ interface PropertyBarProps {
   setViewMode?: (mode: 'editor' | 'calendar') => void;
   onDuplicatePage?: () => void;
   onUpdatePageMetadata?: (updates: { title?: string, dueDate?: string }) => void;
+  onToggleSidebar?: () => void;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
+  onAddSubpage?: () => void;
 }
 
 const FONTS = [
@@ -247,7 +255,11 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
   viewMode = 'editor',
   setViewMode,
   onDuplicatePage,
-  onUpdatePageMetadata
+  onUpdatePageMetadata,
+  onToggleSidebar,
+  onPrevPage,
+  onNextPage,
+  onAddSubpage
 }) => {
   const [showBulletMenu, setShowBulletMenu] = React.useState(false);
   const [showPageMenu, setShowPageMenu] = React.useState(false);
@@ -269,10 +281,20 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
     <div className="notebook-property-bar-container">
       {/* 1. TOP PANEL BAR */}
       <div className="property-bar-top-panel">
-        {/* Left: View Toggle */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 flex-shrink-0">
+        {/* Left: Tools & Hamburger */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0 flex-shrink-0">
           <button 
-            onClick={() => setViewMode?.('editor')}
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+            title="Toggle Sidebar"
+          >
+            <Menu size={20} />
+          </button>
+          
+          {/* Left: View Toggle */}
+          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 flex-shrink-0">
+            <button 
+              onClick={() => setViewMode?.('editor')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'editor' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
           >
             <Edit3 size={14} /> Editor
@@ -283,6 +305,21 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
           >
             <CalendarIcon size={14} /> Calendar
           </button>
+        </div>
+        
+        {/* Title Slot Toggle */}
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 flex-shrink-0">
+          <button
+            onClick={() => {
+              const nextSlot = pageSettings?.titleSlot === 'none' || !pageSettings?.titleSlot ? 'right' : pageSettings?.titleSlot === 'right' ? 'left' : 'none';
+              setPageSettings?.({ titleSlot: nextSlot });
+            }}
+            className={`flex items-center justify-center p-1.5 rounded-lg transition-all ${pageSettings?.titleSlot && pageSettings.titleSlot !== 'none' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            title={`Title Slot: ${pageSettings?.titleSlot === 'right' ? 'RTL' : pageSettings?.titleSlot === 'left' ? 'LTR' : 'None'}`}
+          >
+            <TypeIcon size={14} />
+          </button>
+        </div>
         </div>
 
 
@@ -411,83 +448,104 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
           )}
 
           {/* Text Settings */}
-          {(activeTool === 'text' || selectedElement?.type === 'text') && (
+          {(activeTool === 'text' || selectedElement?.type === 'text' || (pageSettings?.titleSlot && pageSettings.titleSlot !== 'none')) && (
             <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-1 flex-wrap">
+              {(() => {
+                const isEditingTitle = pageSettings?.titleSlot && pageSettings.titleSlot !== 'none' && !selectedElement && activeTool !== 'text';
+                const currentFontFamily = selectedElement?.fontFamily || (isEditingTitle ? (pageSettings?.titleFontFamily || textSettings.fontFamily) : textSettings.fontFamily);
+                const currentFontSize = selectedElement?.fontSize || (isEditingTitle ? (pageSettings?.titleFontSize || 28) : textSettings.fontSize);
+                const currentFill = selectedElement?.fill || (isEditingTitle ? (pageSettings?.titleColor || '#0f172a') : textSettings.fill);
+                
+                return (
+                  <>
+                    {/* Font family picker with preview */}
+                    <div className="property-group px-2">
+                      <select 
+                        className="bg-transparent border-none text-[11px] font-bold outline-none text-slate-700 w-36 py-1 cursor-pointer"
+                        value={currentFontFamily}
+                        onChange={(e) => {
+                          const font = e.target.value;
+                          if (selectedElement) onUpdateElement?.(selectedElement.id, { fontFamily: font });
+                          else if (isEditingTitle) setPageSettings?.({ titleFontFamily: font });
+                          else setTextSettings({ ...textSettings, fontFamily: font });
+                        }}
+                      >
+                        {FONTS.map(f => <option key={f.name} value={f.name} style={f.style}>{f.label}</option>)}
+                      </select>
+                      <div className="w-px h-4 bg-slate-200 mx-1" />
+                      <button onClick={() => {
+                        const s = Math.max(8, currentFontSize - 2);
+                        if (selectedElement) onUpdateElement?.(selectedElement.id, { fontSize: s });
+                        else if (isEditingTitle) setPageSettings?.({ titleFontSize: s });
+                        else setTextSettings({...textSettings, fontSize: s});
+                      }} className="p-1 hover:bg-white rounded"><Minus size={14}/></button>
+                      <span className="text-[11px] font-black w-6 text-center">{currentFontSize}</span>
+                      <button onClick={() => {
+                        const s = currentFontSize + 2;
+                        if (selectedElement) onUpdateElement?.(selectedElement.id, { fontSize: s });
+                        else if (isEditingTitle) setPageSettings?.({ titleFontSize: s });
+                        else setTextSettings({...textSettings, fontSize: s});
+                      }} className="p-1 hover:bg-white rounded"><Plus size={14}/></button>
+                    </div>
 
-              {/* Font family picker with preview */}
-              <div className="property-group px-2">
-                <select 
-                  className="bg-transparent border-none text-[11px] font-bold outline-none text-slate-700 w-36 py-1 cursor-pointer"
-                  value={selectedElement?.fontFamily || textSettings.fontFamily}
-                  onChange={(e) => {
-                    const font = e.target.value;
-                    setTextSettings({ ...textSettings, fontFamily: font });
-                    if (selectedElement) onUpdateElement?.(selectedElement.id, { fontFamily: font });
-                  }}
-                >
-                  {FONTS.map(f => <option key={f.name} value={f.name} style={f.style}>{f.label}</option>)}
-                </select>
-                <div className="w-px h-4 bg-slate-200 mx-1" />
-                <button onClick={() => {
-                  const s = Math.max(8, (selectedElement?.fontSize || textSettings.fontSize) - 2);
-                  setTextSettings({...textSettings, fontSize: s});
-                  if(selectedElement) onUpdateElement?.(selectedElement.id, {fontSize: s});
-                }} className="p-1 hover:bg-white rounded"><Minus size={14}/></button>
-                <span className="text-[11px] font-black w-6 text-center">{selectedElement?.fontSize || textSettings.fontSize}</span>
-                <button onClick={() => {
-                  const s = (selectedElement?.fontSize || textSettings.fontSize) + 2;
-                  setTextSettings({...textSettings, fontSize: s});
-                  if(selectedElement) onUpdateElement?.(selectedElement.id, {fontSize: s});
-                }} className="p-1 hover:bg-white rounded"><Plus size={14}/></button>
-              </div>
-
-              {/* Color + Style */}
-              <div className="property-group">
-                <input 
-                  type="color" 
-                  value={selectedElement?.fill || textSettings.fill} 
-                  onChange={(e) => {
-                    const c = e.target.value;
-                    setTextSettings({...textSettings, fill: c});
-                    if(selectedElement) onUpdateElement?.(selectedElement.id, {fill: c});
-                  }}
-                  className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
-                  title="Text Color"
-                />
-                <div className="w-px h-4 bg-slate-200 mx-1" />
-                <ToolBtnSmall 
-                  icon={<Bold size={14} />} 
-                  active={selectedElement ? selectedElement.fontStyle?.includes('bold') : textSettings.fontStyle?.includes('bold')} 
-                  onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
-                  onClick={() => {
-                    let current = (selectedElement ? selectedElement.fontStyle : textSettings.fontStyle) || '';
-                    current = current.replace('normal', '').trim();
-                    const next = current.includes('bold') ? current.replace('bold', '').trim() : (current + ' bold').trim();
-                    
-                    if (selectedElement) {
-                      onUpdateElement?.(selectedElement.id, { fontStyle: next || 'normal' });
-                    } else {
-                      setTextSettings({ ...textSettings, fontStyle: next || 'normal' });
-                    }
-                  }}
-                />
-                <ToolBtnSmall 
-                  icon={<Italic size={14} />} 
-                  active={selectedElement ? selectedElement.fontStyle?.includes('italic') : textSettings.fontStyle?.includes('italic')} 
-                  onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
-                  onClick={() => {
-                    let current = (selectedElement ? selectedElement.fontStyle : textSettings.fontStyle) || '';
-                    current = current.replace('normal', '').trim();
-                    const next = current.includes('italic') ? current.replace('italic', '').trim() : (current + ' italic').trim();
-                    
-                    if (selectedElement) {
-                      onUpdateElement?.(selectedElement.id, { fontStyle: next || 'normal' });
-                    } else {
-                      setTextSettings({ ...textSettings, fontStyle: next || 'normal' });
-                    }
-                  }}
-                />
-              </div>
+                    {/* Color + Style */}
+                    <div className="property-group">
+                      <input 
+                        type="color" 
+                        value={currentFill} 
+                        onChange={(e) => {
+                          const c = e.target.value;
+                          if (selectedElement) onUpdateElement?.(selectedElement.id, { fill: c });
+                          else if (isEditingTitle) setPageSettings?.({ titleColor: c });
+                          else setTextSettings({...textSettings, fill: c});
+                        }}
+                        className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
+                        title="Text Color"
+                      />
+                      <div className="w-px h-4 bg-slate-200 mx-1" />
+                      <ToolBtnSmall 
+                        icon={<Bold size={14} />} 
+                        active={selectedElement ? selectedElement.fontStyle?.includes('bold') : textSettings.fontStyle?.includes('bold')} 
+                        onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                        onClick={() => {
+                          let current = (selectedElement ? selectedElement.fontStyle : textSettings.fontStyle) || '';
+                          current = current.replace('normal', '').trim();
+                          const next = current.includes('bold') ? current.replace('bold', '').trim() : (current + ' bold').trim();
+                          if (selectedElement) onUpdateElement?.(selectedElement.id, { fontStyle: next || 'normal' });
+                          else setTextSettings({ ...textSettings, fontStyle: next || 'normal' });
+                        }}
+                        title="Bold"
+                      />
+                      <ToolBtnSmall 
+                        icon={<Italic size={14} />} 
+                        active={selectedElement ? selectedElement.fontStyle?.includes('italic') : textSettings.fontStyle?.includes('italic')} 
+                        onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                        onClick={() => {
+                          let current = (selectedElement ? selectedElement.fontStyle : textSettings.fontStyle) || '';
+                          current = current.replace('normal', '').trim();
+                          const next = current.includes('italic') ? current.replace('italic', '').trim() : (current + ' italic').trim();
+                          if (selectedElement) onUpdateElement?.(selectedElement.id, { fontStyle: next || 'normal' });
+                          else setTextSettings({ ...textSettings, fontStyle: next || 'normal' });
+                        }}
+                        title="Italic"
+                      />
+                      <ToolBtnSmall 
+                        icon={<Underline size={14} />} 
+                        active={selectedElement ? selectedElement.textDecoration === 'underline' : textSettings.outlineStyle === 'solid'} // Using outlineStyle as a proxy for underline state for new texts for now
+                        onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                        onClick={() => {
+                          if (selectedElement) {
+                            onUpdateElement?.(selectedElement.id, { textDecoration: selectedElement.textDecoration === 'underline' ? 'none' : 'underline' });
+                          } else {
+                            setTextSettings({ ...textSettings, outlineStyle: textSettings.outlineStyle === 'solid' ? 'none' : 'solid' });
+                          }
+                        }}
+                        title="Underline"
+                      />
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Alignment */}
               <div className="property-group">
@@ -593,16 +651,30 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
 
 
           {/* Page Settings */}
-          {!selectedElement && activeTool === 'select' && (
-            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
-              <div className="property-group px-3 py-1.5 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setShowPageMenu(!showPageMenu)}>
+          {!selectedElement && (
+            <div className="relative flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <button onClick={onPrevPage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Previous Page">
+                  <ArrowLeft size={16} />
+                </button>
+                <button onClick={onAddSubpage} className="p-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-sm" title="Add Subpage">
+                  <Plus size={16} />
+                </button>
+                <button onClick={onNextPage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Next Page">
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+              <div className="property-group px-3 py-1.5 cursor-pointer hover:bg-slate-100 transition-colors" onClick={(e) => { e.stopPropagation(); setShowPageMenu(!showPageMenu); }}>
                 <Layout size={16} className="text-slate-400" />
                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 ml-2">Page Layout</span>
                 <ChevronDown size={14} className="text-slate-400 ml-2" />
               </div>
 
               {showPageMenu && (
-                <div className="absolute top-full left-[50%] -translate-x-1/2 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 p-4 z-[2000] animate-in fade-in zoom-in-95">
+                <div 
+                  className="absolute top-full left-[50%] -translate-x-1/2 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 p-4 z-[2000] animate-in fade-in zoom-in-95"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <button 
                       onClick={() => setPageSettings({ ...pageSettings, orientation: 'portrait' })}
@@ -617,17 +689,76 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                       <Columns size={20} /> <span className="text-[9px] font-black uppercase">Landscape</span>
                     </button>
                   </div>
+
                   <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Template</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['blank', 'lined', 'grid', 'dotted'].map(t => (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {['blank', 'lined', 'grid', 'dotted', 'cornell', 'music', 'handwriting'].map(t => (
                       <button 
                         key={t}
                         onClick={() => setPageSettings({ ...pageSettings, template: t })}
-                        className={`p-2 rounded-lg border text-[10px] font-bold uppercase transition-all ${pageSettings.template === t ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}
+                        className={`py-1.5 text-[10px] font-bold rounded-lg capitalize transition-all ${pageSettings.template === t || (!pageSettings.template && t === 'blank') ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
                       >
                         {t}
                       </button>
                     ))}
+                  </div>
+
+                  {pageSettings.template !== 'blank' && (
+                    <>
+                      <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Template Settings</h3>
+                      
+                      <div className="flex flex-col gap-3 mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-slate-600">Density / Spacing</span>
+                          <span className="text-[10px] font-black text-slate-900">{pageSettings.templateSpacing || 30}px</span>
+                        </div>
+                        <input 
+                          type="range" min="10" max="100" 
+                          value={pageSettings.templateSpacing || 30} 
+                          onChange={(e) => setPageSettings({ ...pageSettings, templateSpacing: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-bold text-slate-600">Line/Dot Color</span>
+                        <div className="flex items-center gap-2">
+                          {['#cbd5e1', '#94a3b8', '#3b82f6', '#f43f5e'].map(color => (
+                            <button
+                              key={color}
+                              className={`w-5 h-5 rounded-full border-2 transition-all ${pageSettings.templateColor === color || (!pageSettings.templateColor && color === '#cbd5e1') ? 'ring-2 ring-indigo-500 scale-110' : 'border-white'}`}
+                              style={{ backgroundColor: color }}
+                              onClick={() => setPageSettings({ ...pageSettings, templateColor: color })}
+                            />
+                          ))}
+                          <input 
+                            type="color" 
+                            value={pageSettings.templateColor || '#cbd5e1'} 
+                            onChange={(e) => setPageSettings({ ...pageSettings, templateColor: e.target.value })}
+                            className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Page Color</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {['#ffffff', '#f8fafc', '#fef3c7', '#fecdd3', '#e0e7ff', '#dcfce7', '#1e293b', '#000000'].map(color => (
+                      <button
+                        key={color}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${pageSettings.pageBackgroundColor === color || (!pageSettings.pageBackgroundColor && color === '#ffffff') ? 'ring-2 ring-indigo-500 scale-110' : 'border-slate-200'}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setPageSettings({ ...pageSettings, pageBackgroundColor: color })}
+                      />
+                    ))}
+                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <input 
+                      type="color" 
+                      value={pageSettings.pageBackgroundColor || '#ffffff'} 
+                      onChange={(e) => setPageSettings({ ...pageSettings, pageBackgroundColor: e.target.value })}
+                      className="w-7 h-7 p-0 border-none bg-transparent cursor-pointer rounded-full"
+                    />
                   </div>
                 </div>
               )}

@@ -11,6 +11,19 @@ interface NotebookCanvasProps {
   elements: NotebookElement[];
   template: PageTemplate;
   orientation: PageOrientation;
+  pageBackgroundColor?: string;
+  templateSpacing?: number;
+  templateColor?: string;
+  backgroundImage?: string;
+  backgroundOpacity?: number;
+  titleSlot?: 'none' | 'left' | 'right';
+  titleFontFamily?: string;
+  titleFontSize?: number;
+  titleColor?: string;
+  titleText?: string;
+  onUpdateTitleText?: (text: string) => void;
+  pageTitle?: string;
+  onUpdatePageTitle?: (title: string) => void;
   onUpdateElements: (elements: NotebookElement[]) => void;
   onSelectElement: (id: string | null) => void;
   activeTool: string;
@@ -50,6 +63,19 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   elements,
   template,
   orientation,
+  pageBackgroundColor,
+  templateSpacing,
+  templateColor,
+  backgroundImage,
+  backgroundOpacity,
+  titleSlot,
+  titleFontFamily,
+  titleFontSize,
+  titleColor,
+  titleText,
+  onUpdateTitleText,
+  pageTitle,
+  onUpdatePageTitle,
   onUpdateElements,
   onSelectElement,
   activeTool,
@@ -129,8 +155,14 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   }, [selectedId, elements, editingTextId]);
 
   const handleMouseDown = (e: any) => {
+    if (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'eraser') {
+      if (e.evt && typeof e.evt.preventDefault === 'function') {
+        e.evt.preventDefault();
+      }
+    }
     if (editingTextId && e.target.id() !== editingTextId) {
       handleTextBlur();
+      return;
     }
 
     const stage = e.target.getStage();
@@ -307,13 +339,23 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
 
 
   const handleMouseMove = (e: any) => {
+    if (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'eraser') {
+      if (e.evt && typeof e.evt.preventDefault === 'function') {
+        e.evt.preventDefault();
+      }
+    }
     if (!isDrawing) return;
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
     setTempPoints(prev => [...prev, pos.x, pos.y]);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: any) => {
+    if (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'eraser') {
+      if (e?.evt && typeof e.evt.preventDefault === 'function') {
+        e.evt.preventDefault();
+      }
+    }
     if (isDrawing && tempPoints.length > 2) {
       const newPath: NotebookElement = {
         id: `path-${Date.now()}`,
@@ -346,14 +388,134 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
     }
   };
 
+  const getBackgroundStyle = () => {
+    const spacing = templateSpacing || 30;
+    const color = templateColor || '#cbd5e1';
+    const bgColor = pageBackgroundColor || 'white';
+    
+    let bgStyle: any = { backgroundColor: bgColor };
+    
+    if (template === 'lined') {
+      bgStyle.backgroundImage = `linear-gradient(${color} 1.5px, transparent 1.5px)`;
+      bgStyle.backgroundSize = `100% ${spacing}px`;
+    } else if (template === 'grid') {
+      bgStyle.backgroundImage = `linear-gradient(${color} 1.5px, transparent 1.5px), linear-gradient(90deg, ${color} 1.5px, transparent 1.5px)`;
+      bgStyle.backgroundSize = `${spacing}px ${spacing}px`;
+    } else if (template === 'dotted') {
+      bgStyle.backgroundImage = `radial-gradient(${color} 2px, transparent 2px)`;
+      bgStyle.backgroundSize = `${spacing}px ${spacing}px`;
+    } else if (template === 'cornell') {
+      // Top horizontal line at 80px, vertical cue line at 30%
+      bgStyle.backgroundImage = `
+        linear-gradient(${color} 2px, transparent 2px),
+        linear-gradient(90deg, transparent calc(30% - 2px), ${color} 2px, transparent 30%),
+        linear-gradient(${color} 1px, transparent 1px)
+      `;
+      bgStyle.backgroundSize = `100% 100%, 100% 100%, 100% ${spacing}px`;
+      bgStyle.backgroundPosition = `0 80px, 0 0, 0 80px`;
+      bgStyle.backgroundRepeat = 'no-repeat, no-repeat, repeat';
+    } else if (template === 'music') {
+      const h = spacing * 2;
+      const ls = spacing / 4;
+      const svg = `<svg width="100" height="${h}" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="1" x2="100" y2="1" stroke="${color}" stroke-width="1"/>
+        <line x1="0" y1="${ls}" x2="100" y2="${ls}" stroke="${color}" stroke-width="1"/>
+        <line x1="0" y1="${ls*2}" x2="100" y2="${ls*2}" stroke="${color}" stroke-width="1"/>
+        <line x1="0" y1="${ls*3}" x2="100" y2="${ls*3}" stroke="${color}" stroke-width="1"/>
+        <line x1="0" y1="${ls*4}" x2="100" y2="${ls*4}" stroke="${color}" stroke-width="1"/>
+      </svg>`;
+      bgStyle.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+      bgStyle.backgroundSize = `100% ${h}px`;
+    } else if (template === 'handwriting') {
+      const svg = `<svg width="40" height="${spacing}" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="${spacing * 0.2}" x2="40" y2="${spacing * 0.2}" stroke="${color}" stroke-width="1"/>
+        <line x1="0" y1="${spacing * 0.5}" x2="40" y2="${spacing * 0.5}" stroke="${color}" stroke-width="1" stroke-dasharray="8 8"/>
+        <line x1="0" y1="${spacing * 0.8}" x2="40" y2="${spacing * 0.8}" stroke="${color}" stroke-width="1"/>
+      </svg>`;
+      bgStyle.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+      bgStyle.backgroundSize = `40px ${spacing}px`;
+    }
+    return bgStyle;
+  };
+
   return (
-    <div className={`a4-page ${orientation} template-${template}`} style={{ position: 'relative' }}>
+    <div 
+      className={`a4-page ${orientation}`} 
+      style={{ 
+        position: 'relative',
+        touchAction: (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'eraser') ? 'none' : 'pan-x pan-y',
+        ...getBackgroundStyle()
+      }}
+    >
+      {backgroundImage && (
+        <img 
+          src={backgroundImage} 
+          alt="Page Background"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: backgroundOpacity ?? 0.3,
+            pointerEvents: 'none',
+            zIndex: 0,
+            borderRadius: 'inherit'
+          }}
+        />
+      )}
+
+      {titleSlot && titleSlot !== 'none' && (
+        <textarea
+          ref={(el) => {
+            if (el) {
+              el.style.height = 'auto';
+              el.style.height = el.scrollHeight + 'px';
+            }
+          }}
+          value={titleText ?? pageTitle ?? ''}
+          onChange={(e) => {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+            onUpdateTitleText?.(e.target.value);
+          }}
+          placeholder="Page Title"
+          dir={titleSlot === 'right' ? 'rtl' : 'ltr'}
+          onMouseDown={(e) => e.stopPropagation()} // Prevent canvas from interpreting the click
+          rows={1}
+          style={{
+            position: 'absolute',
+            top: '40px',
+            [titleSlot === 'left' ? 'left' : 'right']: '40px',
+            width: '30%',
+            minWidth: '200px',
+            border: 'none',
+            borderBottom: `2px solid ${templateColor || '#cbd5e1'}`,
+            background: 'transparent',
+            outline: 'none',
+            fontSize: `${titleFontSize || 28}px`,
+            fontFamily: titleFontFamily || 'inherit',
+            color: titleColor || '#0f172a',
+            fontWeight: 900,
+            pointerEvents: 'auto',
+            zIndex: 10,
+            resize: 'none',
+            overflow: 'hidden',
+            lineHeight: 1.2
+          }}
+        />
+      )}
+
       <Stage
         width={width}
         height={height}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onTouchStart={handleMouseDown}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
         ref={stageRef}
       >
         <Layer>

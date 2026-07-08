@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS public.notebook_pages (
     title TEXT NOT NULL DEFAULT 'Untitled Page',
     orientation TEXT DEFAULT 'portrait', -- portrait, landscape
     template TEXT DEFAULT 'blank', -- blank, lined, grid, dotted
+    title_slot TEXT DEFAULT 'none', -- none, left, right
+    title_font_family TEXT,
+    title_font_size INTEGER,
+    title_color TEXT,
+    title_text TEXT,
     is_subpage BOOLEAN DEFAULT false,
     parent_id UUID REFERENCES public.notebook_pages(id) ON DELETE CASCADE,
     due_date TIMESTAMPTZ,

@@ -305,7 +305,7 @@
     left: 70px; /* Offset for App Sidebar */
     top: 0;
     bottom: 0;
-    width: 85vw;
+    width: 70vw;
     max-width: 320px;
     transform: translateX(-100%);
     z-index: 200;
@@ -472,19 +472,7 @@
 
 @media (max-width: 768px) {
   .mobile-page-nav {
-    display: flex;
-    position: fixed;
-    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    padding: 8px 16px;
-    border-radius: 9999px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    align-items: center;
-    gap: 16px;
-    z-index: 100;
-    border: 1px solid #f1f5f9;
+    display: none;
   }
 
   /* Hide the inline bottom arrows on mobile since floating ones replace them */

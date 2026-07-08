@@ -23,7 +23,6 @@ interface NotebookCanvasProps {
   titleText?: string;
   onUpdateTitleText?: (text: string) => void;
   pageTitle?: string;
-  onUpdatePageTitle?: (title: string) => void;
   onUpdateElements: (elements: NotebookElement[]) => void;
   onSelectElement: (id: string | null) => void;
   activeTool: string;
@@ -75,7 +74,6 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   titleText,
   onUpdateTitleText,
   pageTitle,
-  onUpdatePageTitle,
   onUpdateElements,
   onSelectElement,
   activeTool,

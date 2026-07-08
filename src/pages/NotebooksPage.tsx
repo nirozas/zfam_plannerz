@@ -519,7 +519,7 @@ const NotebooksPage: React.FC = () => {
     );
   }
 
-  const handleUpdatePageMetadata = (updates: { title?: string, dueDate?: string }) => {
+  const handleUpdatePageMetadata = (updates: { title?: string, dueDate?: string, titleText?: string }) => {
     if (activePageId) {
       updatePage(activePageId, updates);
     }
@@ -660,7 +660,6 @@ const NotebooksPage: React.FC = () => {
                     titleText={activePage.titleText}
                     onUpdateTitleText={(text) => handleUpdatePageMetadata({ titleText: text })}
                     pageTitle={activePage.title}
-                    onUpdatePageTitle={(title) => handleUpdatePageMetadata({ title })}
                     onUpdateElements={handleUpdateElements}
                     onSelectElement={setSelectedElementId}
                     activeTool={activeTool}

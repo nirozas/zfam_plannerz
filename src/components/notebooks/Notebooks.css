@@ -305,7 +305,7 @@
     left: 70px; /* Offset for App Sidebar */
     top: 0;
     bottom: 0;
-    width: 70vw;
+    width: 25vw;
     max-width: 320px;
     transform: translateX(-100%);
     z-index: 200;

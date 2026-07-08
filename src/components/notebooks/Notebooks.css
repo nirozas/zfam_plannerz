@@ -385,7 +385,7 @@
     flex-direction: row;
     border-right: none;
     border-top: 1px solid rgba(226, 232, 240, 0.8);
-    bottom: 0;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
     top: auto;
@@ -418,13 +418,13 @@
   .page-viewer {
     flex: 1;
     padding-top: 8px;
-    padding-bottom: env(safe-area-inset-bottom, 60px); /* space for bottom nav */
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); /* space for bottom toolbars */
   }
 
   /* Bottom floating navigation buttons on mobile */
   .mobile-page-nav {
     position: fixed;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -459,7 +459,7 @@
   transform: scale(0.95);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-toggle-btn {
     display: flex;
   }
@@ -474,7 +474,7 @@
   .mobile-page-nav {
     display: flex;
     position: fixed;
-    bottom: 24px;
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     background: white;

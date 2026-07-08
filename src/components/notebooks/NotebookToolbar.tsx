@@ -285,7 +285,7 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0 flex-shrink-0">
           <button 
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
+            className="sidebar-toggle-btn p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
             title="Toggle Sidebar"
           >
             <Menu size={20} />

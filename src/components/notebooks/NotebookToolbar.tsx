@@ -30,7 +30,10 @@ import {
   Clock,
   Copy,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  ZoomIn,
+  ZoomOut,
+  Maximize
 } from 'lucide-react';
 
 
@@ -116,7 +119,12 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
           label="Shapes"
         />
         {showShapeMenu && (
-          <div className="absolute left-full top-0 ml-3 w-52 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3 z-[2000] animate-in fade-in slide-in-from-left-2">
+          <div className="
+            absolute z-[2000] w-52 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
+            animate-in fade-in
+            bottom-full mb-3 left-1/2 -translate-x-1/2
+            lg:bottom-auto lg:top-0 lg:left-full lg:translate-x-0 lg:ml-3
+          ">
             <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Shapes</p>
             <div className="grid grid-cols-4 gap-1.5">
               {SHAPES.map(s => (
@@ -149,7 +157,12 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
           label="Emoji & Icons"
         />
         {showEmojiPicker && (
-          <div className="absolute left-full top-0 ml-3 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3 z-[2000] animate-in fade-in slide-in-from-left-2">
+          <div className="
+            absolute z-[2000] w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
+            animate-in fade-in
+            bottom-full mb-3 left-1/2 -translate-x-1/2
+            lg:bottom-auto lg:top-0 lg:left-full lg:translate-x-0 lg:ml-3
+          ">
             <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Emoji &amp; Icons</p>
             <div className="grid grid-cols-8 gap-1">
               {EMOJIS.map(em => (
@@ -157,7 +170,6 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
                   key={em}
                   title={em}
                   onClick={() => {
-                    // Insert as a text element by dispatching a custom event
                     window.dispatchEvent(new CustomEvent('insert-emoji', { detail: em }));
                     setShowEmojiPicker(false);
                   }}
@@ -200,6 +212,9 @@ interface PropertyBarProps {
   onPrevPage?: () => void;
   onNextPage?: () => void;
   onAddSubpage?: () => void;
+  zoom?: number;
+  setZoom?: (zoom: number | ((prev: number) => number)) => void;
+  onAutoFit?: () => void;
 }
 
 const FONTS = [
@@ -259,10 +274,22 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
   onToggleSidebar,
   onPrevPage,
   onNextPage,
-  onAddSubpage
+  onAddSubpage,
+  zoom = 1,
+  setZoom,
+  onAutoFit
 }) => {
   const [showBulletMenu, setShowBulletMenu] = React.useState(false);
   const [showPageMenu, setShowPageMenu] = React.useState(false);
+  const [showMetaPopover, setShowMetaPopover] = React.useState(false);
+
+  // Close meta popover on outside click
+  React.useEffect(() => {
+    if (!showMetaPopover) return;
+    const close = () => setShowMetaPopover(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showMetaPopover]);
 
 
   const lastTextElementRef = React.useRef<typeof selectedElement>(null);
@@ -282,85 +309,161 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
       {/* 1. TOP PANEL BAR */}
       <div className="property-bar-top-panel">
         {/* Left: Tools & Hamburger */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0 flex-shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-shrink-0">
           <button 
             onClick={onToggleSidebar}
             className="sidebar-toggle-btn p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95"
             title="Toggle Sidebar"
           >
-            <Menu size={20} />
+            <Menu size={18} />
           </button>
           
           {/* Left: View Toggle */}
-          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 flex-shrink-0">
+          <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-xl border border-slate-200 flex-shrink-0">
             <button 
               onClick={() => setViewMode?.('editor')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'editor' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-          >
-            <Edit3 size={14} /> Editor
-          </button>
-          <button 
-            onClick={() => setViewMode?.('calendar')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-          >
-            <CalendarIcon size={14} /> Calendar
-          </button>
-        </div>
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'editor' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <Edit3 size={12} />
+              <span className="hidden sm:inline">Editor</span>
+            </button>
+            <button 
+              onClick={() => setViewMode?.('calendar')}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <CalendarIcon size={12} />
+              <span className="hidden sm:inline">Calendar</span>
+            </button>
+          </div>
         
-        {/* Title Slot Toggle */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 flex-shrink-0">
+          {/* Title Slot Toggle */}
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200 flex-shrink-0">
+            <button
+              onClick={() => {
+                const nextSlot = pageSettings?.titleSlot === 'none' || !pageSettings?.titleSlot ? 'right' : pageSettings?.titleSlot === 'right' ? 'left' : 'none';
+                setPageSettings?.({ titleSlot: nextSlot });
+              }}
+              className={`flex items-center justify-center p-1.5 rounded-lg transition-all ${pageSettings?.titleSlot && pageSettings.titleSlot !== 'none' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              title={`Title Slot: ${pageSettings?.titleSlot === 'right' ? 'RTL' : pageSettings?.titleSlot === 'left' ? 'LTR' : 'None'}`}
+            >
+              <TypeIcon size={12} />
+            </button>
+          </div>
+        </div>
+
+
+        {/* Middle: Page Metadata — compact pill always visible, popover on tap */}
+        <div className="flex-1 flex items-center justify-center min-w-0 overflow-hidden relative" onClick={e => e.stopPropagation()}>
           <button
-            onClick={() => {
-              const nextSlot = pageSettings?.titleSlot === 'none' || !pageSettings?.titleSlot ? 'right' : pageSettings?.titleSlot === 'right' ? 'left' : 'none';
-              setPageSettings?.({ titleSlot: nextSlot });
-            }}
-            className={`flex items-center justify-center p-1.5 rounded-lg transition-all ${pageSettings?.titleSlot && pageSettings.titleSlot !== 'none' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-            title={`Title Slot: ${pageSettings?.titleSlot === 'right' ? 'RTL' : pageSettings?.titleSlot === 'left' ? 'LTR' : 'None'}`}
+            onClick={() => setShowMetaPopover(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all max-w-[200px] truncate ${
+              showMetaPopover
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
+            }`}
+            title="Edit page title and due date"
           >
-            <TypeIcon size={14} />
+            <TypeIcon size={10} className="flex-shrink-0 text-slate-400" />
+            <span className="text-[10px] font-black uppercase tracking-tight truncate max-w-[120px]">
+              {activePage?.title || 'Untitled'}
+            </span>
+            {activePage?.dueDate && (
+              <span className="text-[8px] font-bold text-red-500 flex-shrink-0 ml-0.5">
+                • {new Date(activePage.dueDate + 'T00:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
           </button>
-        </div>
-        </div>
 
-
-        {/* Middle: Page Metadata — inline single row */}
-        <div className="flex-1 flex items-center justify-center gap-3 px-4 min-w-0 overflow-hidden">
-          <input 
-            type="text"
-            value={activePage?.title || ''}
-            onChange={(e) => onUpdatePageMetadata?.({ title: e.target.value })}
-            className="bg-transparent border-none text-sm font-black text-slate-900 focus:ring-0 p-0 max-w-[180px] uppercase tracking-tighter italic placeholder:text-slate-300 truncate"
-            placeholder="Untitled Page"
-          />
-          <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex-shrink-0">
-            <Clock size={10} /> {activePage ? new Date(activePage.createdAt).toLocaleDateString() : 'No Date'}
-          </div>
-          <div className="w-px h-4 bg-slate-300 flex-shrink-0" />
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Due</span>
-            <input 
-              type="date"
-              value={activePage?.dueDate || ''}
-              onChange={(e) => onUpdatePageMetadata?.({ dueDate: e.target.value })}
-              className="bg-white border border-red-200 rounded-md px-1.5 py-0.5 text-[9px] font-black text-red-600 outline-none focus:border-red-400 transition-colors"
-            />
-          </div>
+          {/* Meta Popover */}
+          {showMetaPopover && (
+            <div
+              className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-[2000] animate-in fade-in zoom-in-95 duration-150"
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-3">Page Info</p>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Title</label>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={activePage?.title || ''}
+                    onChange={(e) => onUpdatePageMetadata?.({ title: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    placeholder="Untitled Page"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Due Date</label>
+                    <input
+                      type="date"
+                      value={activePage?.dueDate || ''}
+                      onChange={(e) => onUpdatePageMetadata?.({ dueDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-red-200 rounded-xl px-3 py-2 text-[11px] font-black text-red-600 outline-none focus:border-red-400 transition-colors"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Created</label>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+                      <Clock size={9} />
+                      {activePage ? new Date(activePage.createdAt).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Actions — compact, non-shrinking */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Zoom Controls — inline in top bar */}
+          <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-xl p-0.5 flex-shrink-0">
+            <button
+              onClick={() => setZoom?.(z => Math.max(0.2, z - 0.1))}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+              title="Zoom Out"
+            >
+              <ZoomOut size={13} />
+            </button>
+            <button
+              onClick={() => setZoom?.(1)}
+              className="w-10 text-center text-[9px] font-black text-slate-700 hover:bg-slate-50 rounded-lg py-1.5 transition-all"
+              title="Reset Zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={() => setZoom?.(z => Math.min(3, z + 0.1))}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+              title="Zoom In"
+            >
+              <ZoomIn size={13} />
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-0.5" />
+            <button
+              onClick={onAutoFit}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+              title="Fit to Screen"
+            >
+              <Maximize size={13} />
+            </button>
+          </div>
+
           <button 
             onClick={onDuplicatePage}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all active:scale-95 font-black text-[10px] uppercase tracking-widest whitespace-nowrap"
+            className="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all active:scale-95 font-black text-[9px] uppercase tracking-widest whitespace-nowrap"
           >
-            <Copy size={13} /> Dup
+            <Copy size={12} />
+            <span className="hidden sm:inline">Dup</span>
           </button>
           <button 
             onClick={onOpenExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-100 font-black text-[10px] uppercase tracking-widest whitespace-nowrap"
+            className="flex items-center gap-1 px-2 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all active:scale-95 shadow-md font-black text-[9px] uppercase tracking-widest whitespace-nowrap"
           >
-            <FileDown size={13} /> Export
+            <FileDown size={12} />
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>

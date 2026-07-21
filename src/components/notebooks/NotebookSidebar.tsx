@@ -120,7 +120,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
         onDoubleClick={() => onOpenEditModal('section', section.id, section.name)}
       >
         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: section.color }} />
-        <span className={`flex-1 text-xs font-black truncate uppercase tracking-widest ${
+        <span className={`flex-1 text-[10px] font-black truncate uppercase tracking-widest ${
           activeSectionId === section.id ? 'text-indigo-600' : 'text-slate-500'
         }`}>
           {section.name}
@@ -153,7 +153,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
               onDrop={(e) => handleDrop(e, section.id, index)}
             >
               <button 
-                className={`page-item flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                className={`page-item flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
                   activePageId === page.id 
                     ? 'bg-indigo-50 text-indigo-700' 
                     : 'text-slate-500 hover:bg-slate-50'
@@ -191,7 +191,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
             <ArrowLeft size={18} />
           </button>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Notebooks</h2>
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">Notebooks</h2>
             <button 
               className="p-1 hover:bg-slate-100 text-slate-300 hover:text-indigo-600 rounded-md transition-all mt-1" 
               onClick={onOpenCreateModal}
@@ -239,7 +239,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
                       onDoubleClick={() => onOpenEditModal('group', group.id, group.name)}
                     >
                       <Folder size={14} className="text-indigo-400" />
-                      <span className="flex-1 text-[11px] font-bold truncate text-slate-600">
+                      <span className="flex-1 text-[10px] font-bold truncate text-slate-600">
                         {group.name}
                       </span>
                       <button

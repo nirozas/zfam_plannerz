@@ -20,10 +20,7 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Link, 
-  Book, 
-  ZoomIn,
-  ZoomOut,
-  Maximize
+  Book
 } from 'lucide-react';
 
 import '../components/notebooks/Notebooks.css';
@@ -85,6 +82,7 @@ const NotebooksPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
+  const [isElementSidebarOpen, setIsElementSidebarOpen] = useState(false);
   const [editModalState, setEditModalState] = useState<{ isOpen: boolean; type: any; id: string; title: string }>({
     isOpen: false,
     type: 'page',
@@ -629,6 +627,9 @@ const NotebooksPage: React.FC = () => {
           onPrevPage={() => goToPrevPage()}
           onNextPage={() => goToNextPage()}
           onAddSubpage={handleAddSubpage}
+          zoom={zoom}
+          setZoom={setZoom}
+          onAutoFit={handleAutoFit}
         />
 
 
@@ -661,7 +662,11 @@ const NotebooksPage: React.FC = () => {
                     onUpdateTitleText={(text) => handleUpdatePageMetadata({ titleText: text })}
                     pageTitle={activePage.title}
                     onUpdateElements={handleUpdateElements}
-                    onSelectElement={setSelectedElementId}
+                    onSelectElement={(id) => {
+                      setSelectedElementId(id);
+                      if (!id) setIsElementSidebarOpen(false);
+                    }}
+                    onDoubleClickElement={() => setIsElementSidebarOpen(true)}
                     activeTool={activeTool}
                     setActiveTool={handleSetTool}
                     brushSettings={brushSettings}
@@ -701,29 +706,21 @@ const NotebooksPage: React.FC = () => {
             )}
           </div>
 
-          <NotebookElementSidebar 
-            selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
-            onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
-            onDuplicateElement={handleDuplicateElement}
-            onDeleteElement={(id) => {
-              if (activePageId && activePage) {
-                updatePageElements(activePageId, activePage.elements.filter(el => el.id !== id));
-                setSelectedElementId(null);
-              }
-            }}
-            activePage={activePage}
-            onClose={() => setSelectedElementId(null)}
-          />
-
-          {/* Zoom Controls Overlay */}
-          {viewMode === 'editor' && (
-            <div className="absolute bottom-32 md:bottom-6 right-6 flex items-center gap-2 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-xl z-[90] animate-in fade-in slide-in-from-bottom-4">
-              <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomOut size={16} /></button>
-              <div className="w-12 text-center text-[10px] font-black text-slate-700">{Math.round(zoom * 100)}%</div>
-              <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"><ZoomIn size={16} /></button>
-              <div className="w-px h-4 bg-slate-200 mx-1" />
-              <button onClick={handleAutoFit} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all" title="Fit to Screen"><Maximize size={16} /></button>
-            </div>
+          {isElementSidebarOpen && (
+            <NotebookElementSidebar 
+              selectedElement={activePage?.elements.find(el => el.id === selectedElementId)}
+              onUpdateElement={(id, updates) => activePageId && updateElement(activePageId, id, updates)}
+              onDuplicateElement={handleDuplicateElement}
+              onDeleteElement={(id) => {
+                if (activePageId && activePage) {
+                  updatePageElements(activePageId, activePage.elements.filter(el => el.id !== id));
+                  setSelectedElementId(null);
+                  setIsElementSidebarOpen(false);
+                }
+              }}
+              activePage={activePage}
+              onClose={() => setIsElementSidebarOpen(false)}
+            />
           )}
         </div>
 

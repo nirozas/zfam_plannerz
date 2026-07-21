@@ -5,11 +5,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Store, DollarSign, Calendar as CalendarIcon, FileText, Sparkles, Plus, Wallet, ArrowDown, ArrowUp, Tag, Calculator, Settings, Edit2, Trash2 } from 'lucide-react';
 import { CategorySelector } from './CategorySelector';
 import { AutocompleteSearch } from './AutocompleteSearch';
+import { supabase } from '@/supabase/client';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     editEntry?: FinanceEntry;
+}
+
+interface ScannedItem {
+    id: string;
+    title: string;
+    amount: string;
+    category_id: string | null;
+    category_name: string;
+    store_name: string;
+    date: string;
+    notes: string;
 }
 
 
@@ -74,8 +86,11 @@ const ManagePaymentMethods = ({ onClose }: { onClose: () => void }) => {
 export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry }) => {
     const { addEntry, updateEntry } = useFinanceStore();
     const [loading, setLoading] = useState(false);
+    const [scanning, setScanning] = useState(false);
+    const [scannedItems, setScannedItems] = useState<ScannedItem[] | null>(null);
     const [showCalc, setShowCalc] = useState(false);
     const [calcInput, setCalcInput] = useState('');
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     
     // Derived options from existing entries
     const { entries, paymentMethods: savedPaymentMethods } = useFinanceStore();
@@ -119,6 +134,7 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
             setNotes('');
             setPaymentMethod('Cash');
             setIsIncome(false);
+            setScannedItems(null);
         }
     }, [editEntry, isOpen]);
 
@@ -151,6 +167,108 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
             console.error('Submission Error:', error);
             // Alert user so they know if the DB columns are missing
             window.alert(`Save failed: ${error.message || 'Check if you have run the latest SQL script in Supabase.'}`);
+            setLoading(false);
+        }
+    };
+
+    const handleScanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setScanning(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Data = reader.result as string;
+                const { data, error } = await supabase.functions.invoke('scan-receipt', {
+                    body: { image: base64Data, mimeType: file.type }
+                });
+
+                if (error) throw error;
+                if (!data) throw new Error("No data returned from AI");
+
+                const result = data;
+                
+                // Group by category
+                const groups: Record<string, { amount: number; items: string[] }> = {};
+                if (result.items && Array.isArray(result.items)) {
+                    result.items.forEach((item: any) => {
+                        const cat = item.category || 'Misc';
+                        if (!groups[cat]) groups[cat] = { amount: 0, items: [] };
+                        groups[cat].amount += Number(item.price) || 0;
+                        groups[cat].items.push(`${item.name} ($${item.price})`);
+                    });
+                } else {
+                    // Fallback if no items
+                    groups['Misc'] = { amount: Number(result.total) || 0, items: [] };
+                }
+
+                // Add entries for each group
+                const newScannedItems: ScannedItem[] = [];
+                for (const [catName, group] of Object.entries(groups)) {
+                    // Try to find matching category UUID by name
+                    const matchedCat = useFinanceStore.getState().categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+                    
+                    newScannedItems.push({
+                        id: `temp-${Date.now()}-${Math.random()}`,
+                        title: `Receipt: ${catName}`,
+                        store_name: result.store || 'Unknown Store',
+                        amount: String(group.amount),
+                        date: result.date || new Date().toISOString().split('T')[0],
+                        category_id: matchedCat?.id || null,
+                        category_name: catName,
+                        notes: group.items.join(', ')
+                    });
+                }
+                
+                setScannedItems(newScannedItems);
+                setScanning(false);
+            };
+            reader.onerror = () => {
+                throw new Error("Failed to read file");
+            };
+        } catch (error: any) {
+            console.error('Scan Error:', error);
+            window.alert(`Scan failed: ${error.message}`);
+            setScanning(false);
+        }
+    };
+
+    const updateScannedItem = (id: string, field: keyof ScannedItem, value: any) => {
+        if (!scannedItems) return;
+        setScannedItems(scannedItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const deleteScannedItem = (id: string) => {
+        if (!scannedItems) return;
+        setScannedItems(scannedItems.filter(item => item.id !== id));
+    };
+
+    const handleSaveScannedItems = async () => {
+        if (!scannedItems || scannedItems.length === 0) {
+            setScannedItems(null);
+            return;
+        }
+        setLoading(true);
+        try {
+            for (const item of scannedItems) {
+                await addEntry({
+                    title: item.title,
+                    store_name: item.store_name,
+                    amount: parseFloat(item.amount) || 0,
+                    date: item.date,
+                    category_id: item.category_id,
+                    notes: item.notes,
+                    payment_method: 'Cash',
+                    is_income: false
+                } as any);
+            }
+            setScannedItems(null);
+            onClose();
+        } catch (error: any) {
+            console.error('Submission Error:', error);
+            window.alert(`Save failed: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -187,254 +305,339 @@ export const QuickAddExpense: React.FC<Props> = ({ isOpen, onClose, editEntry })
                                     <span className="text-[10px] font-black text-[#A0C4FF] uppercase tracking-[0.2em] leading-none">Zoabi Nexus Finance</span>
                                 </div>
                             </div>
-                            <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-slate-800 rounded-2xl hover:bg-gray-100 transition-colors">
-                                <X size={20} className="text-slate-400" />
-                            </button>
-                        </div>
-
-                        {/* Type Toggle */}
-                        <div className="grid grid-cols-2 gap-4 mb-8 p-1.5 bg-gray-50 dark:bg-slate-800 rounded-[28px] border border-gray-100">
-                            <button 
-                                type="button"
-                                onClick={() => setIsIncome(false)}
-                                className={`flex items-center justify-center gap-2 h-14 rounded-[22px] text-xs font-black uppercase tracking-widest transition-all ${!isIncome ? 'bg-white text-rose-500 shadow-lg shadow-rose-100' : 'text-slate-400'}`}
-                            >
-                                <ArrowUp size={16} />
-                                Expense
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => setIsIncome(true)}
-                                className={`flex items-center justify-center gap-2 h-14 rounded-[22px] text-xs font-black uppercase tracking-widest transition-all ${isIncome ? 'bg-white text-emerald-500 shadow-lg shadow-emerald-100' : 'text-slate-400'}`}
-                            >
-                                <ArrowDown size={16} />
-                                Saving
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-                            {/* Item Title */}
-                            <div className="group">
-                                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Item / Service Title</label>
-                                <div className="relative">
-                                    <Tag size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        placeholder="What did you buy? (e.g. Headphones, Dinner)"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                    />
-                                </div>
+                            <div className="flex items-center gap-2">
+                                {!editEntry && (
+                                    <>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            ref={fileInputRef} 
+                                            onChange={handleScanReceipt} 
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={scanning}
+                                            className="px-4 h-11 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {scanning ? <div className="w-4 h-4 border-2 border-indigo-600/40 border-t-indigo-600 rounded-full animate-spin" /> : 'Scan Receipt 📸'}
+                                        </button>
+                                    </>
+                                )}
+                                <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-slate-800 rounded-2xl hover:bg-gray-100 transition-colors">
+                                    <X size={20} className="text-slate-400" />
+                                </button>
                             </div>
-
-                            {/* Merchant / Source */}
-                            <div className="group">
-                                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Merchant / Source</label>
-                                <div className="relative">
-                                    <AutocompleteSearch
-                                        value={storeName}
-                                        onChange={setStoreName}
-                                        options={storeOptions}
-                                        placeholder="Where did it go/come from?"
-                                        icon={Store}
-                                        inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                    />
+                        </div>
+                        {scannedItems ? (
+                            <div className="flex flex-col gap-6">
+                                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl border border-indigo-100 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-sm font-bold">
+                                    Please review the scanned items below. You can modify amounts, categories, or titles before saving.
                                 </div>
+                                <div className="flex flex-col gap-4">
+                                    {scannedItems.map((item, idx) => (
+                                        <div key={item.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 flex flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase text-slate-400">Item {idx + 1}</span>
+                                                <button onClick={() => deleteScannedItem(item.id)} className="text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[9px] font-black uppercase text-slate-400 ml-1 mb-1 block">Title</label>
+                                                    <input 
+                                                        value={item.title} 
+                                                        onChange={e => updateScannedItem(item.id, 'title', e.target.value)}
+                                                        className="w-full h-12 px-3 bg-white dark:bg-slate-900 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-indigo-200 dark:text-slate-200" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-black uppercase text-slate-400 ml-1 mb-1 block">Amount</label>
+                                                    <div className="relative">
+                                                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                        <input 
+                                                            type="number" step="0.01" 
+                                                            value={item.amount} 
+                                                            onChange={e => updateScannedItem(item.id, 'amount', e.target.value)}
+                                                            className="w-full h-12 pl-8 pr-3 bg-white dark:bg-slate-900 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-indigo-200 dark:text-slate-200" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-black uppercase text-slate-400 ml-1 mb-1 block">Category ({item.category_name})</label>
+                                                <CategorySelector 
+                                                    selectedId={item.category_id} 
+                                                    onSelect={(id) => updateScannedItem(item.id, 'category_id', id)} 
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {scannedItems.length === 0 && (
+                                        <div className="text-center text-slate-400 text-sm py-4">No items remaining.</div>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={handleSaveScannedItems}
+                                    disabled={loading || scannedItems.length === 0}
+                                    className="w-full h-16 rounded-[28px] bg-indigo-600 text-white font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                                >
+                                    {loading ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Check size={20} />}
+                                    Save {scannedItems.length} Items
+                                </button>
+                                <button
+                                    onClick={() => setScannedItems(null)}
+                                    className="w-full h-12 rounded-[28px] bg-transparent text-slate-400 font-bold text-sm uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors mt-2"
+                                >
+                                    Cancel
+                                </button>
                             </div>
+                        ) : (
+                            <>
+                                {/* Type Toggle */}
+                                <div className="grid grid-cols-2 gap-4 mb-8 p-1.5 bg-gray-50 dark:bg-slate-800 rounded-[28px] border border-gray-100">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsIncome(false)}
+                                        className={`flex items-center justify-center gap-2 h-14 rounded-[22px] text-xs font-black uppercase tracking-widest transition-all ${!isIncome ? 'bg-white text-rose-500 shadow-lg shadow-rose-100' : 'text-slate-400'}`}
+                                    >
+                                        <ArrowUp size={16} />
+                                        Expense
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsIncome(true)}
+                                        className={`flex items-center justify-center gap-2 h-14 rounded-[22px] text-xs font-black uppercase tracking-widest transition-all ${isIncome ? 'bg-white text-emerald-500 shadow-lg shadow-emerald-100' : 'text-slate-400'}`}
+                                    >
+                                        <ArrowDown size={16} />
+                                        Saving
+                                    </button>
+                                </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="group relative">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Amount</label>
-                                    <div className="relative flex items-center gap-2">
-                                        <div className="relative flex-1">
-                                            <DollarSign size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+                                    {/* Item Title */}
+                                    <div className="group">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Item / Service Title</label>
+                                        <div className="relative">
+                                            <Tag size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
                                             <input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
+                                                autoFocus
+                                                type="text"
+                                                placeholder="What did you buy? (e.g. Headphones, Dinner)"
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
                                                 className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
                                             />
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCalc(!showCalc)}
-                                            className="w-16 h-16 flex items-center justify-center bg-gray-50 dark:bg-slate-800/80 rounded-[28px] hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:text-indigo-600 transition-colors shrink-0 border-2 border-transparent focus:border-indigo-100 dark:text-slate-400"
-                                        >
-                                            <Calculator size={24} className="group-hover:text-indigo-500 hover:text-indigo-600 transition-colors" />
-                                        </button>
+                                    </div>
 
-                                        {/* Calculator Modal */}
-                                        <AnimatePresence>
-                                            {showCalc && (
-                                                <>
-                                                    <motion.div
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        exit={{ opacity: 0 }}
-                                                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1010]"
-                                                        onClick={() => setShowCalc(false)}
+                                    {/* Merchant / Source */}
+                                    <div className="group">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Merchant / Source</label>
+                                        <div className="relative">
+                                            <AutocompleteSearch
+                                                value={storeName}
+                                                onChange={setStoreName}
+                                                options={storeOptions}
+                                                placeholder="Where did it go/come from?"
+                                                icon={Store}
+                                                inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="group relative">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Amount</label>
+                                            <div className="relative flex items-center gap-2">
+                                                <div className="relative flex-1">
+                                                    <DollarSign size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        value={amount}
+                                                        onChange={(e) => setAmount(e.target.value)}
+                                                        className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
                                                     />
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                                                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1011] p-6 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[35px] shadow-2xl w-[300px]"
-                                                    >
-                                                        <div className="flex flex-col gap-3">
-                                                            <div className="flex items-center justify-between px-2 mb-2">
-                                                                <span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Calculator</span>
-                                                                <button onClick={() => setShowCalc(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-                                                            </div>
-                                                            <input 
-                                                                type="text" 
-                                                                value={calcInput} 
-                                                                readOnly 
-                                                                placeholder="0"
-                                                                className="w-full h-14 px-5 bg-gray-50 dark:bg-slate-900 rounded-[20px] text-right font-mono font-bold text-2xl outline-none text-slate-700 dark:text-slate-200 mb-2 shadow-inner"
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCalc(!showCalc)}
+                                                    className="w-16 h-16 flex items-center justify-center bg-gray-50 dark:bg-slate-800/80 rounded-[28px] hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:text-indigo-600 transition-colors shrink-0 border-2 border-transparent focus:border-indigo-100 dark:text-slate-400"
+                                                >
+                                                    <Calculator size={24} className="group-hover:text-indigo-500 hover:text-indigo-600 transition-colors" />
+                                                </button>
+
+                                                {/* Calculator Modal */}
+                                                <AnimatePresence>
+                                                    {showCalc && (
+                                                        <>
+                                                            <motion.div
+                                                                initial={{ opacity: 0 }}
+                                                                animate={{ opacity: 1 }}
+                                                                exit={{ opacity: 0 }}
+                                                                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1010]"
+                                                                onClick={() => setShowCalc(false)}
                                                             />
-                                                            <div className="grid grid-cols-4 gap-2">
-                                                                {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
-                                                                    <button
-                                                                        key={btn}
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            if (btn === 'C') setCalcInput('');
-                                                                            else setCalcInput(prev => prev + btn);
-                                                                        }}
-                                                                        className={`h-12 rounded-[16px] font-bold text-lg flex items-center justify-center transition-all ${
-                                                                            ['/','*','-','+'].includes(btn) 
-                                                                                ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 active:scale-95' 
-                                                                                : btn === 'C'
-                                                                                    ? 'bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 active:scale-95'
-                                                                                    : 'bg-gray-50 border border-gray-100 dark:bg-slate-700/50 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:border-gray-200 active:scale-95'
-                                                                        }`}
-                                                                    >
-                                                                        {btn}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex gap-2 mt-2">
-                                                                <button 
-                                                                    type="button" 
-                                                                    onClick={() => {
-                                                                        try {
-                                                                            // eslint-disable-next-line
-                                                                            const result = Function('"use strict";return (' + calcInput + ')')();
-                                                                            if (isNaN(result) || !isFinite(result)) throw new Error('Invalid');
-                                                                            setCalcInput(String(Number(result).toFixed(2)));
-                                                                        } catch {
-                                                                            const old = calcInput;
-                                                                            setCalcInput('Error');
-                                                                            setTimeout(() => setCalcInput(old), 1000);
-                                                                        }
-                                                                    }}
-                                                                    className="flex-1 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-[16px] font-black text-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-all active:scale-95"
-                                                                >
-                                                                    =
-                                                                </button>
-                                                                <button 
-                                                                    type="button" 
-                                                                    onClick={() => {
-                                                                        try {
-                                                                            // eslint-disable-next-line
-                                                                            let resStr = calcInput;
-                                                                            // eslint-disable-next-line
-                                                                            const result = Function('"use strict";return (' + calcInput + ')')();
-                                                                            if (!isNaN(result) && isFinite(result)) {
-                                                                                resStr = Number(result).toFixed(2);
-                                                                            }
-                                                                            setAmount(resStr);
-                                                                            setCalcInput('');
-                                                                            setShowCalc(false);
-                                                                        } catch {
-                                                                            setAmount(calcInput);
-                                                                            setCalcInput('');
-                                                                            setShowCalc(false);
-                                                                        }
-                                                                    }}
-                                                                    className="flex-[2] h-12 bg-indigo-600 text-white rounded-[16px] font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95"
-                                                                >
-                                                                    Apply
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                </>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                                                                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1011] p-6 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[35px] shadow-2xl w-[300px]"
+                                                            >
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-center justify-between px-2 mb-2">
+                                                                        <span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Calculator</span>
+                                                                        <button onClick={() => setShowCalc(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+                                                                    </div>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={calcInput} 
+                                                                        readOnly 
+                                                                        placeholder="0"
+                                                                        className="w-full h-14 px-5 bg-gray-50 dark:bg-slate-900 rounded-[20px] text-right font-mono font-bold text-2xl outline-none text-slate-700 dark:text-slate-200 mb-2 shadow-inner"
+                                                                    />
+                                                                    <div className="grid grid-cols-4 gap-2">
+                                                                        {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
+                                                                            <button
+                                                                                key={btn}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    if (btn === 'C') setCalcInput('');
+                                                                                    else setCalcInput(prev => prev + btn);
+                                                                                }}
+                                                                                className={`h-12 rounded-[16px] font-bold text-lg flex items-center justify-center transition-all ${
+                                                                                    ['/','*','-','+'].includes(btn) 
+                                                                                        ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 active:scale-95' 
+                                                                                        : btn === 'C'
+                                                                                            ? 'bg-rose-50 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 active:scale-95'
+                                                                                            : 'bg-gray-50 border border-gray-100 dark:bg-slate-700/50 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:border-gray-200 active:scale-95'
+                                                                                }`}
+                                                                            >
+                                                                                {btn}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                    <div className="flex gap-2 mt-2">
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => {
+                                                                                try {
+                                                                                    // eslint-disable-next-line
+                                                                                    const result = Function('"use strict";return (' + calcInput + ')')();
+                                                                                    if (isNaN(result) || !isFinite(result)) throw new Error('Invalid');
+                                                                                    setCalcInput(String(Number(result).toFixed(2)));
+                                                                                } catch {
+                                                                                    const old = calcInput;
+                                                                                    setCalcInput('Error');
+                                                                                    setTimeout(() => setCalcInput(old), 1000);
+                                                                                }
+                                                                            }}
+                                                                            className="flex-1 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-[16px] font-black text-lg hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-all active:scale-95"
+                                                                        >
+                                                                            =
+                                                                        </button>
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => {
+                                                                                try {
+                                                                                    // eslint-disable-next-line
+                                                                                    let resStr = calcInput;
+                                                                                    // eslint-disable-next-line
+                                                                                    const result = Function('"use strict";return (' + calcInput + ')')();
+                                                                                    if (!isNaN(result) && isFinite(result)) {
+                                                                                        resStr = Number(result).toFixed(2);
+                                                                                    }
+                                                                                    setAmount(resStr);
+                                                                                    setCalcInput('');
+                                                                                    setShowCalc(false);
+                                                                                } catch {
+                                                                                    setAmount(calcInput);
+                                                                                    setCalcInput('');
+                                                                                    setShowCalc(false);
+                                                                                }
+                                                                            }}
+                                                                            className="flex-[2] h-12 bg-indigo-600 text-white rounded-[16px] font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95"
+                                                                        >
+                                                                            Apply
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+                                                        </>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
 
-                                <div className="group">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <label className="text-[10px] font-black uppercase text-slate-400 ml-2 group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
-                                        <button type="button" onClick={() => setShowManageWallets(true)} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded-md">
-                                            <Settings size={12} /> Manage
-                                        </button>
+                                        <div className="group">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 group-focus-within:text-indigo-600 transition-colors">Asset / Wallet</label>
+                                                <button type="button" onClick={() => setShowManageWallets(true)} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded-md">
+                                                    <Settings size={12} /> Manage
+                                                </button>
+                                            </div>
+                                            <div className="relative">
+                                                <AutocompleteSearch
+                                                    value={paymentMethod}
+                                                    onChange={setPaymentMethod}
+                                                    options={Array.from(new Set([...paymentOptions, 'Cash', 'Credit Card', 'Debit Card']))}
+                                                    placeholder="Method (e.g. Card, Cash)"
+                                                    icon={Wallet}
+                                                    inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="relative">
-                                        <AutocompleteSearch
-                                            value={paymentMethod}
-                                            onChange={setPaymentMethod}
-                                            options={Array.from(new Set([...paymentOptions, 'Cash', 'Credit Card', 'Debit Card']))}
-                                            placeholder="Method (e.g. Card, Cash)"
-                                            icon={Wallet}
-                                            inputClassName="w-full h-16 pl-14 pr-12 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            <CategorySelector selectedId={categoryId} onSelect={setCategoryId} />
+                                    <CategorySelector selectedId={categoryId} onSelect={setCategoryId} />
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="group">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Date</label>
-                                    <div className="relative">
-                                        <CalendarIcon size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                        <input
-                                            type="date"
-                                            value={date}
-                                            onChange={(e) => setDate(e.target.value)}
-                                            className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200 font-mono text-[10px] tracking-widest uppercase"
-                                        />
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="group">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Date</label>
+                                            <div className="relative">
+                                                <CalendarIcon size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                                <input
+                                                    type="date"
+                                                    value={date}
+                                                    onChange={(e) => setDate(e.target.value)}
+                                                    className="w-full h-16 pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200 font-mono text-[10px] tracking-widest uppercase"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="group">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Memo</label>
+                                            <div className="relative h-16">
+                                                <FileText size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
+                                                <input
+                                                    placeholder="Quick note..."
+                                                    value={notes}
+                                                    onChange={(e) => setNotes(e.target.value)}
+                                                    className="w-full h-full pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="group">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block group-focus-within:text-indigo-600 transition-colors">Memo</label>
-                                    <div className="relative h-16">
-                                        <FileText size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" />
-                                        <input
-                                            placeholder="Quick note..."
-                                            value={notes}
-                                            onChange={(e) => setNotes(e.target.value)}
-                                            className="w-full h-full pl-14 pr-6 bg-gray-50 dark:bg-slate-800/80 rounded-[28px] text-sm font-bold focus:ring-4 focus:ring-indigo-100/50 outline-none border-2 border-transparent focus:border-indigo-100 transition-all dark:text-slate-200"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
 
-                            <button
-                                disabled={loading}
-                                type="submit"
-                                className={`w-full h-20 rounded-[35px] font-black text-sm uppercase tracking-[0.3em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl mt-6 disabled:opacity-50 ${isIncome ? 'bg-emerald-500 shadow-emerald-200 text-white' : 'bg-indigo-950 shadow-indigo-200 text-white'}`}
-                            >
-                                {loading ? (
-                                    <div className="w-6 h-6 border-4 border-white/40 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <>
-                                        {editEntry ? <Check size={24} /> : <Plus size={24} />}
-                                        {editEntry ? 'Save Changes' : `Secure ${isIncome ? 'Saving' : 'Expense'}`}
-                                    </>
-                                )}
-                            </button>
-                        </form>
+                                    <button
+                                        disabled={loading}
+                                        type="submit"
+                                        className={`w-full h-20 rounded-[35px] font-black text-sm uppercase tracking-[0.3em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl mt-6 disabled:opacity-50 ${isIncome ? 'bg-emerald-500 shadow-emerald-200 text-white' : 'bg-indigo-950 shadow-indigo-200 text-white'}`}
+                                    >
+                                        {loading ? (
+                                            <div className="w-6 h-6 border-4 border-white/40 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                {editEntry ? <Check size={24} /> : <Plus size={24} />}
+                                                {editEntry ? 'Save Changes' : `Secure ${isIncome ? 'Saving' : 'Expense'}`}
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                            </>
+                        )}
                     </motion.div>
-                    
                     <AnimatePresence>
                         {showManageWallets && <ManagePaymentMethods onClose={() => setShowManageWallets(false)} />}
                     </AnimatePresence>

@@ -41,6 +41,7 @@ export interface FinanceBudget {
     category_id?: string | null;
     month: number;
     year: number;
+    period?: 'monthly' | 'yearly';
 }
 
 interface FinanceStore {

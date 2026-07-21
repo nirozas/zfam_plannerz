@@ -63,9 +63,20 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
         
         const currentMonth = month === 'all' ? new Date().getMonth() : month;
         const currentYear = year === 'all' ? new Date().getFullYear() : year;
+        const isYearly = viewMode === 'annual';
         
-        const totalSpendingPlan = budgets.find(b => b.type === 'spending' && !b.category_id && b.month === currentMonth && b.year === currentYear)?.amount || 0;
-        const savingPlan = budgets.find(b => b.type === 'saving' && b.month === currentMonth && b.year === currentYear)?.amount || 0;
+        const totalSpendingPlan = budgets.find(b => 
+            b.type === 'spending' && 
+            !b.category_id && 
+            b.year === currentYear && 
+            (isYearly ? b.period === 'yearly' : (b.month === currentMonth && b.period !== 'yearly'))
+        )?.amount || 0;
+        
+        const savingPlan = budgets.find(b => 
+            b.type === 'saving' && 
+            b.year === currentYear && 
+            (isYearly ? b.period === 'yearly' : (b.month === currentMonth && b.period !== 'yearly'))
+        )?.amount || 0;
 
         // Category Trends
         const isAllCats = analyzedCategory === 'all';
@@ -80,7 +91,12 @@ export const FinanceAnalysis: React.FC<Props> = ({ fromDate, toDate, month, year
                 return !e.is_income && isMatch && !isSaving(e);
             }).reduce((sum, e) => sum + Number(e.amount), 0);
             
-            const budget = budgets.find(b => b.type === 'spending' && b.category_id === cat.id && b.month === currentMonth && b.year === currentYear)?.amount;
+            const budget = budgets.find(b => 
+                b.type === 'spending' && 
+                b.category_id === cat.id && 
+                b.year === currentYear && 
+                (isYearly ? b.period === 'yearly' : (b.month === currentMonth && b.period !== 'yearly'))
+            )?.amount;
             
             return {
                 name: cat.name,

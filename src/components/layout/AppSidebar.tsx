@@ -60,12 +60,11 @@ export const AppSidebar: React.FC = () => {
         window.location.href = '/auth';
     };
 
-    const handleDriveClick = async () => {
-        try {
-            if (signedIn) await disconnect();
-            else await connect();
-        } catch (e: any) {
-            alert(e.message || 'Google Drive connection failed');
+    const handleDriveClick = () => {
+        if (signedIn) {
+            disconnect().catch(e => alert(e.message || 'Disconnect failed'));
+        } else {
+            connect().catch(e => alert(e.message || 'Google Drive connection failed'));
         }
     };
 

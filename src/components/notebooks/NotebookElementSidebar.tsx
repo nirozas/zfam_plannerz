@@ -50,7 +50,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
         onClick={onClose}
       />
       {/* Sidebar */}
-      <div className="fixed lg:static right-0 top-0 bottom-0 z-[201] lg:z-auto w-[85vw] max-w-[360px] lg:w-[360px] h-full bg-white border-l border-slate-200 flex flex-col p-5 flex-shrink-0 animate-in fade-in slide-in-from-right-4 duration-300 shadow-2xl lg:shadow-none">
+      <div className="fixed lg:static right-0 top-0 bottom-0 z-[201] lg:z-auto w-[85vw] max-w-[180px] lg:w-[180px] h-full bg-white border-l border-slate-200 flex flex-col p-3 flex-shrink-0 animate-in fade-in slide-in-from-right-4 duration-300 shadow-2xl lg:shadow-none">
       {/* Mini Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -106,30 +106,30 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
               onChange={(v: number) => onUpdateElement(selectedElement.id, { rotation: v })} 
             />
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button 
                 onClick={() => onUpdateElement(selectedElement.id, { rotation: (selectedElement.rotation || 0) + 90 })}
-                className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition-all"
               >
-                <RotateCw size={12} className="text-slate-600" />
-                <span className="text-[8px] font-black uppercase">+90°</span>
+                <RotateCw size={10} className="text-slate-600" />
+                <span className="text-[7px] font-black uppercase">+90°</span>
               </button>
               <button 
                 onClick={() => onUpdateElement(selectedElement.id, { flipX: !selectedElement.flipX })}
-                className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition-all"
               >
-                <FlipHorizontal size={12} className="text-slate-600" />
-                <span className="text-[8px] font-black uppercase">Flip</span>
+                <FlipHorizontal size={10} className="text-slate-600" />
+                <span className="text-[7px] font-black uppercase">Flip</span>
               </button>
             </div>
           </div>
 
-          <div className="bg-slate-50 p-3 rounded-2xl flex items-center justify-between border border-slate-100">
+          <div className="bg-slate-50 p-2 rounded-xl flex flex-col gap-1 border border-slate-100">
             <span className="text-[8px] font-black uppercase text-slate-400">Scale</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => onUpdateElement(selectedElement.id, { width: (selectedElement.width || 100) * 0.9, height: (selectedElement.height || 100) * 0.9 })} className="text-slate-400 hover:text-indigo-600"><MinusCircle size={16} /></button>
-              <span className="text-[10px] font-black w-8 text-center">{Math.round(((selectedElement.width || 100) / 100) * 100)}%</span>
-              <button onClick={() => onUpdateElement(selectedElement.id, { width: (selectedElement.width || 100) * 1.1, height: (selectedElement.height || 100) * 1.1 })} className="text-slate-400 hover:text-indigo-600"><PlusCircle size={16} /></button>
+            <div className="flex items-center justify-between w-full">
+              <button onClick={() => onUpdateElement(selectedElement.id, { width: (selectedElement.width || 100) * 0.9, height: (selectedElement.height || 100) * 0.9 })} className="text-slate-400 hover:text-indigo-600"><MinusCircle size={14} /></button>
+              <span className="text-[10px] font-black text-center">{Math.round(((selectedElement.width || 100) / 100) * 100)}%</span>
+              <button onClick={() => onUpdateElement(selectedElement.id, { width: (selectedElement.width || 100) * 1.1, height: (selectedElement.height || 100) * 1.1 })} className="text-slate-400 hover:text-indigo-600"><PlusCircle size={14} /></button>
             </div>
           </div>
         </section>
@@ -147,7 +147,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
                     <button 
                       key={c}
                       onClick={() => onUpdateElement(selectedElement.id, { fill: c })}
-                      className={`w-6 h-6 rounded-lg border-2 transition-all ${selectedElement.fill === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
+                      className={`w-4 h-4 rounded border-2 transition-all ${selectedElement.fill === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -155,7 +155,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
                     type="color" 
                     value={selectedElement.fill || '#4f46e5'} 
                     onChange={(e) => onUpdateElement(selectedElement.id, { fill: e.target.value })}
-                    className="w-6 h-6 rounded-lg overflow-hidden border-2 border-slate-100 cursor-pointer"
+                    className="w-4 h-4 rounded overflow-hidden border-2 border-slate-100 cursor-pointer p-0 bg-transparent"
                   />
                 </div>
               </div>
@@ -167,7 +167,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
                     <button 
                       key={c}
                       onClick={() => onUpdateElement(selectedElement.id, { stroke: c })}
-                      className={`w-6 h-6 rounded-lg border-2 transition-all ${selectedElement.stroke === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
+                      className={`w-4 h-4 rounded border-2 transition-all ${selectedElement.stroke === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -194,7 +194,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
 
             <div>
               <span className="text-[8px] font-black uppercase text-slate-400 block mb-2">Change Shape</span>
-              <div className="grid grid-cols-7 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 {[
                   { id: 'rect', icon: <Square size={10} /> },
                   { id: 'circle', icon: <Circle size={10} /> },
@@ -251,7 +251,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
                     <button 
                       key={c}
                       onClick={() => onUpdateElement(selectedElement.id, { stroke: c })}
-                      className={`w-6 h-6 rounded-lg border-2 transition-all ${selectedElement.stroke === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
+                      className={`w-4 h-4 rounded border-2 transition-all ${selectedElement.stroke === c ? 'border-indigo-600 scale-110 shadow-lg' : 'border-slate-100'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -259,7 +259,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
                     type="color" 
                     value={selectedElement.stroke || '#1e293b'} 
                     onChange={(e) => onUpdateElement(selectedElement.id, { stroke: e.target.value })}
-                    className="w-6 h-6 rounded-lg overflow-hidden border-2 border-slate-100 cursor-pointer"
+                    className="w-4 h-4 rounded overflow-hidden border-2 border-slate-100 cursor-pointer p-0 bg-transparent"
                   />
                 </div>
               </div>

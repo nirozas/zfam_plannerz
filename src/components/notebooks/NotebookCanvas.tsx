@@ -25,6 +25,7 @@ interface NotebookCanvasProps {
   pageTitle?: string;
   onUpdateElements: (elements: NotebookElement[]) => void;
   onSelectElement: (id: string | null) => void;
+  onDoubleClickElement?: (id: string) => void;
   activeTool: string;
   setActiveTool: (tool: any) => void;
   brushSettings: { color: string; width: number; opacity: number; penType?: string };
@@ -76,6 +77,7 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   pageTitle,
   onUpdateElements,
   onSelectElement,
+  onDoubleClickElement,
   activeTool,
   setActiveTool,
   brushSettings,
@@ -629,6 +631,7 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                   el={el} 
                   activeTool={activeTool} 
                   onSelect={() => onSelectElement(el.id)} 
+                  onDoubleClick={() => onDoubleClickElement?.(el.id)}
                   onUpdate={(updates: any) => {
                     const newElements = elements.map(item => item.id === el.id ? { ...item, ...updates } : item);
                     onUpdateElements(newElements);
@@ -749,6 +752,8 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                   }}
                   onClick={() => onSelectElement(el.id)}
                   onTap={() => onSelectElement(el.id)}
+                  onDblClick={() => onDoubleClickElement?.(el.id)}
+                  onDblTap={() => onDoubleClickElement?.(el.id)}
                 >
                   {renderShape()}
                 </Group>
@@ -805,6 +810,8 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
               }}
               onClick={() => onSelectElement(el.id)}
               onTap={() => onSelectElement(el.id)}
+              onDblClick={() => onDoubleClickElement?.(el.id)}
+              onDblTap={() => onDoubleClickElement?.(el.id)}
             >
               <Line
                 points={el.points}
@@ -976,7 +983,7 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
   );
 });
 
-const NotebookImage = ({ el, activeTool, onSelect, onUpdate }: any) => {
+const NotebookImage = ({ el, activeTool, onSelect, onDoubleClick, onUpdate }: any) => {
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   
   useEffect(() => {
@@ -1114,6 +1121,8 @@ const NotebookImage = ({ el, activeTool, onSelect, onUpdate }: any) => {
           bgThreshold={el.bgThreshold || 240}
           onClick={onSelect}
           onTap={onSelect}
+          onDblClick={onDoubleClick}
+          onDblTap={onDoubleClick}
         />
       )}
     </Group>

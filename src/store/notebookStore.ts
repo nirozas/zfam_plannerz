@@ -104,6 +104,7 @@ export const useNotebookStore = create<NotebookState>()(
         } catch (error) {
           console.error("Drive connection failed", error);
           if (!silent) set({ isDriveConnected: false });
+          throw error;
         }
       },
 

@@ -80,14 +80,14 @@
 
 
 .property-bar-top-panel {
-  height: 48px;
+  height: clamp(40px, 6vh, 56px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 clamp(6px, 2vw, 16px);
   border-bottom: 1px solid #f1f5f9;
   background: #f8fafc;
-  gap: 8px;
+  gap: clamp(4px, 1vw, 10px);
   width: 100%;
   max-width: 100%;
   flex-shrink: 0;
@@ -100,12 +100,12 @@
 
 
 .property-bar-tools {
-  min-height: 52px;
+  min-height: clamp(44px, 7vh, 60px);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  padding: 6px 16px;
-  gap: 16px;
+  padding: clamp(4px, 1vh, 8px) clamp(8px, 2vw, 16px);
+  gap: clamp(8px, 1.5vw, 16px);
   overflow: visible;
 }
 
@@ -263,8 +263,8 @@
 
 
 .notebook-sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: clamp(220px, 22vw, 260px);
+  min-width: 200px;
   background: white;
   border-right: 1px solid #f1f5f9;
   display: flex;
@@ -297,8 +297,8 @@
   flex-shrink: 0;
 }
 
-/* ─── Tablet (768px - 1024px) ──────────────────────────────────── */
-@media (max-width: 1024px) {
+/* ─── Tablet (768px - 1280px) ──────────────────────────────────── */
+@media (max-width: 1280px) {
   /* Sidebar becomes a slide-in overlay from the left */
   .notebook-sidebar {
     position: fixed;
@@ -347,7 +347,9 @@
 /* ─── Mobile (< 768px) ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   .notebook-sidebar {
-    left: 0; /* App Sidebar moves to bottom, so no left offset needed */
+    left: 0;
+    width: 80vw;
+    max-width: 300px;
   }
 
   .notebooks-container {
@@ -361,16 +363,14 @@
     overflow: hidden;
   }
 
-  /* Compact mobile top nav - merged into property bar */
   .notebook-top-nav {
     display: none;
   }
 
-  /* Compact mobile property bar */
   .notebook-property-bar {
-    height: 52px;
-    padding: 0 12px;
-    gap: 12px;
+    height: 48px;
+    padding: 0 8px;
+    gap: 8px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     width: 100%;
@@ -378,10 +378,27 @@
     top: 0;
   }
 
+  /* Property top panel — tighter on mobile */
+  .property-bar-top-panel {
+    height: 44px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  /* Tools bar — wrap nicely, smaller gap */
+  .property-bar-tools {
+    min-height: 40px;
+    padding: 4px 8px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Side toolbar becomes bottom bar on mobile */
   .notebook-side-toolbar {
     width: 100%;
-    height: 64px;
+    height: 60px;
     flex-direction: row;
     border-right: none;
     border-top: 1px solid rgba(226, 232, 240, 0.8);
@@ -389,10 +406,19 @@
     left: 0;
     right: 0;
     top: auto;
-    padding: 0 16px;
+    padding: 0 8px;
     justify-content: space-around;
     position: fixed;
     border-radius: 20px 20px 0 0;
+    background: white;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+
+  /* Tool buttons on bottom bar */
+  .side-tool-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
   }
 
   .side-tool-btn.active::after {
@@ -405,47 +431,52 @@
     border-radius: 4px 4px 0 0;
   }
 
-
   .toolbar-metadata {
-    display: none; /* hide metadata on very small screens — shown in top nav instead */
+    display: none;
   }
 
   .toolbar-divider {
     display: none;
   }
 
-  /* Make the canvas viewer fill remaining height */
+  /* Canvas viewer bottom padding for toolbars */
   .page-viewer {
     flex: 1;
-    padding-top: 8px;
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); /* space for bottom toolbars */
+    padding-top: 6px;
+    padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Bottom floating navigation buttons on mobile */
   .mobile-page-nav {
     position: fixed;
-    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(130px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     background: white;
-    padding: 8px 16px;
+    padding: 6px 14px;
     border-radius: 100px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.15);
     z-index: 100;
     border: 1px solid #f1f5f9;
   }
+
+  /* Right element sidebar — full-sheet on mobile */
+  .notebook-element-sidebar-mobile {
+    width: 92vw !important;
+    max-width: 340px !important;
+  }
 }
 
-/* ─── Sidebar Toggle Button (mobile only) ─────────────────────── */
+/* ─── Sidebar Toggle Button ────────────────────────────────────── */
 .sidebar-toggle-btn {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: clamp(32px, 4vw, 40px);
+  height: clamp(32px, 4vw, 40px);
   border-radius: 10px;
   background: #f1f5f9;
   border: none;
@@ -459,10 +490,62 @@
   transform: scale(0.95);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1280px) {
   .sidebar-toggle-btn {
     display: flex;
   }
+}
+
+/* ─── Tablet fine-tune (768px-1280px) ─────────────────────────── */
+@media (min-width: 769px) and (max-width: 1280px) {
+  /* Compact toolbar text and buttons */
+  .property-bar-top-panel {
+    height: 46px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .property-bar-tools {
+    min-height: 44px;
+    padding: 4px 10px;
+    gap: 10px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Side toolbar — keep vertical, tighter */
+  .notebook-side-toolbar {
+    width: 56px;
+    padding: 12px 0;
+    gap: 8px;
+  }
+
+  .side-tool-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  /* Right sidebar — narrower on tablets */
+  .notebook-element-sidebar-tablet {
+    width: 160px !important;
+    max-width: 160px !important;
+  }
+
+  /* Sidebar width responsive */
+  .notebook-sidebar {
+    width: clamp(200px, 22vw, 280px);
+  }
+}
+
+/* ─── Scrollbar hiding utility ─────────────────────────────────── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Hide bottom page-nav buttons on desktop (they appear inline) */

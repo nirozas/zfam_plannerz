@@ -17,6 +17,7 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
     const [categoryId, setCategoryId] = React.useState<string | null>(null);
     const [selectedMonths, setSelectedMonths] = React.useState<number[]>([month]);
     const [selectedYear, setSelectedYear] = React.useState(year);
+    const [period, setPeriod] = React.useState<'monthly' | 'yearly'>('monthly');
     const [loading, setLoading] = React.useState(false);
 
     React.useEffect(() => {
@@ -44,7 +45,8 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                     amount: parseFloat(amount),
                     category_id: categoryId || null,
                     month: m,
-                    year: selectedYear
+                    year: selectedYear,
+                    period: period
                 })
             ));
             setAmount('');
@@ -131,14 +133,35 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                                                 className="w-full h-14 pl-12 pr-6 bg-white dark:bg-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none border border-transparent focus:border-indigo-100 transition-all dark:text-slate-200 appearance-none cursor-pointer"
                                             >
                                                 <option value="">Global (All Spending)</option>
-                                                {categories.filter(c => !c.parent_id).map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name} Limit</option>
+                                                {categories.filter(c => !c.parent_id).map(parent => (
+                                                    <React.Fragment key={parent.id}>
+                                                        <option value={parent.id}>{parent.name} Limit</option>
+                                                        {categories.filter(c => c.parent_id === parent.id).map(child => (
+                                                            <option key={child.id} value={child.id}>&nbsp;&nbsp;↳ {child.name} Limit</option>
+                                                        ))}
+                                                    </React.Fragment>
                                                 ))}
                                             </select>
                                         </div>
                                     </div>
                                 )}
 
+                                {/* Period Toggle */}
+                                <div className="grid grid-cols-2 gap-3 p-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-gray-50 dark:border-slate-700">
+                                    <button 
+                                        onClick={() => setPeriod('monthly')}
+                                        className={`h-11 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${period === 'monthly' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400'}`}
+                                    >
+                                        Monthly Budget
+                                    </button>
+                                    <button 
+                                        onClick={() => setPeriod('yearly')}
+                                        className={`h-11 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${period === 'yearly' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'text-slate-400'}`}
+                                    >
+                                        Yearly Budget
+                                    </button>
+                                </div>
+                                
                                 {/* Amount */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="group">
@@ -173,27 +196,29 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                                 </div>
 
                                 {/* Month Multi-select */}
-                                <div className="group">
-                                    <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-3 block">Target Months</label>
-                                    <div className="grid grid-cols-6 gap-2">
-                                        {monthNames.map((name, index) => {
-                                            const isSelected = selectedMonths.includes(index);
-                                            return (
-                                                <button
-                                                    key={name}
-                                                    onClick={() => toggleMonth(index)}
-                                                    className={`h-10 rounded-xl text-[8px] font-black uppercase transition-all border ${
-                                                        isSelected 
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100' 
-                                                            : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200'
-                                                    }`}
-                                                >
-                                                    {name}
-                                                </button>
-                                            );
-                                        })}
+                                {period === 'monthly' && (
+                                    <div className="group">
+                                        <label className="text-[8px] font-black uppercase text-slate-400 ml-2 mb-3 block">Target Months</label>
+                                        <div className="grid grid-cols-6 gap-2">
+                                            {monthNames.map((name, index) => {
+                                                const isSelected = selectedMonths.includes(index);
+                                                return (
+                                                    <button
+                                                        key={name}
+                                                        onClick={() => toggleMonth(index)}
+                                                        className={`h-10 rounded-xl text-[8px] font-black uppercase transition-all border ${
+                                                            isSelected 
+                                                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100' 
+                                                                : 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200'
+                                                        }`}
+                                                    >
+                                                        {name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 <button
                                     onClick={handleSave}
@@ -231,7 +256,8 @@ export const PlansModal: React.FC<Props> = ({ isOpen, onClose, month, year }) =>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[9px] font-black uppercase text-indigo-950/80 dark:text-slate-100">
-                                                        {isSpending ? (category ? `${category.name} Budget` : 'Total Budget') : 'Monthly Savings'}
+                                                        {budget.period === 'yearly' ? 'Yearly ' : 'Monthly '}
+                                                        {isSpending ? (category ? `${category.name} Budget` : 'Total Budget') : 'Savings'}
                                                     </span>
                                                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Target reached at 100%</span>
                                                 </div>

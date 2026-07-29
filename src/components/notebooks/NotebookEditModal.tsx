@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Type } from 'lucide-react';
 import { useNotebookStore } from '../../store/notebookStore';
 import { PageOrientation, PageTemplate } from '../../types/notebook';
+import { LocationSelector } from './LocationSelector';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -36,7 +37,30 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
 
   useEffect(() => {
     setTitle(initialTitle);
-  }, [initialTitle, itemId]);
+
+    // Default target notebook and parent based on current location
+    if (itemType === 'section') {
+      const nb = notebooks.find(n => 
+        n.sections.some(s => s.id === itemId) ||
+        n.sectionGroups.some(sg => sg.sections.some(s => s.id === itemId))
+      );
+      if (nb) {
+        setTargetNotebookId(nb.id);
+        const group = nb.sectionGroups.find(sg => sg.sections.some(s => s.id === itemId));
+        setParentId(group ? group.id : '');
+      }
+    } else if (itemType === 'page') {
+      const nb = notebooks.find(n => 
+        n.sections.some(s => s.pages.some(p => p.id === itemId)) ||
+        n.sectionGroups.some(sg => sg.sections.some(s => s.pages.some(p => p.id === itemId)))
+      );
+      if (nb) {
+        const sec = nb.sections.find(s => s.pages.some(p => p.id === itemId)) || 
+                    nb.sectionGroups.flatMap(sg => sg.sections).find(s => s.pages.some(p => p.id === itemId));
+        setParentId(sec ? sec.id : '');
+      }
+    }
+  }, [initialTitle, itemId, itemType]); // don't add notebooks to deps to prevent overwrite on save
 
   const [dueDate, setDueDate] = useState('');
   const [pageOrientation, setPageOrientation] = useState<PageOrientation>('portrait');
@@ -149,33 +173,27 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
               
               <div className="space-y-3">
                 {itemType === 'section' && (
-                  <select 
-                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold outline-none"
+                  <LocationSelector 
+                    notebooks={notebooks}
                     value={targetNotebookId}
-                    onChange={(e) => setTargetNotebookId(e.target.value)}
-                  >
-                    <option value="">Keep current notebook</option>
-                    {notebooks.map(nb => <option key={nb.id} value={nb.id}>{nb.name}</option>)}
-                  </select>
+                    onChange={(val) => {
+                      setTargetNotebookId(val);
+                      setParentId(''); // reset parent if notebook changes
+                    }}
+                    type="group"
+                    placeholder="Keep current notebook"
+                  />
                 )}
 
-                <select 
-                  className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold outline-none"
+                <LocationSelector 
+                  notebooks={notebooks}
                   value={parentId}
-                  onChange={(e) => setParentId(e.target.value)}
-                >
-                  <option value="">{itemType === 'page' ? 'Keep current section' : 'Root Section (No Group)'}</option>
-                  {itemType === 'page' && notebooks.flatMap(nb => [
-                    ...nb.sections.map(s => ({ id: s.id, name: `${nb.name} > ${s.name}` })),
-                    ...nb.sectionGroups.flatMap(sg => sg.sections.map(s => ({ id: s.id, name: `${nb.name} > ${sg.name} > ${s.name}` })))
-                  ]).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                  
-                  {itemType === 'section' && targetNotebookId && notebooks.find(n => n.id === targetNotebookId)?.sectionGroups.map(sg => (
-                    <option key={sg.id} value={sg.id}>{sg.name}</option>
-                  ))}
-                </select>
+                  onChange={setParentId}
+                  type={itemType === 'page' ? 'section' : 'group'}
+                  targetNotebookId={itemType === 'section' ? targetNotebookId : undefined}
+                  placeholder={itemType === 'page' ? 'Keep current section' : 'Root Section (No Group)'}
+                  defaultNotebookOpen={targetNotebookId || notebooks[0]?.id}
+                />
               </div>
             </div>
           )}
@@ -184,19 +202,15 @@ export const NotebookEditModal: React.FC<EditModalProps> = ({
             <div className="pt-4 border-t border-slate-100">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Duplicate to Section</label>
               <div className="flex gap-2">
-                <select 
-                  className="flex-1 bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold outline-none"
-                  value={duplicateSectionId}
-                  onChange={(e) => setDuplicateSectionId(e.target.value)}
-                >
-                  <option value="">Select destination section...</option>
-                  {notebooks.flatMap(nb => [
-                    ...nb.sections.map(s => ({ id: s.id, name: `${nb.name} > ${s.name}` })),
-                    ...nb.sectionGroups.flatMap(sg => sg.sections.map(s => ({ id: s.id, name: `${nb.name} > ${sg.name} > ${s.name}` })))
-                  ]).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <LocationSelector 
+                    notebooks={notebooks}
+                    value={duplicateSectionId}
+                    onChange={setDuplicateSectionId}
+                    type="section"
+                    placeholder="Select destination section..."
+                  />
+                </div>
                 <button 
                   onClick={handleDuplicate}
                   disabled={!duplicateSectionId}

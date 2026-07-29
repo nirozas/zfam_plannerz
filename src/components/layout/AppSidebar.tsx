@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Loader2, Bug, Settings, Wallet, Book } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Bug, Settings, Wallet, Book } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useNotebookStore } from '../../store/notebookStore';
 import { supabase } from '../../supabase/client';
@@ -8,7 +8,7 @@ import './AppSidebar.css';
 
 export const AppSidebar: React.FC = () => {
     const { user, userProfile, setBugModalOpen } = usePlannerStore();
-    const { isDriveConnected: signedIn, isLoading: driveLoading, connectDrive: connect } = useNotebookStore();
+    const { isDriveConnected: signedIn, connectDrive: connect } = useNotebookStore();
     const disconnect = async () => {
         const { signOut: clearDrive } = await import('../../lib/googleDrive');
         await clearDrive();
@@ -135,59 +135,9 @@ export const AppSidebar: React.FC = () => {
 
                 {/* Bug Report Button - Moved to popover */}
 
-                {/* Google Drive Connection Button (Desktop) */}
-                <div className="relative group/drive hidden md:flex">
-                    <button
-                        onClick={handleDriveClick}
-                        className="nav-item w-full relative"
-                        style={{ color: signedIn ? '#16a34a' : '#3b82f6' }}
-                    >
-                        {driveLoading ? (
-                            <Loader2 size={20} className="animate-spin" />
-                        ) : (
-                            <div className="relative">
-                                <HardDrive size={20} />
-                                <span
-                                    className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${!signedIn ? 'drive-dot-pending' : ''}`}
-                                    style={{
-                                        background: signedIn ? '#22c55e' : '#f59e0b',
-                                        boxShadow: signedIn ? '0 0 6px #22c55e88' : '0 0 6px #f59e0b88'
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </button>
-                    <div className="pointer-events-none absolute left-[78px] bottom-0 z-[2001] opacity-0 group-hover/drive:opacity-100 translate-x-1 group-hover/drive:translate-x-0 transition-all duration-200">
-                        <div className="bg-white rounded-xl shadow-xl border border-gray-100 px-4 py-3 whitespace-nowrap min-w-[180px]">
-                            <div className="flex items-center gap-2 mb-1">
-                                <HardDrive size={14} style={{ color: signedIn ? '#16a34a' : '#3b82f6' }} />
-                                <span className="text-xs font-black text-gray-800">Google Drive</span>
-                                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: signedIn ? '#dcfce7' : '#fef3c7', color: signedIn ? '#15803d' : '#b45309' }}>
-                                    {driveLoading ? '...' : signedIn ? 'Connected' : 'Disconnected'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Desktop Sign Out / Sign In visibility */}
-                {user ? (
-                    <button
-                        onClick={handleSignOut}
-                        className="nav-item logout text-gray-400 hidden md:flex"
-                        title="Sign Out"
-                    >
-                        <LogOut size={22} />
-                    </button>
-                ) : (
-                    <NavLink
-                        to="/auth"
-                        className="nav-item text-indigo-500 hidden md:flex"
-                        title="Sign In"
-                    >
-                        <User size={22} />
-                    </NavLink>
-                )}
+
+
 
                 {/* Mobile-only icons - simplified or hidden to prevent overcrowding */}
             </nav >
@@ -198,10 +148,10 @@ export const AppSidebar: React.FC = () => {
                     className="avatar-circle cursor-pointer"
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (window.innerWidth <= 768) {
-                            setMobileShow(prev => !prev);
+                        if (!user) {
+                            navigate('/auth');
                         } else {
-                            navigate(user ? '/settings' : '/auth');
+                            setMobileShow(prev => !prev);
                         }
                     }}
                 >

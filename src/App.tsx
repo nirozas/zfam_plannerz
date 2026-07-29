@@ -8,22 +8,44 @@ import { Loader2 } from 'lucide-react'
 import PWABadge from '@/components/pwa/PWABadge'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 
+// Lazy load wrapper to handle chunk errors (e.g. after a new deployment)
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+    lazy(async () => {
+        const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+            window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+        );
+        try {
+            const component = await componentImport();
+            window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+            return component;
+        } catch (error) {
+            if (!pageHasAlreadyBeenForceRefreshed) {
+                // Assume that the error is due to a chunk missing and force a reload
+                window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+                window.location.reload();
+                // Return a Promise that never resolves so Suspense keeps showing the loading fallback
+                return new Promise(() => {});
+            }
+            throw error;
+        }
+    });
+
 // Lazy loaded page components
-const HomePage = lazy(() => import('@/components/home/HomePage'))
-const PlannersPage = lazy(() => import('@/components/dashboard/PlannersPage'))
-const CanvasWorkspace = lazy(() => import('@/components/canvas/CanvasWorkspace').then(m => ({ default: m.CanvasWorkspace })))
-const AuthPage = lazy(() => import('@/components/auth/AuthPage'))
-const SettingsPage = lazy(() => import('@/components/settings/SettingsPage'))
-const ArchivePage = lazy(() => import('@/components/archive/ArchivePage'))
-const LibraryPage = lazy(() => import('@/components/library/LibraryPage'))
-const FavoritesPage = lazy(() => import('@/components/favorites/FavoritesPage'))
-const TasksPage = lazy(() => import('@/components/tasks/TasksPage'))
-const TripsPage = lazy(() => import('@/components/trips/TripsPage'))
-const TripMasterPage = lazy(() => import('@/components/trips/TripMasterPage'))
-const CardsPage = lazy(() => import('@/components/dashboard/CardsPage'))
-const FinancesPage = lazy(() => import('@/pages/FinancesPage'))
-const NotebooksPage = lazy(() => import('@/pages/NotebooksPage'))
-const NotebookSelectorPage = lazy(() => import('@/components/notebooks/NotebookSelectorPage').then(m => ({ default: m.NotebookSelectorPage })))
+const HomePage = lazyWithRetry(() => import('@/components/home/HomePage'))
+const PlannersPage = lazyWithRetry(() => import('@/components/dashboard/PlannersPage'))
+const CanvasWorkspace = lazyWithRetry(() => import('@/components/canvas/CanvasWorkspace').then(m => ({ default: m.CanvasWorkspace })))
+const AuthPage = lazyWithRetry(() => import('@/components/auth/AuthPage'))
+const SettingsPage = lazyWithRetry(() => import('@/components/settings/SettingsPage'))
+const ArchivePage = lazyWithRetry(() => import('@/components/archive/ArchivePage'))
+const LibraryPage = lazyWithRetry(() => import('@/components/library/LibraryPage'))
+const FavoritesPage = lazyWithRetry(() => import('@/components/favorites/FavoritesPage'))
+const TasksPage = lazyWithRetry(() => import('@/components/tasks/TasksPage'))
+const TripsPage = lazyWithRetry(() => import('@/components/trips/TripsPage'))
+const TripMasterPage = lazyWithRetry(() => import('@/components/trips/TripMasterPage'))
+const CardsPage = lazyWithRetry(() => import('@/components/dashboard/CardsPage'))
+const FinancesPage = lazyWithRetry(() => import('@/pages/FinancesPage'))
+const NotebooksPage = lazyWithRetry(() => import('@/pages/NotebooksPage'))
+const NotebookSelectorPage = lazyWithRetry(() => import('@/components/notebooks/NotebookSelectorPage').then(m => ({ default: m.NotebookSelectorPage })))
 
 // Loading fallback for Suspense
 const PageLoader = () => (

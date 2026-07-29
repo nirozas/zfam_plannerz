@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, FolderPlus, FilePlus, Layers, Copy } from 'lucide-react';
 import { useNotebookStore } from '../../store/notebookStore';
+import { LocationSelector } from './LocationSelector';
 
 interface CreateModalProps {
   isOpen: boolean;
@@ -20,6 +21,14 @@ export const NotebookCreateModal: React.FC<CreateModalProps> = ({
   const { addSectionGroup, addSection, addPage } = useNotebookStore();
   const [type, setType] = useState<'group' | 'section' | 'page' | 'subpage'>('page');
   const [name, setName] = useState('');
+  const [parentId, setParentId] = useState<string>('');
+  
+  const notebooks = useNotebookStore(state => state.notebooks);
+
+  React.useEffect(() => {
+    if (type === 'section') setParentId(activeSectionGroupId || '');
+    else if (type === 'page' || type === 'subpage') setParentId(activeSectionId || '');
+  }, [type, activeSectionGroupId, activeSectionId, isOpen]);
 
   if (!isOpen) return null;
 
@@ -30,10 +39,10 @@ export const NotebookCreateModal: React.FC<CreateModalProps> = ({
     if (type === 'group') {
       addSectionGroup(activeNotebookId, name);
     } else if (type === 'section') {
-      addSection(activeNotebookId, activeSectionGroupId, name, '#6366f1');
+      addSection(activeNotebookId, parentId || null, name, '#6366f1');
     } else if (type === 'page' || type === 'subpage') {
-      if (activeSectionId) {
-        addPage(activeSectionId, name, 'portrait', 'blank', type === 'subpage');
+      if (parentId) {
+        addPage(parentId, name, 'portrait', 'blank', type === 'subpage');
       } else {
         alert('Please select a section first');
         return;
@@ -99,6 +108,23 @@ export const NotebookCreateModal: React.FC<CreateModalProps> = ({
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
             </div>
+            
+            {(type === 'section' || type === 'page' || type === 'subpage') && (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">
+                  {type === 'section' ? 'Place in Group' : 'Place in Section'}
+                </label>
+                <LocationSelector 
+                  notebooks={notebooks}
+                  value={parentId}
+                  onChange={setParentId}
+                  type={type === 'section' ? 'group' : 'section'}
+                  targetNotebookId={type === 'section' ? activeNotebookId || undefined : undefined}
+                  placeholder={type === 'section' ? 'Root Section (No Group)' : 'Select a Section...'}
+                  defaultNotebookOpen={activeNotebookId || notebooks[0]?.id}
+                />
+              </div>
+            )}
           </div>
 
           <button 

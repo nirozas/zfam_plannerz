@@ -56,6 +56,10 @@ async function driveFetch(path: string, options: RequestInit = {}) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         console.error('Drive API Error:', error);
+        if (response.status === 401) {
+            signOut();
+            throw new Error('AUTH_EXPIRED');
+        }
         throw new Error(error.error?.message || 'Drive API Request Failed');
     }
 

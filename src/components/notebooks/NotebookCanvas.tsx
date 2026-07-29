@@ -59,31 +59,33 @@ const CustomBackgroundRemoval = function (this: any, imageData: any) {
   }
 };
 
-export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
-  elements,
-  template,
-  orientation,
-  pageBackgroundColor,
-  templateSpacing,
-  templateColor,
-  backgroundImage,
-  backgroundOpacity,
-  titleSlot,
-  titleFontFamily,
-  titleFontSize,
-  titleColor,
-  titleText,
-  onUpdateTitleText,
-  pageTitle,
-  onUpdateElements,
-  onSelectElement,
-  onDoubleClickElement,
-  activeTool,
-  setActiveTool,
-  brushSettings,
-  textSettings,
-  selectedId
-}, ref) => {
+export const NotebookCanvas = forwardRef((props: NotebookCanvasProps, ref: any) => {
+  const {
+    elements,
+    template,
+    orientation,
+    pageBackgroundColor,
+    templateSpacing,
+    templateColor,
+    backgroundImage,
+    backgroundOpacity,
+    titleSlot,
+    titleFontFamily,
+    titleFontSize,
+    titleColor,
+    titleText,
+    onUpdateTitleText,
+    pageTitle,
+    onUpdateElements,
+    onSelectElement,
+    onDoubleClickElement,
+    activeTool,
+    setActiveTool,
+    brushSettings,
+    textSettings,
+    selectedId
+  } = props;
+
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -269,11 +271,10 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
       const emoji = e.detail;
       const pos = { x: 100, y: 100 }; // Default position
       if (stageRef.current) {
-        const stagePos = stageRef.current.getPointerPosition();
-        if (stagePos) {
-          pos.x = stagePos.x;
-          pos.y = stagePos.y;
-        }
+        const stage = stageRef.current;
+        // Always place in center of current view when inserted from toolbar
+        pos.x = -stage.x() / stage.scaleX() + (stage.width() || window.innerWidth) / 2 / stage.scaleX();
+        pos.y = -stage.y() / stage.scaleY() + (stage.height() || window.innerHeight) / 2 / stage.scaleY();
       }
 
       const newEmoji: NotebookElement = {
@@ -294,6 +295,47 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
     window.addEventListener('insert-emoji', handleEmoji);
     return () => window.removeEventListener('insert-emoji', handleEmoji);
   }, [elements, onUpdateElements, onSelectElement]);
+
+  // Listen for shape insertion events
+  useEffect(() => {
+    const handleShape = (e: any) => {
+      const shapeType = e.detail;
+      const pos = { x: 100, y: 100 }; // Default position
+      if (stageRef.current) {
+        const stage = stageRef.current;
+        // Always place in center of current view when inserted from toolbar
+        pos.x = -stage.x() / stage.scaleX() + (stage.width() || window.innerWidth) / 2 / stage.scaleX();
+        pos.y = -stage.y() / stage.scaleY() + (stage.height() || window.innerHeight) / 2 / stage.scaleY();
+      }
+
+      const newShape: NotebookElement = {
+        id: `shape-${Date.now()}`,
+        type: 'shape',
+        shapeType: shapeType,
+        x: pos.x - 50,
+        y: pos.y - 50,
+        width: 100,
+        height: 100,
+        fill: '#4f46e5', // Default to Indigo
+        stroke: '#4f46e5',
+        strokeWidth: 2,
+        zIndex: elements.length,
+      };
+
+      if (shapeType.startsWith('callout-')) {
+        // Initialize with one control point for the tail
+        // Positioned outside the bottom-left of the bounding box
+        newShape.controlPoints = [{ x: 20, y: 120 }];
+      }
+
+      onUpdateElements([...elements, newShape]);
+      onSelectElement(newShape.id);
+      setActiveTool('select');
+    };
+
+    window.addEventListener('insert-shape', handleShape);
+    return () => window.removeEventListener('insert-shape', handleShape);
+  }, [elements, onUpdateElements, onSelectElement, setActiveTool]);
 
   // Listen for text formatting events (bullets/checkboxes) from toolbar
   useEffect(() => {
@@ -655,14 +697,121 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
               const renderShape = () => {
                 const w = el.width || 100;
                 const h = el.height || 100;
-                
-                // Common icons & basic shapes
+
+                const PATHS: Record<string, string> = {
+                  'rect-snip': 'M0,20 L20,0 L100,0 L100,100 L0,100 Z',
+                  'triangle-right': 'M0,100 L100,100 L0,0 Z',
+                  'parallelogram': 'M20,0 L100,0 L80,100 L0,100 Z',
+                  'trapezoid': 'M20,0 L80,0 L100,100 L0,100 Z',
+                  'pie': 'M50,50 L100,50 A50,50 0 1,0 50,0 Z',
+                  'chord': 'M15,15 A50,50 0 1,0 85,85 L15,15 Z',
+                  'teardrop': 'M50,0 C50,0 0,50 0,75 A50,25 0 0,0 100,75 C100,50 50,0 50,0 Z',
+                  'frame': 'M0,0 L100,0 L100,100 L0,100 Z M20,20 L20,80 L80,80 L80,20 Z',
+                  'half-frame': 'M0,0 L100,0 L100,20 L20,20 L20,100 L0,100 Z',
+                  'l-shape': 'M0,0 L20,0 L20,80 L100,80 L100,100 L0,100 Z',
+                  'cross': 'M30,0 L70,0 L70,30 L100,30 L100,70 L70,70 L70,100 L30,100 L30,70 L0,70 L0,30 L30,30 Z',
+                  'cylinder': 'M0,20 C0,0 100,0 100,20 L100,80 C100,100 0,100 0,80 Z M0,20 C0,40 100,40 100,20',
+                  'cube': 'M0,30 L50,0 L100,30 L100,100 L50,70 L0,100 Z M50,0 L50,70 M0,30 L50,70 M100,30 L50,70',
+                  'donut': 'M0,50 A50,50 0 1,0 100,50 A50,50 0 1,0 0,50 M25,50 A25,25 0 1,1 75,50 A25,25 0 1,1 25,50',
+                  'no-symbol': 'M0,50 A50,50 0 1,0 100,50 A50,50 0 1,0 0,50 M15,15 L85,85',
+                  'smiley': 'M0,50 A50,50 0 1,0 100,50 A50,50 0 1,0 0,50 M30,35 A10,10 0 1,0 30,36 M70,35 A10,10 0 1,0 70,36 M30,65 C30,85 70,85 70,65',
+                  'heart': 'M50,88 C50,88 5,55 5,30 C5,15 15,5 30,5 C40,5 45,10 50,15 C55,10 60,5 70,5 C85,5 95,15 95,30 C95,55 50,88 50,88 Z',
+                  'lightning': 'M50,0 L0,60 L40,60 L30,100 L90,40 L50,40 Z',
+                  'sun': 'M50,20 A30,30 0 1,0 50,80 A30,30 0 1,0 50,20 M50,0 L50,10 M50,90 L50,100 M0,50 L10,50 M90,50 L100,50 M15,15 L22,22 M78,78 L85,85 M15,85 L22,78 M78,15 L85,22',
+                  'moon': 'M60,0 C20,0 0,40 30,80 C10,50 40,20 80,40 C80,20 70,10 60,0 Z',
+                  'cloud': 'M25 60 A20 20 0 0 1 25 20 A20 20 0 0 1 45 30 A20 20 0 0 1 75 20 A20 20 0 0 1 95 40 A20 20 0 0 1 75 60 Z',
+                  'curve': 'M0,50 Q25,0 50,50 T100,50',
+                  
+                  'block-arrow-right': 'M0,30 L60,30 L60,10 L100,50 L60,90 L60,70 L0,70 Z',
+                  'block-arrow-left': 'M100,30 L40,30 L40,10 L0,50 L40,90 L40,70 L100,70 Z',
+                  'block-arrow-up': 'M30,100 L30,40 L10,40 L50,0 L90,40 L70,40 L70,100 Z',
+                  'block-arrow-down': 'M30,0 L30,60 L10,60 L50,100 L90,60 L70,60 L70,0 Z',
+                  'block-arrow-left-right': 'M20,50 L40,30 L40,40 L60,40 L60,30 L80,50 L60,70 L60,60 L40,60 L40,70 Z',
+                  'block-arrow-up-down': 'M50,20 L30,40 L40,40 L40,60 L30,60 L50,80 L70,60 L60,60 L60,40 L70,40 Z',
+                  'block-arrow-quad': 'M40,40 L40,20 L30,20 L50,0 L70,20 L60,20 L60,40 L80,40 L80,30 L100,50 L80,70 L80,60 L60,60 L60,80 L70,80 L50,100 L30,80 L40,80 L40,60 L20,60 L20,70 L0,50 L20,30 L20,40 Z',
+                  'block-arrow-u-turn': 'M0,30 L30,30 C60,30 60,70 30,70 L30,50 L0,80 L30,110 L30,90 C80,90 80,10 30,10 L0,10 Z',
+
+                  'eq-plus': 'M30,30 L30,0 L70,0 L70,30 L100,30 L100,70 L70,70 L70,100 L30,100 L30,70 L0,70 L0,30 Z',
+                  'eq-minus': 'M0,30 L100,30 L100,70 L0,70 Z',
+                  'eq-multiply': 'M20,0 L50,30 L80,0 L100,20 L70,50 L100,80 L80,100 L50,70 L20,100 L0,80 L30,50 L0,20 Z',
+                  'eq-divide': 'M30,15 A15,15 0 1,0 70,15 A15,15 0 1,0 30,15 M0,40 L100,40 L100,60 L0,60 Z M30,85 A15,15 0 1,0 70,85 A15,15 0 1,0 30,85',
+                  'eq-equal': 'M0,15 L100,15 L100,40 L0,40 Z M0,60 L100,60 L100,85 L0,85 Z',
+                  'eq-not-equal': 'M0,15 L100,15 L100,40 L0,40 Z M0,60 L100,60 L100,85 L0,85 Z M70,0 L85,0 L30,100 L15,100 Z',
+
+                  'flow-process': 'M0,0 L100,0 L100,100 L0,100 Z',
+                  'flow-decision': 'M50,0 L100,50 L50,100 L0,50 Z',
+                  'flow-data': 'M20,0 L100,0 L80,100 L0,100 Z',
+                  'flow-document': 'M0,0 L100,0 L100,75 C75,100 25,50 0,75 Z',
+                  'flow-multidocument': 'M10,10 L100,10 L100,80 C75,105 35,55 10,80 Z M0,0 L90,0 L90,70 C65,95 25,45 0,70 Z',
+                  'flow-terminator': 'M25,0 L75,0 A25,25 0 0,1 100,50 A25,25 0 0,1 75,100 L25,100 A25,25 0 0,1 0,50 A25,25 0 0,1 25,0 Z',
+                  'flow-database': 'M0,20 C0,0 100,0 100,20 L100,80 C100,100 0,100 0,80 Z M0,20 C0,40 100,40 100,20 M0,40 C0,60 100,60 100,40 M0,60 C0,80 100,80 100,60',
+                  'flow-manual-input': 'M0,30 L100,0 L100,100 L0,100 Z',
+
+                  'ribbon-up': 'M20,0 L80,0 L80,80 L100,100 L50,80 L0,100 L20,80 Z',
+                  'ribbon-down': 'M20,100 L80,100 L80,20 L100,0 L50,20 L0,0 L20,20 Z',
+                };
+
+                if (el.shapeType && PATHS[el.shapeType]) {
+                  return <Path {...commonProps} data={PATHS[el.shapeType]} scaleX={w/100} scaleY={h/100} />;
+                }
+
+                if (el.shapeType?.startsWith('callout-')) {
+                  const cp = el.controlPoints?.[0] || { x: w * 0.2, y: h + 20 };
+                  
+                  if (el.shapeType === 'callout-thought') {
+                    const CLOUD_BODY = 'M25 60 A20 20 0 0 1 25 20 A20 20 0 0 1 45 30 A20 20 0 0 1 75 20 A20 20 0 0 1 95 40 A20 20 0 0 1 75 60 Z';
+                    const dx = cp.x - w/2;
+                    const dy = cp.y - h*0.8;
+                    return (
+                      <Group>
+                        <Path {...commonProps} data={CLOUD_BODY} scaleX={w/100} scaleY={h/100} />
+                        <Circle fill={commonProps.fill} stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} x={w/2 + dx*0.3} y={h*0.8 + dy*0.3} radius={w*0.06} />
+                        <Circle fill={commonProps.fill} stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} x={w/2 + dx*0.65} y={h*0.8 + dy*0.65} radius={w*0.04} />
+                        <Circle fill={commonProps.fill} stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} x={cp.x} y={cp.y} radius={w*0.02} />
+                      </Group>
+                    );
+                  }
+
+                  let pathData = '';
+                  const tailBaseL = w * 0.4;
+                  const tailBaseR = w * 0.6;
+                  
+                  if (el.shapeType === 'callout-rect') {
+                    pathData = `M0,0 L${w},0 L${w},${h} L${tailBaseR},${h} L${cp.x},${cp.y} L${tailBaseL},${h} L0,${h} Z`;
+                  } else if (el.shapeType === 'callout-rounded') {
+                    const r = Math.min(20, w/4, h/4);
+                    pathData = `M${r},0 L${w-r},0 Q${w},0 ${w},${r} L${w},${h-r} Q${w},${h} ${w-r},${h} L${tailBaseR},${h} L${cp.x},${cp.y} L${tailBaseL},${h} L${r},${h} Q0,${h} 0,${h-r} L0,${r} Q0,0 ${r},0 Z`;
+                  } else if (el.shapeType === 'callout-oval') {
+                    pathData = `M0,${h/2} Q0,0 ${w/2},0 Q${w},0 ${w},${h/2} Q${w},${h} ${w/2},${h} L${tailBaseR},${h} L${cp.x},${cp.y} L${tailBaseL},${h} Q0,${h} 0,${h/2} Z`;
+                  } else if (el.shapeType === 'callout-cloud') {
+                    pathData = `M0,${h/2} A${w/4},${h/4} 0 0,1 ${w/4},${h/4} A${w/3},${h/3} 0 0,1 ${w*0.75},${h/4} A${w/4},${h/4} 0 0,1 ${w},${h/2} A${w/4},${h/4} 0 0,1 ${w*0.75},${h} L${tailBaseR},${h} L${cp.x},${cp.y} L${tailBaseL},${h} A${w/4},${h/4} 0 0,1 0,${h/2} Z`;
+                  }
+                  
+                  return <Path {...commonProps} data={pathData} />;
+                }
+
                 if (el.shapeType === 'rect') return <Rect {...commonProps} />;
+                if (el.shapeType === 'rect-rounded') return <Rect {...commonProps} cornerRadius={10} />;
                 if (el.shapeType === 'circle') return <Circle {...commonProps} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
                 if (el.shapeType === 'triangle') return <RegularPolygon {...commonProps} sides={3} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
                 if (el.shapeType === 'diamond') return <RegularPolygon {...commonProps} sides={4} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
-                if (el.shapeType === 'star') return <Star {...commonProps} numPoints={5} innerRadius={w / 4} outerRadius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
-                
+                if (el.shapeType === 'pentagon') return <RegularPolygon {...commonProps} sides={5} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'hexagon') return <RegularPolygon {...commonProps} sides={6} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'heptagon') return <RegularPolygon {...commonProps} sides={7} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'octagon') return <RegularPolygon {...commonProps} sides={8} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'decagon') return <RegularPolygon {...commonProps} sides={10} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                if (el.shapeType === 'dodecagon') return <RegularPolygon {...commonProps} sides={12} radius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+
+                if (el.shapeType && el.shapeType.startsWith('star')) {
+                  const points = parseInt(el.shapeType.split('-')[1]) || 5;
+                  const inner = points > 10 ? w/3 : w/4;
+                  return <Star {...commonProps} numPoints={points} innerRadius={inner} outerRadius={w / 2} offsetX={-w / 2} offsetY={-h / 2} />;
+                }
+
+                if (el.shapeType === 'checkmark') return (
+                  <Path {...commonProps} data="M10,50 L40,80 L90,20" fill="transparent" scaleX={w/100} scaleY={h/100} strokeWidth={el.strokeWidth || 8} />
+                );
+
                 // Lines & Arrows
                 if (el.shapeType === 'line') return <Line {...commonProps} points={[0, h/2, w, h/2]} />;
                 if (el.shapeType === 'arrow') return <Arrow {...commonProps} points={[0, h/2, w, h/2]} pointerLength={15} pointerWidth={15} />;
@@ -680,28 +829,6 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                 );
                 if (el.shapeType === 'axis-x') return <Arrow {...commonProps} points={[0, h/2, w, h/2]} pointerLength={10} pointerWidth={10} />;
 
-                // Bubbles & Complex Paths
-                if (el.shapeType === 'heart') return (
-                  <Path 
-                    {...commonProps} 
-                    data="M50,88 C50,88 5,55 5,30 C5,15 15,5 30,5 C40,5 45,10 50,15 C55,10 60,5 70,5 C85,5 95,15 95,30 C95,55 50,88 50,88 Z" 
-                    scaleX={w/100} scaleY={h/100}
-                  />
-                );
-                if (el.shapeType === 'bubble-speech') return (
-                  <Path 
-                    {...commonProps} 
-                    data="M10,10 L90,10 L90,70 L40,70 L10,90 L10,70 L10,10 Z" 
-                    scaleX={w/100} scaleY={h/100}
-                  />
-                );
-                if (el.shapeType === 'bubble-thought') return (
-                  <Path 
-                    {...commonProps} 
-                    data="M50,10 C72,10 90,23 90,40 C90,57 72,70 50,70 C45,70 41,69 36,67 C30,75 18,82 10,85 C15,77 18,68 18,60 C12,54 10,47 10,40 C10,23 28,10 50,10 Z" 
-                    scaleX={w/100} scaleY={h/100}
-                  />
-                );
                 if (el.shapeType === 'bracket') return (
                   <Group>
                     <Line {...commonProps} points={[w/4, 0, 0, 0, 0, h, w/4, h]} strokeWidth={4} fill="transparent" />
@@ -710,8 +837,8 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                 );
                 if (el.shapeType === 'curly') return (
                   <Group>
-                    <KonvaText {...commonProps} text="{" fontSize={h} width={w/2} align="left" />
-                    <KonvaText {...commonProps} x={w/2} text="}" fontSize={h} width={w/2} align="right" />
+                    <KonvaText {...commonProps} text={'{'} fontSize={h} width={w/2} align="left" />
+                    <KonvaText {...commonProps} x={w/2} text={'}'} fontSize={h} width={w/2} align="right" />
                   </Group>
                 );
 
@@ -756,6 +883,44 @@ export const NotebookCanvas = forwardRef<any, NotebookCanvasProps>(({
                   onDblTap={() => onDoubleClickElement?.(el.id)}
                 >
                   {renderShape()}
+                  {selectedId === el.id && el.controlPoints && el.controlPoints.map((cp, idx) => (
+                    <Circle
+                      key={`cp-${idx}`}
+                      x={cp.x}
+                      y={cp.y}
+                      radius={6}
+                      fill="#FACC15"
+                      stroke="#000000"
+                      strokeWidth={2}
+                      draggable
+                      onDragStart={(e) => {
+                        e.cancelBubble = true;
+                      }}
+                      onDragMove={(e) => {
+                        e.cancelBubble = true;
+                        const newCp = { x: e.target.x(), y: e.target.y() };
+                        onUpdateElements(elements.map(item => {
+                          if (item.id === el.id) {
+                            const newControlPoints = [...(item.controlPoints || [])];
+                            newControlPoints[idx] = newCp;
+                            return { ...item, controlPoints: newControlPoints };
+                          }
+                          return item;
+                        }));
+                      }}
+                      onDragEnd={(e) => {
+                        e.cancelBubble = true;
+                      }}
+                      onMouseEnter={(e) => {
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = 'grab';
+                      }}
+                      onMouseLeave={(e) => {
+                        const container = e.target.getStage()?.container();
+                        if (container) container.style.cursor = 'default';
+                      }}
+                    />
+                  ))}
                 </Group>
               );
             }

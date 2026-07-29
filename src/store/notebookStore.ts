@@ -173,8 +173,11 @@ export const useNotebookStore = create<NotebookState>()(
             const mergedNotebooks = Array.from(notebookMap.values());
             set({ notebooks: mergedNotebooks, notebookFileIds: fileIds, isDriveConnected: true });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Load failed:", error);
+          if (error.message === 'AUTH_EXPIRED') {
+            set({ isDriveConnected: false });
+          }
         } finally {
           set({ isLoading: false });
         }

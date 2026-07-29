@@ -106,7 +106,7 @@ const MonthGrid = ({ date, pages, onPageClick }: any) => {
     const days = [];
     // Padding
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`pad-${i}`} className="min-h-[120px] bg-slate-50/50 border-b border-r border-slate-100/50" />);
+      days.push(<div key={`pad-${i}`} className="min-h-[60px] md:min-h-[80px] bg-slate-50/50 border-b border-r border-slate-100/50" />);
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -124,11 +124,11 @@ const MonthGrid = ({ date, pages, onPageClick }: any) => {
       const duePages = pages.filter((p: any) => p.dueDate && safeParseDate(p.dueDate)?.toDateString() === current.toDateString());
 
       days.push(
-        <div key={d} className={`min-h-[120px] bg-white border-b border-r border-slate-100 p-2 hover:bg-slate-50/50 transition-colors group relative ${isToday ? 'ring-1 ring-inset ring-indigo-100 bg-indigo-50/10' : ''}`}>
-          <span className={`text-xs font-black ${isToday ? 'bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md' : 'text-slate-400'}`}>
+        <div key={d} className={`min-h-[60px] md:min-h-[80px] flex flex-col bg-white border-b border-r border-slate-100 p-0.5 md:p-2 hover:bg-slate-50/50 transition-colors group relative overflow-hidden ${isToday ? 'ring-1 ring-inset ring-indigo-100 bg-indigo-50/10' : ''}`}>
+          <span className={`text-[8px] md:text-xs font-black ml-0.5 mt-0.5 md:ml-0 md:mt-0 ${isToday ? 'bg-indigo-600 text-white w-4 h-4 md:w-6 md:h-6 rounded-full flex items-center justify-center shadow-md mb-0.5 md:mb-1' : 'text-slate-400 mb-0.5 md:mb-1'}`}>
             {d}
           </span>
-          <div className="mt-2 space-y-1.5">
+          <div className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
             {createdPages.map((p: any) => (
               <PageEntry key={p.id} page={p} type="created" onClick={() => onPageClick(p.id)} extended />
             ))}
@@ -143,11 +143,15 @@ const MonthGrid = ({ date, pages, onPageClick }: any) => {
   };
 
   return (
-    <div className="grid grid-cols-7 h-full">
-      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-        <div key={d} className="py-2 text-center text-[10px] font-black text-slate-400 uppercase border-b border-slate-100">{d}</div>
-      ))}
-      {renderDays()}
+    <div className="flex flex-col h-full">
+      <div className="grid grid-cols-7 border-b border-slate-100 bg-white sticky top-0 z-10 shadow-sm">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} className="py-1 md:py-2 text-center text-[7px] md:text-[10px] font-black text-slate-400 uppercase">{d}</div>
+        ))}
+      </div>
+      <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-y-auto">
+        {renderDays()}
+      </div>
     </div>
   );
 };
@@ -234,18 +238,18 @@ const DayGrid = ({ date, pages, onPageClick }: any) => {
 const PageEntry = ({ page, type, onClick, extended }: any) => (
   <div 
     onClick={onClick}
-    className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer hover:scale-[1.02] transition-all border-l-4 truncate shadow-md ${
+    className={`px-1 py-0.5 md:px-2 md:py-1.5 rounded text-[7px] md:text-xs font-black cursor-pointer hover:scale-[1.02] transition-all border-l-2 md:border-l-4 truncate shadow-sm ${
       type === 'created' 
         ? 'bg-indigo-50 text-indigo-800 border-indigo-500 hover:bg-indigo-100' 
         : 'bg-rose-50 text-rose-800 border-rose-500 hover:bg-rose-100'
     }`}
   >
     {extended && (
-      <div className="opacity-60 text-[8px] mb-0.5 uppercase tracking-tighter truncate">
+      <div className="opacity-60 text-[6px] md:text-[8px] mb-0 md:mb-0.5 uppercase tracking-tighter truncate leading-tight">
         {page.notebookTitle} › {page.sectionTitle}
       </div>
     )}
-    <div className="truncate">{page.title}</div>
+    <div className="truncate leading-tight">{page.title}</div>
   </div>
 );
 

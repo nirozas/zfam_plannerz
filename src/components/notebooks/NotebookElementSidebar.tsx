@@ -46,7 +46,7 @@ export const NotebookElementSidebar: React.FC<ImageSidebarProps> = ({
     <>
       {/* Mobile Backdrop */}
       <div 
-        className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[200] lg:hidden animate-in fade-in"
+        className="fixed inset-0 z-[200] lg:hidden"
         onClick={onClose}
       />
       {/* Sidebar */}

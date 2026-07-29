@@ -638,7 +638,7 @@ const NotebooksPage: React.FC = () => {
         <div className="notebook-editor-layout">
           <div className="page-viewer no-scrollbar" ref={viewerRef}>
             {viewMode === 'calendar' ? (
-              <div className="w-full h-full p-6">
+              <div className="flex-1 w-full h-full p-2 md:p-6 self-stretch">
                 <NotebookCalendar onPageSelect={handleCalendarPageSelect} />
               </div>
             ) : activePage ? (

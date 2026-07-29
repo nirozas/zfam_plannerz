@@ -45,38 +45,148 @@ interface SideToolbarProps {
   onAddImageFromUrl?: () => void;
 }
 
-const SHAPES = [
-  // Basic
-  { id: 'rect', label: 'Rectangle', icon: <Square size={16} /> },
-  { id: 'circle', label: 'Circle', icon: <div className="w-3.5 h-3.5 rounded-full border-2 border-current" /> },
-  { id: 'triangle', label: 'Triangle', icon: <div className="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[12px] border-b-current" /> },
-  { id: 'diamond', label: 'Diamond', icon: <div className="w-3 h-3 border-2 border-current rotate-45" /> },
-  { id: 'star', label: 'Star', icon: <span className="text-xs leading-none">★</span> },
-  { id: 'heart', label: 'Heart', icon: <span className="text-xs leading-none">♥</span> },
-  // Lines & Arrows
-  { id: 'line', label: 'Line', icon: <div className="w-4 h-0.5 bg-current" /> },
-  { id: 'arrow', label: 'Arrow →', icon: <span className="text-xs leading-none">→</span> },
-  { id: 'arrow-left', label: 'Arrow ←', icon: <span className="text-xs leading-none">←</span> },
-  { id: 'arrow-both', label: 'Arrow ↔', icon: <span className="text-xs leading-none">↔</span> },
-  { id: 'arrow-up', label: 'Arrow ↑', icon: <span className="text-xs leading-none">↑</span> },
-  { id: 'arrow-down', label: 'Arrow ↓', icon: <span className="text-xs leading-none">↓</span> },
-  // Chart Axes
-  { id: 'axis-xy', label: 'XY Axes', icon: <span className="text-[10px] leading-none font-bold">xy</span> },
-  { id: 'axis-x', label: 'X Axis', icon: <span className="text-[10px] leading-none font-bold">x—</span> },
-  // Speech Bubbles
-  { id: 'bubble-speech', label: 'Speech Bubble', icon: <span className="text-xs leading-none">💬</span> },
-  { id: 'bubble-thought', label: 'Thought Bubble', icon: <span className="text-xs leading-none">💭</span> },
-  // Brackets & Frames
-  { id: 'bracket', label: 'Bracket', icon: <span className="text-sm leading-none font-bold">[  ]</span> },
-  { id: 'curly', label: 'Curly Brace', icon: <span className="text-sm leading-none">{ }</span> },
+const SHAPE_CATEGORIES = [
+  {
+    name: 'Lines',
+    shapes: [
+      { id: 'line', label: 'Line', icon: <div className="w-4 h-0.5 bg-current" /> },
+      { id: 'arrow', label: 'Arrow →', icon: <span className="text-xs leading-none">→</span> },
+      { id: 'arrow-left', label: 'Arrow ←', icon: <span className="text-xs leading-none">←</span> },
+      { id: 'arrow-both', label: 'Arrow ↔', icon: <span className="text-xs leading-none">↔</span> },
+      { id: 'curve', label: 'Curve', icon: <span className="text-[14px] leading-none">~</span> },
+    ]
+  },
+  {
+    name: 'Rectangles',
+    shapes: [
+      { id: 'rect', label: 'Rectangle', icon: <Square size={16} /> },
+      { id: 'rect-rounded', label: 'Rounded Rectangle', icon: <div className="w-4 h-4 border-2 border-current rounded-md" /> },
+      { id: 'rect-snip', label: 'Snip Rectangle', icon: <div className="w-4 h-4 border-2 border-current rounded-tl-lg" /> },
+    ]
+  },
+  {
+    name: 'Callouts',
+    shapes: [
+      { id: 'callout-rect', label: 'Rectangular Callout', icon: <span className="text-[18px] leading-none">💬</span> },
+      { id: 'callout-rounded', label: 'Rounded Rect Callout', icon: <span className="text-[18px] leading-none">💭</span> },
+      { id: 'callout-oval', label: 'Oval Callout', icon: <span className="text-[18px] leading-none">🗨️</span> },
+      { id: 'callout-cloud', label: 'Cloud Callout', icon: <span className="text-[18px] leading-none">🗯️</span> },
+      { id: 'callout-thought', label: 'Thought Bubble', icon: <span className="text-[18px] leading-none">💭</span> },
+    ]
+  },
+  {
+    name: 'Basic Shapes',
+    shapes: [
+      { id: 'circle', label: 'Oval', icon: <div className="w-4 h-4 rounded-full border-2 border-current" /> },
+      { id: 'triangle', label: 'Triangle', icon: <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[14px] border-b-current" /> },
+      { id: 'triangle-right', label: 'Right Triangle', icon: <div className="w-0 h-0 border-r-[14px] border-r-transparent border-b-[14px] border-b-current" /> },
+      { id: 'parallelogram', label: 'Parallelogram', icon: <span className="text-[18px] leading-none">▰</span> },
+      { id: 'trapezoid', label: 'Trapezoid', icon: <div className="w-5 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[12px] border-b-current" /> },
+      { id: 'diamond', label: 'Diamond', icon: <div className="w-4 h-4 border-2 border-current rotate-45" /> },
+      { id: 'pentagon', label: 'Pentagon', icon: <span className="text-[18px] leading-none">⬟</span> },
+      { id: 'hexagon', label: 'Hexagon', icon: <span className="text-[18px] leading-none">⬡</span> },
+      { id: 'heptagon', label: 'Heptagon', icon: <span className="text-[18px] leading-none">⏣</span> },
+      { id: 'octagon', label: 'Octagon', icon: <span className="text-[18px] leading-none">🛑</span> },
+      { id: 'decagon', label: 'Decagon', icon: <span className="text-[12px] leading-none font-bold">10</span> },
+      { id: 'dodecagon', label: 'Dodecagon', icon: <span className="text-[12px] leading-none font-bold">12</span> },
+      { id: 'pie', label: 'Pie', icon: <span className="text-[18px] leading-none">◔</span> },
+      { id: 'chord', label: 'Chord', icon: <span className="text-[18px] leading-none">◓</span> },
+      { id: 'teardrop', label: 'Teardrop', icon: <span className="text-[18px] leading-none">💧</span> },
+      { id: 'frame', label: 'Frame', icon: <div className="w-4 h-4 border-[4px] border-current" /> },
+      { id: 'half-frame', label: 'Half Frame', icon: <div className="w-4 h-4 border-t-[4px] border-l-[4px] border-current" /> },
+      { id: 'l-shape', label: 'L-Shape', icon: <div className="w-4 h-4 border-b-[4px] border-l-[4px] border-current" /> },
+      { id: 'cross', label: 'Cross', icon: <span className="text-[18px] leading-none">➕</span> },
+      { id: 'cylinder', label: 'Cylinder', icon: <span className="text-[18px] leading-none">🛢️</span> },
+      { id: 'cube', label: 'Cube', icon: <span className="text-[18px] leading-none">🧊</span> },
+      { id: 'donut', label: 'Donut', icon: <span className="text-[18px] leading-none">🍩</span> },
+      { id: 'no-symbol', label: 'No Symbol', icon: <span className="text-[18px] leading-none">🚫</span> },
+      { id: 'smiley', label: 'Smiley', icon: <span className="text-[18px] leading-none">🙂</span> },
+      { id: 'heart', label: 'Heart', icon: <span className="text-[18px] leading-none">♥</span> },
+      { id: 'lightning', label: 'Lightning', icon: <span className="text-[18px] leading-none">⚡</span> },
+      { id: 'sun', label: 'Sun', icon: <span className="text-[18px] leading-none">☀️</span> },
+      { id: 'moon', label: 'Moon', icon: <span className="text-[18px] leading-none">🌙</span> },
+      { id: 'cloud', label: 'Cloud', icon: <span className="text-[18px] leading-none">☁️</span> },
+      { id: 'bracket', label: 'Bracket', icon: <span className="text-base leading-none font-bold">[  ]</span> },
+      { id: 'curly', label: 'Curly Brace', icon: <span className="text-base leading-none">{ }</span> },
+    ]
+  },
+  {
+    name: 'Block Arrows',
+    shapes: [
+      { id: 'block-arrow-right', label: 'Right Arrow', icon: <span className="text-[18px] leading-none font-bold">➡</span> },
+      { id: 'block-arrow-left', label: 'Left Arrow', icon: <span className="text-[18px] leading-none font-bold">⬅</span> },
+      { id: 'block-arrow-up', label: 'Up Arrow', icon: <span className="text-[18px] leading-none font-bold">⬆</span> },
+      { id: 'block-arrow-down', label: 'Down Arrow', icon: <span className="text-[18px] leading-none font-bold">⬇</span> },
+      { id: 'block-arrow-left-right', label: 'Left Right Arrow', icon: <span className="text-[18px] leading-none font-bold">↔</span> },
+      { id: 'block-arrow-up-down', label: 'Up Down Arrow', icon: <span className="text-[18px] leading-none font-bold">↕</span> },
+      { id: 'block-arrow-quad', label: 'Quad Arrow', icon: <span className="text-[18px] leading-none font-bold">✢</span> },
+      { id: 'block-arrow-u-turn', label: 'U-Turn Arrow', icon: <span className="text-[18px] leading-none font-bold">↩</span> },
+    ]
+  },
+  {
+    name: 'Equation Shapes',
+    shapes: [
+      { id: 'eq-plus', label: 'Plus', icon: <span className="text-[18px] leading-none font-bold">+</span> },
+      { id: 'eq-minus', label: 'Minus', icon: <span className="text-[18px] leading-none font-bold">−</span> },
+      { id: 'eq-multiply', label: 'Multiply', icon: <span className="text-[18px] leading-none font-bold">×</span> },
+      { id: 'eq-divide', label: 'Divide', icon: <span className="text-[18px] leading-none font-bold">÷</span> },
+      { id: 'eq-equal', label: 'Equal', icon: <span className="text-[18px] leading-none font-bold">=</span> },
+      { id: 'eq-not-equal', label: 'Not Equal', icon: <span className="text-[18px] leading-none font-bold">≠</span> },
+    ]
+  },
+  {
+    name: 'Flowchart',
+    shapes: [
+      { id: 'flow-process', label: 'Process', icon: <div className="w-5 h-3.5 border-[3px] border-current" /> },
+      { id: 'flow-decision', label: 'Decision', icon: <div className="w-4 h-4 border-[3px] border-current rotate-45" /> },
+      { id: 'flow-data', label: 'Data', icon: <span className="text-[18px] leading-none">▱</span> },
+      { id: 'flow-document', label: 'Document', icon: <span className="text-[18px] leading-none">📄</span> },
+      { id: 'flow-multidocument', label: 'Multidocument', icon: <span className="text-[18px] leading-none">📑</span> },
+      { id: 'flow-terminator', label: 'Terminator', icon: <div className="w-5 h-3.5 border-[3px] border-current rounded-full" /> },
+      { id: 'flow-database', label: 'Database', icon: <span className="text-[18px] leading-none">🗄️</span> },
+      { id: 'flow-manual-input', label: 'Manual Input', icon: <div className="w-5 h-4 border-l-[3px] border-b-[3px] border-r-[3px] border-t-[3px] border-t-transparent border-current" /> },
+    ]
+  },
+  {
+    name: 'Stars and Banners',
+    shapes: [
+      { id: 'star-4', label: '4-Point Star', icon: <span className="text-[18px] leading-none">✨</span> },
+      { id: 'star-5', label: '5-Point Star', icon: <span className="text-[18px] leading-none">⭐</span> },
+      { id: 'star-6', label: '6-Point Star', icon: <span className="text-[18px] leading-none">✡</span> },
+      { id: 'star-8', label: '8-Point Star', icon: <span className="text-[18px] leading-none">✺</span> },
+      { id: 'star-12', label: '12-Point Star', icon: <span className="text-[18px] leading-none">✹</span> },
+      { id: 'star-16', label: '16-Point Star', icon: <span className="text-[18px] leading-none">❂</span> },
+      { id: 'star-24', label: '24-Point Star', icon: <span className="text-[18px] leading-none">🏵</span> },
+      { id: 'star-32', label: '32-Point Star', icon: <span className="text-[18px] leading-none">💮</span> },
+      { id: 'ribbon-up', label: 'Up Ribbon', icon: <span className="text-[18px] leading-none">🎗️</span> },
+      { id: 'ribbon-down', label: 'Down Ribbon', icon: <span className="text-[18px] leading-none">🏅</span> },
+    ]
+  }
 ];
 
 const EMOJIS = [
-  '😀','😂','😍','🥳','🤔','😎','🥺','😭','🔥','⭐',
-  '✅','❌','⚠️','💡','📌','📎','🗂️','📝','📖','📚',
-  '🎯','🚀','💎','🏆','🎉','🎨','🎵','📊','📈','🔍',
-  '🌟','💪','👍','👎','🤝','👏','💬','💭','❓','❗',
-  '⬆️','⬇️','⬅️','➡️','🔄','↩️','↪️','🔁','🔂','🔃',
+  // Faces & Emotions
+  '😀','😂','😍','🥳','🤔','😎','🥺','😭','🔥','⭐','🥰','🙃','😇','🤪','🤫','🤭','🤗','😡','😱','🤯',
+  // Hand Gestures
+  '👍','👎','🤝','👏','🙌','👐','🤲','🤞','✌️','🤘','🤙','👈','👉','👆','👇','✋','🤚','🖐️','🖖','👋',
+  // Animals & Nature
+  '🐶','🐱','🐭','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🐣','🦆',
+  '🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🕸️','🦂','🐢','🐍',
+  '🌸','🌺','🌻','🌼','🌷','🌱','🌲','🌳','🌴','🌵','🌾','🌿','🍀','🍁','🍂','🍃','🍄','🌰','🌍','🌎',
+  // Food & Drink
+  '🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬',
+  '🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥙','🧆','🥚','🍳','🥘','🍲','🥣','🥗','🍿','🧈','🧂','🥫','🍱',
+  '☕','🍵','🥤','🧃','🧉','🥛','🍺','🍻','🍷','🥂','🥃','🍸','🍹','🍾','🧊','🥄','🍴','🍽️','🥢','🥡',
+  // Activities & Sports
+  '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳',
+  '🎮','🕹️','🎰','🎲','🧩','🧸','🪅','🪩','🔮','🧿','🎭','🎨','🧵','🧶','🎼','🎵','🎶','🎙️','🎚️','🎛️',
+  // Objects & Tools
+  '✅','❌','⚠️','💡','📌','📎','🗂️','📝','📖','📚','🎯','🚀','💎','🏆','🎉','📊','📈','📉','🔍','🔎',
+  '📱','💻','⌨️','🖥️','🖨️','🖱️','🖲️','🕹️','🗜️','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽️','🎞️',
+  '⏰','⏱️','⏲️','⏳','⌛','📡','🔋','🔌','💡','🔦','🕯️','🧯','🗑️','🛢️','💸','💵','💴','💶','💷','💰',
+  // Symbols & Arrows
+  '💬','💭','❓','❗','⬆️','⬇️','⬅️','➡️','🔄','↩️','↪️','🔁','🔂','🔃','➕','➖','➗','✖️','♾️','💲',
+  '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝'
 ];
 
 
@@ -110,6 +220,41 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
 
       <div className="w-8 h-px bg-slate-200 my-1" />
 
+      {/* Emoji picker */}
+      <div className="relative" onClick={e => e.stopPropagation()}>
+        <SideToolBtn
+          icon={<span className="text-xl leading-none">😊</span>}
+          active={showEmojiPicker}
+          onClick={() => setShowEmojiPicker(v => !v)}
+          label="Emoji & Icons"
+        />
+        {showEmojiPicker && (
+          <div className="
+            absolute z-[2000] w-[350px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
+            animate-in fade-in
+            bottom-full mb-3 left-1/2 -translate-x-1/2
+            lg:bottom-auto lg:top-0 lg:left-full lg:translate-x-0 lg:ml-3
+          ">
+            <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Emoji & Icons</p>
+            <div className="grid grid-cols-6 gap-2 max-h-96 overflow-y-auto no-scrollbar pr-1">
+              {EMOJIS.map(em => (
+                <button
+                  key={em}
+                  title={em}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('insert-emoji', { detail: em }));
+                    setShowEmojiPicker(false);
+                  }}
+                  className="aspect-square flex items-center justify-center rounded-xl hover:bg-indigo-50 text-3xl transition-all hover:scale-110"
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Shapes — direct button with flyout grid */}
       <div className="relative" onClick={e => e.stopPropagation()}>
         <SideToolBtn
@@ -120,22 +265,31 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
         />
         {showShapeMenu && (
           <div className="
-            absolute z-[2000] w-52 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
+            absolute z-[2000] w-[350px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
             animate-in fade-in
             bottom-full mb-3 left-1/2 -translate-x-1/2
             lg:bottom-auto lg:top-0 lg:left-full lg:translate-x-0 lg:ml-3
           ">
-            <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Shapes</p>
-            <div className="grid grid-cols-4 gap-1.5">
-              {SHAPES.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => { setActiveTool('shape:' + s.id); setShowShapeMenu(false); }}
-                  title={s.label}
-                  className={`aspect-square flex items-center justify-center rounded-lg text-slate-600 transition-all hover:bg-indigo-600 hover:text-white text-sm ${ activeTool === 'shape:' + s.id ? 'bg-indigo-600 text-white' : 'bg-slate-50'}`}
-                >
-                  {s.icon}
-                </button>
+            <div className="max-h-[60vh] overflow-y-auto no-scrollbar pr-1 space-y-4">
+              {SHAPE_CATEGORIES.map(category => (
+                <div key={category.name}>
+                  <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2 sticky top-0 bg-white/95 backdrop-blur-xl py-1 z-10">{category.name}</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {category.shapes.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => { 
+                          window.dispatchEvent(new CustomEvent('insert-shape', { detail: s.id }));
+                          setShowShapeMenu(false); 
+                        }}
+                        title={s.label}
+                        className={`aspect-square flex items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-indigo-600 hover:text-white text-lg hover:scale-110 bg-slate-50`}
+                      >
+                        {s.icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -148,40 +302,7 @@ export const NotebookSideToolbar: React.FC<SideToolbarProps> = ({
 
       <div className="w-8 h-px bg-slate-200 my-1" />
 
-      {/* Emoji picker */}
-      <div className="relative" onClick={e => e.stopPropagation()}>
-        <SideToolBtn
-          icon={<span className="text-xl leading-none">😊</span>}
-          active={showEmojiPicker}
-          onClick={() => setShowEmojiPicker(v => !v)}
-          label="Emoji & Icons"
-        />
-        {showEmojiPicker && (
-          <div className="
-            absolute z-[2000] w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-3
-            animate-in fade-in
-            bottom-full mb-3 left-1/2 -translate-x-1/2
-            lg:bottom-auto lg:top-0 lg:left-full lg:translate-x-0 lg:ml-3
-          ">
-            <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Emoji &amp; Icons</p>
-            <div className="grid grid-cols-8 gap-1">
-              {EMOJIS.map(em => (
-                <button
-                  key={em}
-                  title={em}
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('insert-emoji', { detail: em }));
-                    setShowEmojiPicker(false);
-                  }}
-                  className="aspect-square flex items-center justify-center rounded-lg hover:bg-indigo-50 text-lg transition-all hover:scale-125"
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+
     </div>
   );
 };
@@ -418,38 +539,7 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
 
         {/* Right: Actions — compact, non-shrinking */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Zoom Controls — inline in top bar */}
-          <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-xl p-0.5 flex-shrink-0">
-            <button
-              onClick={() => setZoom?.(z => Math.max(0.2, z - 0.1))}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
-              title="Zoom Out"
-            >
-              <ZoomOut size={13} />
-            </button>
-            <button
-              onClick={() => setZoom?.(1)}
-              className="w-10 text-center text-[9px] font-black text-slate-700 hover:bg-slate-50 rounded-lg py-1.5 transition-all"
-              title="Reset Zoom"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <button
-              onClick={() => setZoom?.(z => Math.min(3, z + 0.1))}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
-              title="Zoom In"
-            >
-              <ZoomIn size={13} />
-            </button>
-            <div className="w-px h-4 bg-slate-200 mx-0.5" />
-            <button
-              onClick={onAutoFit}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
-              title="Fit to Screen"
-            >
-              <Maximize size={13} />
-            </button>
-          </div>
+          {/* Zoom Controls moved to property-bar-tools */}
 
           <button 
             onClick={onDuplicatePage}
@@ -472,32 +562,180 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
       {/* 2. CONTEXTUAL TOOLS BAR */}
       <div className="property-bar-tools">
         {/* Undo / Redo */}
-        <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1 bg-slate-100/50 p-1 px-2 rounded-full border border-slate-200 flex-shrink-0">
           <button 
             onClick={onUndo}
             disabled={!canUndo}
-            className={`p-2 rounded-lg transition-all ${canUndo ? 'text-slate-600 hover:text-slate-900 hover:bg-white' : 'text-slate-300 cursor-not-allowed'}`} 
-            title="Undo (Ctrl+Z)"
+            className={`p-1.5 rounded-full transition-all ${canUndo ? 'text-slate-600 hover:bg-white hover:shadow-sm active:scale-90' : 'text-slate-300'}`}
+            title="Undo"
           >
             <Undo2 size={16} />
           </button>
           <button 
             onClick={onRedo}
             disabled={!canRedo}
-            className={`p-2 rounded-lg transition-all ${canRedo ? 'text-slate-600 hover:text-slate-900 hover:bg-white' : 'text-slate-300 cursor-not-allowed'}`} 
-            title="Redo (Ctrl+Y)"
+            className={`p-1.5 rounded-full transition-all ${canRedo ? 'text-slate-600 hover:bg-white hover:shadow-sm active:scale-90' : 'text-slate-300'}`}
+            title="Redo"
           >
             <Redo2 size={16} />
           </button>
         </div>
 
-        <div className="w-px h-8 bg-slate-200" />
+        <div className="w-px h-8 bg-slate-200 hidden md:block" />
+
+        {/* Page Settings */}
+        {!selectedElement && (
+          <div className="relative flex items-center gap-1 md:gap-2 animate-in fade-in slide-in-from-top-1 flex-nowrap">
+            <div className="flex items-center gap-0.5 md:gap-1 bg-slate-50 p-0.5 md:p-1 rounded-xl border border-slate-200">
+              <button onClick={onPrevPage} className="p-1 md:p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Previous Page">
+                <ArrowLeft size={16} />
+              </button>
+              <button onClick={onAddSubpage} className="p-1 md:p-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-sm" title="Add Subpage">
+                <Plus size={16} />
+              </button>
+              <button onClick={onNextPage} className="p-1 md:p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Next Page">
+                <ArrowRight size={16} />
+              </button>
+            </div>
+            <div className="property-group px-2 md:px-3 py-1 md:py-1.5 cursor-pointer hover:bg-slate-100 transition-colors" onClick={(e) => { e.stopPropagation(); setShowPageMenu(!showPageMenu); }}>
+              <Layout size={16} className="text-slate-400" />
+              <span className="hidden sm:inline text-[11px] font-black uppercase tracking-widest text-slate-700 ml-2">Page Layout</span>
+              <ChevronDown size={14} className="text-slate-400 ml-1 md:ml-2" />
+            </div>
+
+            {showPageMenu && (
+              <div 
+                className="absolute top-full left-0 sm:left-[50%] sm:-translate-x-1/2 mt-2 w-[280px] sm:w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 p-3 sm:p-4 z-[2000] animate-in fade-in zoom-in-95"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button 
+                    onClick={() => setPageSettings({ ...pageSettings, orientation: 'portrait' })}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${pageSettings.orientation === 'portrait' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
+                  >
+                    <Rows size={20} /> <span className="text-[9px] font-black uppercase">Portrait</span>
+                  </button>
+                  <button 
+                    onClick={() => setPageSettings({ ...pageSettings, orientation: 'landscape' })}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${pageSettings.orientation === 'landscape' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
+                  >
+                    <Columns size={20} /> <span className="text-[9px] font-black uppercase">Landscape</span>
+                  </button>
+                </div>
+
+                <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Template</h3>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {['blank', 'lined', 'grid', 'dotted', 'cornell', 'music', 'handwriting'].map(t => (
+                    <button 
+                      key={t}
+                      onClick={() => setPageSettings({ ...pageSettings, template: t })}
+                      className={`py-1.5 text-[10px] font-bold rounded-lg capitalize transition-all ${pageSettings.template === t || (!pageSettings.template && t === 'blank') ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {pageSettings.template !== 'blank' && (
+                  <>
+                    <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Template Settings</h3>
+                    
+                    <div className="flex flex-col gap-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-600">Density / Spacing</span>
+                        <span className="text-[10px] font-black text-slate-900">{pageSettings.templateSpacing || 30}px</span>
+                      </div>
+                      <input 
+                        type="range" min="10" max="100" 
+                        value={pageSettings.templateSpacing || 30} 
+                        onChange={(e) => setPageSettings({ ...pageSettings, templateSpacing: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      />
+                    </div>
+
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-bold text-slate-600">Line/Dot Color</span>
+                        <div className="flex items-center gap-2">
+                          {['#cbd5e1', '#94a3b8', '#3b82f6', '#f43f5e'].map(color => (
+                            <button
+                              key={color}
+                              className={`w-5 h-5 rounded-full border-2 transition-all ${pageSettings.templateColor === color || (!pageSettings.templateColor && color === '#cbd5e1') ? 'ring-2 ring-indigo-500 scale-110' : 'border-white'}`}
+                              style={{ backgroundColor: color }}
+                              onClick={() => setPageSettings({ ...pageSettings, templateColor: color })}
+                            />
+                          ))}
+                          <input 
+                            type="color" 
+                            value={pageSettings.templateColor || '#cbd5e1'} 
+                            onChange={(e) => setPageSettings({ ...pageSettings, templateColor: e.target.value })}
+                            className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Page Color</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {['#ffffff', '#f8fafc', '#fef3c7', '#fecdd3', '#e0e7ff', '#dcfce7', '#1e293b', '#000000'].map(color => (
+                      <button
+                        key={color}
+                        className={`w-5 h-5 rounded-full border-2 transition-all ${pageSettings.pageBackgroundColor === color || (!pageSettings.pageBackgroundColor && color === '#ffffff') ? 'ring-2 ring-indigo-500 scale-110' : 'border-slate-200'}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setPageSettings({ ...pageSettings, pageBackgroundColor: color })}
+                      />
+                    ))}
+                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <input 
+                      type="color" 
+                      value={pageSettings.pageBackgroundColor || '#ffffff'} 
+                      onChange={(e) => setPageSettings({ ...pageSettings, pageBackgroundColor: e.target.value })}
+                      className="w-7 h-7 p-0 border-none bg-transparent cursor-pointer rounded-full"
+                    />
+                  </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Zoom */}
+        <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-xl p-0.5 flex-shrink-0">
+          <button
+            onClick={() => setZoom?.(z => Math.max(0.2, z - 0.1))}
+            className="p-1 md:p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+            title="Zoom Out"
+          >
+            <ZoomOut size={13} />
+          </button>
+          <button
+            onClick={() => setZoom?.(1)}
+            className="w-8 md:w-10 text-center text-[9px] font-black text-slate-700 hover:bg-slate-50 rounded-lg py-1 md:py-1.5 transition-all"
+            title="Reset Zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={() => setZoom?.(z => Math.min(3, z + 0.1))}
+            className="p-1 md:p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+            title="Zoom In"
+          >
+            <ZoomIn size={13} />
+          </button>
+          <div className="w-px h-4 bg-slate-200 mx-0.5" />
+          <button
+            onClick={onAutoFit}
+            className="p-1 md:p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all active:scale-90"
+            title="Fit to Screen"
+          >
+            <Maximize size={13} />
+          </button>
+        </div>
 
         {/* Dynamic Context Area */}
-        <div className="flex-1 flex items-center gap-6">
+        <div className="flex-1 flex items-center gap-3 w-full mt-2 pt-2 border-t border-slate-100 border-dashed">
           {/* Pen / Highlighter Settings */}
           {['pen', 'highlighter', 'eraser'].includes(activeTool) && (
-            <div className="flex items-center gap-6 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-2 gap-y-1.5 animate-in fade-in slide-in-from-top-1 flex-wrap w-full">
               {activeTool !== 'eraser' && (
                 <div className="property-group">
                   <div className="flex items-center gap-1.5 px-2">
@@ -507,7 +745,7 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                     ).map(color => (
                       <button 
                         key={color} 
-                        className={`w-5 h-5 rounded-full border-2 border-white transition-all hover:scale-125 ${brushSettings.color === color ? 'ring-2 ring-indigo-500 ring-offset-2 scale-110' : ''}`}
+                        className={`w-4 h-4 rounded-full border-2 border-white transition-all hover:scale-125 ${brushSettings.color === color ? 'ring-2 ring-indigo-500 ring-offset-2 scale-110' : ''}`}
                         style={{ backgroundColor: color }}
                         onClick={() => setBrushSettings({ ...brushSettings, color })}
                       />
@@ -530,9 +768,9 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                   type="range" min="1" max="100" 
                   value={brushSettings.width} 
                   onChange={(e) => setBrushSettings({ ...brushSettings, width: parseInt(e.target.value) })}
-                  className="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  className="w-12 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                 />
-                <span className="text-[10px] font-black text-slate-700 w-8 text-right">{brushSettings.width}px</span>
+                <span className="text-[10px] font-black text-slate-700 w-6 text-right">{brushSettings.width}px</span>
               </div>
 
               {activeTool === 'highlighter' && (
@@ -542,19 +780,19 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                     type="range" min="0.1" max="1" step="0.1" 
                     value={brushSettings.opacity} 
                     onChange={(e) => setBrushSettings({ ...brushSettings, opacity: parseFloat(e.target.value) })}
-                    className="w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    className="w-12 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
-                  <span className="text-[10px] font-black text-slate-700 w-8 text-right">{Math.round(brushSettings.opacity * 100)}%</span>
+                  <span className="text-[10px] font-black text-slate-700 w-6 text-right">{Math.round(brushSettings.opacity * 100)}%</span>
                 </div>
               )}
             </div>
           )}
 
           {/* Text Settings */}
-          {(activeTool === 'text' || selectedElement?.type === 'text' || (pageSettings?.titleSlot && pageSettings.titleSlot !== 'none')) && (
-            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-1 flex-wrap">
+          {(activeTool === 'text' || selectedElement?.type === 'text' || (activeTool === 'select' && !selectedElement && pageSettings?.titleSlot && pageSettings.titleSlot !== 'none')) && (
+            <div className="flex items-center gap-1.5 gap-y-1.5 animate-in fade-in slide-in-from-top-1 flex-wrap w-full">
               {(() => {
-                const isEditingTitle = pageSettings?.titleSlot && pageSettings.titleSlot !== 'none' && !selectedElement && activeTool !== 'text';
+                const isEditingTitle = activeTool === 'select' && !selectedElement && pageSettings?.titleSlot && pageSettings.titleSlot !== 'none';
                 const currentFontFamily = selectedElement?.fontFamily || (isEditingTitle ? (pageSettings?.titleFontFamily || textSettings.fontFamily) : textSettings.fontFamily);
                 const currentFontSize = selectedElement?.fontSize || (isEditingTitle ? (pageSettings?.titleFontSize || 28) : textSettings.fontSize);
                 const currentFill = selectedElement?.fill || (isEditingTitle ? (pageSettings?.titleColor || '#0f172a') : textSettings.fill);
@@ -562,9 +800,9 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                 return (
                   <>
                     {/* Font family picker with preview */}
-                    <div className="property-group px-2">
+                    <div className="property-group px-1">
                       <select 
-                        className="bg-transparent border-none text-[11px] font-bold outline-none text-slate-700 w-36 py-1 cursor-pointer"
+                        className="bg-transparent border-none text-[11px] font-bold outline-none text-slate-700 w-20 py-1 cursor-pointer flex-shrink-0"
                         value={currentFontFamily}
                         onChange={(e) => {
                           const font = e.target.value;
@@ -602,7 +840,7 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                           else if (isEditingTitle) setPageSettings?.({ titleColor: c });
                           else setTextSettings({...textSettings, fill: c});
                         }}
-                        className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
+                        className="w-5 h-5 p-0 border-none bg-transparent cursor-pointer rounded-full ml-0.5 flex-shrink-0"
                         title="Text Color"
                       />
                       <div className="w-px h-4 bg-slate-200 mx-1" />
@@ -706,11 +944,13 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
                   {showBulletMenu && (
-                    <div 
-                      className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[2000]"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={e => e.stopPropagation()}
-                    >
+                    <>
+                      <div className="fixed inset-0 z-[1999] md:hidden" onClick={(e) => { e.stopPropagation(); setShowBulletMenu(false); }} />
+                      <div 
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 md:transform-none md:absolute md:top-full md:left-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[2000]"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={e => e.stopPropagation()}
+                      >
                       <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest px-2 mb-1">List Style</p>
                       {BULLETS.map(b => (
                         <button
@@ -723,7 +963,8 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
                           <span className="text-xs font-bold text-slate-600">{b.label}</span>
                         </button>
                       ))}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 <ToolBtnSmall
@@ -751,122 +992,6 @@ export const NotebookPropertyBar: React.FC<PropertyBarProps> = ({
 
             </div>
           )}
-
-
-          {/* Page Settings */}
-          {!selectedElement && (
-            <div className="relative flex items-center gap-4 animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                <button onClick={onPrevPage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Previous Page">
-                  <ArrowLeft size={16} />
-                </button>
-                <button onClick={onAddSubpage} className="p-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-sm" title="Add Subpage">
-                  <Plus size={16} />
-                </button>
-                <button onClick={onNextPage} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all" title="Next Page">
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-              <div className="property-group px-3 py-1.5 cursor-pointer hover:bg-slate-100 transition-colors" onClick={(e) => { e.stopPropagation(); setShowPageMenu(!showPageMenu); }}>
-                <Layout size={16} className="text-slate-400" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-700 ml-2">Page Layout</span>
-                <ChevronDown size={14} className="text-slate-400 ml-2" />
-              </div>
-
-              {showPageMenu && (
-                <div 
-                  className="absolute top-full left-[50%] -translate-x-1/2 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 p-4 z-[2000] animate-in fade-in zoom-in-95"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <button 
-                      onClick={() => setPageSettings({ ...pageSettings, orientation: 'portrait' })}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${pageSettings.orientation === 'portrait' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
-                    >
-                      <Rows size={20} /> <span className="text-[9px] font-black uppercase">Portrait</span>
-                    </button>
-                    <button 
-                      onClick={() => setPageSettings({ ...pageSettings, orientation: 'landscape' })}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${pageSettings.orientation === 'landscape' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
-                    >
-                      <Columns size={20} /> <span className="text-[9px] font-black uppercase">Landscape</span>
-                    </button>
-                  </div>
-
-                  <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Template</h3>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {['blank', 'lined', 'grid', 'dotted', 'cornell', 'music', 'handwriting'].map(t => (
-                      <button 
-                        key={t}
-                        onClick={() => setPageSettings({ ...pageSettings, template: t })}
-                        className={`py-1.5 text-[10px] font-bold rounded-lg capitalize transition-all ${pageSettings.template === t || (!pageSettings.template && t === 'blank') ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-
-                  {pageSettings.template !== 'blank' && (
-                    <>
-                      <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Template Settings</h3>
-                      
-                      <div className="flex flex-col gap-3 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-slate-600">Density / Spacing</span>
-                          <span className="text-[10px] font-black text-slate-900">{pageSettings.templateSpacing || 30}px</span>
-                        </div>
-                        <input 
-                          type="range" min="10" max="100" 
-                          value={pageSettings.templateSpacing || 30} 
-                          onChange={(e) => setPageSettings({ ...pageSettings, templateSpacing: parseInt(e.target.value) })}
-                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold text-slate-600">Line/Dot Color</span>
-                        <div className="flex items-center gap-2">
-                          {['#cbd5e1', '#94a3b8', '#3b82f6', '#f43f5e'].map(color => (
-                            <button
-                              key={color}
-                              className={`w-5 h-5 rounded-full border-2 transition-all ${pageSettings.templateColor === color || (!pageSettings.templateColor && color === '#cbd5e1') ? 'ring-2 ring-indigo-500 scale-110' : 'border-white'}`}
-                              style={{ backgroundColor: color }}
-                              onClick={() => setPageSettings({ ...pageSettings, templateColor: color })}
-                            />
-                          ))}
-                          <input 
-                            type="color" 
-                            value={pageSettings.templateColor || '#cbd5e1'} 
-                            onChange={(e) => setPageSettings({ ...pageSettings, templateColor: e.target.value })}
-                            className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer rounded-full ml-1"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <h3 className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4">Page Color</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {['#ffffff', '#f8fafc', '#fef3c7', '#fecdd3', '#e0e7ff', '#dcfce7', '#1e293b', '#000000'].map(color => (
-                      <button
-                        key={color}
-                        className={`w-6 h-6 rounded-full border-2 transition-all ${pageSettings.pageBackgroundColor === color || (!pageSettings.pageBackgroundColor && color === '#ffffff') ? 'ring-2 ring-indigo-500 scale-110' : 'border-slate-200'}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setPageSettings({ ...pageSettings, pageBackgroundColor: color })}
-                      />
-                    ))}
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
-                    <input 
-                      type="color" 
-                      value={pageSettings.pageBackgroundColor || '#ffffff'} 
-                      onChange={(e) => setPageSettings({ ...pageSettings, pageBackgroundColor: e.target.value })}
-                      className="w-7 h-7 p-0 border-none bg-transparent cursor-pointer rounded-full"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -879,7 +1004,7 @@ const SideToolBtn = ({ icon, active, onClick, label }: any) => (
     onClick={onClick}
   >
     {icon}
-    <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[3000]">
+    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 md:bottom-auto md:mb-0 md:left-full md:ml-3 md:top-1/2 md:-translate-y-1/2 md:-translate-x-0 px-2 py-1 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[3000]">
       {label}
     </div>
   </button>
@@ -887,7 +1012,7 @@ const SideToolBtn = ({ icon, active, onClick, label }: any) => (
 
 const ToolBtnSmall = ({ icon, active, onClick, title, onMouseDown }: any) => (
   <button 
-    className={`p-2 rounded-lg transition-all ${active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-white hover:text-slate-900'}`} 
+    className={`p-1.5 rounded-full transition-all ${active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-white hover:text-slate-900'}`} 
     onClick={onClick}
     onMouseDown={onMouseDown}
     title={title}

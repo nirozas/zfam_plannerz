@@ -17,11 +17,12 @@ import type { Task } from '../store/taskStore';
 
 /** Parse a YYYY-MM-DD string as a LOCAL midnight Date (no timezone shift). */
 /** Parse a YYYY-MM-DD string (or ISO prefix) as a LOCAL midnight Date. */
-export const localDate = (dateStr: string): Date => {
+export const localDate = (dateStr?: string): Date => {
+    if (!dateStr) return new Date();
     // Ensure we only look at YYYY-MM-DD part
-    const cleanStr = dateStr.slice(0, 10);
+    const cleanStr = String(dateStr).slice(0, 10);
     const [y, m, d] = cleanStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    return new Date(y, m - 1, d || 1);
 };
 
 /** Format a Date as YYYY-MM-DD in local time. */

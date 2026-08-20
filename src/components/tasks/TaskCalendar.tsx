@@ -14,7 +14,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskCalendar: React.FC = () => {
-    const { tasks, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const { tasks: tasksObj, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const tasks = Object.values(tasksObj || {});
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -73,8 +74,8 @@ const TaskCalendar: React.FC = () => {
                     <div className="space-y-0.5">
                         {dayTasks.slice(0, 3).map(task => {
                             const cat = categories.find(c => c.id === task.categoryId);
-                            const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
-                            const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+                            const isCompleted = task.isRecurring ? (task.completedDates || []).includes(dateStr) : task.isCompleted;
+                            const isFailed = task.isRecurring ? (task.failedDates || []).includes(dateStr) : task.isFailed;
                             
                             const dynamicBg = isCompleted ? '#dcfce7' : isFailed ? '#fee2e2' : (cat ? hexToRgba(cat.color, 0.15) : '#e0e7ff');
                             const dynamicText = isCompleted ? '#166534' : isFailed ? '#991b1b' : (cat?.color || '#4f46e5');

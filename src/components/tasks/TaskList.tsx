@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTaskStore, Task } from '../../store/taskStore';
 import TaskItem from './TaskItem';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toDateStr } from '../../utils/recurringUtils';
 
 const isRecurringDueOnDate = (task: Task, date: Date): boolean => {
@@ -26,7 +27,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
-    const { tasks, categories, selectedCategories, filterType, statusFilter, startDate, endDate, sortBy, taskGap } = useTaskStore();
+    const { tasks: tasksObj, categories, selectedCategories, filterType, statusFilter, startDate, endDate, sortBy, taskGap } = useTaskStore();
+    const tasks = Object.values(tasksObj || {});
     const today = new Date();
     const todayStr = toDateStr(today);
 
@@ -45,10 +47,10 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
 
             // Status filter
             if (statusFilter === 'completed') {
-                const isTaskDone = t.isCompleted || (t.isRecurring && t.completedDates.includes(todayStr));
+                const isTaskDone = t.isCompleted || (t.isRecurring && (t.completedDates || []).includes(todayStr));
                 if (!isTaskDone) return false;
             } else if (statusFilter === 'active') {
-                const isTaskDone = t.isCompleted || (t.isRecurring && t.completedDates.includes(todayStr));
+                const isTaskDone = t.isCompleted || (t.isRecurring && (t.completedDates || []).includes(todayStr));
                 if (isTaskDone) return false;
             }
 
@@ -81,7 +83,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 return da - db;
             }
             if (sortBy === 'priority') {
-                const pMap = { high: 0, medium: 1, low: 2 };
+                const pMap: Record<string, number> = { high: 0, medium: 1, low: 2 };
                 return pMap[a.priority] - pMap[b.priority];
             }
             // Default: dateAdded desc
@@ -94,7 +96,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 overdue: [],
                 today: [],
                 upcoming: [],
-                completed: filtered.filter(t => t.isCompleted || (t.isRecurring && t.completedDates.includes(todayStr)))
+                completed: filtered.filter(t => t.isCompleted || (t.isRecurring && (t.completedDates || []).includes(todayStr)))
             };
         }
 
@@ -104,7 +106,7 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
         const completed: Task[] = [];
 
         filtered.forEach(task => {
-            const isTaskDone = task.isCompleted || (task.isRecurring && task.completedDates.includes(todayStr));
+            const isTaskDone = task.isCompleted || (task.isRecurring && (task.completedDates || []).includes(todayStr));
 
             if (isTaskDone) {
                 completed.push(task);
@@ -157,11 +159,37 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                 {groupedTasks.overdue.length > 0 && (
                     <div className="mb-4">
                         <div className="text-xs font-bold text-red-500 mb-2 uppercase tracking-wide">Overdue</div>
-                        <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                        <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.overdue.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} dateContext={todayStr} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                     </div>
                 )}
                 {groupedTasks.today.length > 0 ? (
-                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.today.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.today.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} dateContext={todayStr} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No tasks due today.</p>
                 )}
@@ -174,7 +202,20 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Upcoming</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.upcoming.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No upcoming tasks.</p>
                 )}
@@ -187,7 +228,20 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             <div style={bgStyle}>
                 <h3 className="text-sm font-bold text-green-600 uppercase tracking-wide mb-3">Completed</h3>
                 {groupedTasks.upcoming.length > 0 ? (
-                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(t => <TaskItem key={t.id} task={t} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.upcoming.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} dateContext={todayStr} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                 ) : (
                     <p className="text-sm text-gray-400 italic">No completed tasks yet.</p>
                 )}
@@ -202,7 +256,20 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                     <h3 className="text-sm font-bold text-red-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                         Overdue <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{groupedTasks.overdue.length}</span>
                     </h3>
-                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.overdue.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.overdue.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} dateContext={todayStr} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                 </section>
             )}
 
@@ -222,7 +289,20 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
             {groupedTasks.upcoming.length > 0 && (
                 <section>
                     <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">Upcoming / Later</h3>
-                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>{groupedTasks.upcoming.map(task => <TaskItem key={task.id} task={task} />)}</div>
+                    <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}><AnimatePresence mode="popLayout">
+                        {groupedTasks.upcoming.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence></div>
                 </section>
             )}
 
@@ -232,7 +312,20 @@ const TaskList: React.FC<TaskListProps> = ({ searchTerm }) => {
                         Completed <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{groupedTasks.completed.length}</span>
                     </h3>
                     <div className="flex flex-wrap" style={{ gap: `${taskGap}px` }}>
-                        {groupedTasks.completed.map(task => <TaskItem key={task.id} task={task} dateContext={todayStr} />)}
+                        <AnimatePresence mode="popLayout">
+                        {groupedTasks.completed.map(t => (
+                            <motion.div
+                                key={t.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            >
+                                <TaskItem task={t} dateContext={todayStr} />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
                     </div>
                 </section>
             )}

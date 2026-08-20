@@ -1,0 +1,75 @@
+# Notebook Architecture Upgrade
+
+This document outlines the implementation plan for upgrading the `notebooks` feature based on the architectural review. The goal is to resolve performance bottlenecks, polish the UX, and elevate the app to a professional standard.
+
+## User Review Required
+
+> [!WARNING]
+> **Major Architectural Changes Proposed (Phase 2)**
+> Replacing `react-konva` with **TLDraw** and introducing **Tiptap** for block-based editing will require fundamentally changing the `NotebookElement` data model. All existing drawings/elements created with Konva will likely not be compatible with TLDraw's data structure unless we write a complex migration script. 
+> 
+> **Decision Needed**: Are you okay with resetting the canvas data structure to adopt TLDraw/Tiptap, or would you prefer to stick with Konva and only apply the state normalization and UI/UX fixes (Phase 1)?
+
+## Open Questions
+
+> [!IMPORTANT]
+> 1. Do you want to keep the current `react-quill` dependency for rich text, or fully migrate to `tiptap`?
+> 2. For state normalization, we will split the save logic so that we only sync the active *Page* to Google Drive (saving small delta JSON files) rather than the entire Notebook. Does this align with your Drive storage structure?
+
+## Proposed Changes
+
+---
+
+### State Normalization & Debouncing (Phase 1)
+
+Refactoring the "God Object" Zustand store to use a normalized structure and debounced API calls.
+
+#### [MODIFY] [notebookStore.ts](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/store/notebookStore.ts)
+- Flatten `Notebook`, `SectionGroup`, `Section`, and `Page` arrays into `Record<string, Entity>` maps.
+- Implement a `useDebounce` hook for `saveToDrive` to trigger 2 seconds after the last mutation, rather than eagerly on every keystroke.
+- Change `updateElement` to mutate only the specific page's element array in O(1) time.
+
+#### [MODIFY] [notebook.ts](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/types/notebook.ts)
+- Update `NotebookState` interface to reflect the normalized structure (e.g., `pages: Record<string, NotebookPage>`).
+
+---
+
+### Tailwind UI/UX Polish (Phase 1)
+
+Applying professional polish, fixing mobile layouts, and adding accessibility states.
+
+#### [MODIFY] [NotebookSelectorPage.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/notebooks/NotebookSelectorPage.tsx)
+- Enhance empty state with a responsive, dashed border dropzone.
+- Add `focus-visible:ring-2 focus-visible:ring-indigo-500` to buttons and inputs.
+
+#### [MODIFY] [NotebookToolbar.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/notebooks/NotebookToolbar.tsx)
+- Fix mobile overlapping by converting absolute toolbars to bottom sheets or horizontal scrolling containers on small viewports.
+
+---
+
+### Professional Feature Upgrades (Phase 2 - Pending Approval)
+
+Replacing the basic Konva canvas and raw text inputs with professional-grade libraries.
+
+#### [DELETE] [NotebookCanvas.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/notebooks/NotebookCanvas.tsx)
+- Will be replaced by TLDraw canvas.
+
+#### [NEW] [TLDrawCanvas.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/notebooks/TLDrawCanvas.tsx)
+- Integrate `@tldraw/tldraw` for a highly optimized, lag-free infinite canvas with built-in shapes, selection, and grouping.
+
+#### [NEW] [BlockEditor.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/notebooks/BlockEditor.tsx)
+- Integrate `@tiptap/react` for block-based document flow (slash commands, markdown support, rich text).
+
+#### [MODIFY] [package.json](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/package.json)
+- Add `@tldraw/tldraw`, `@tiptap/react`, `@tiptap/starter-kit`.
+- Remove `react-konva` and `konva` (if approved).
+
+## Verification Plan
+
+### Automated Tests
+- No automated tests currently present for this feature, rely on TypeScript compiler checks (`tsc`).
+
+### Manual Verification
+- Test creating, updating, and deleting normalized elements.
+- Verify drawing has zero lag due to debouncing and normalized state selection.
+- Verify mobile UI does not have overlapping toolbars.

@@ -1,0 +1,24 @@
+# True Masonry (Pinterest-Style) Upgrade Plan
+
+You want the cards to look exactly like Pinterest, where images are never cut off and dictate the natural height of the card. The "Bento Box" grid we just tried forces cards into fixed row heights (like squares), which inevitably crops images. 
+
+To achieve a pure Pinterest aesthetic, we need to shift from a rigid CSS Grid to a **CSS Columns Masonry Layout**.
+
+## Goal
+Transform the Cards page into a flowing, Pinterest-style masonry board. Images will display at their natural aspect ratios (no cropping), and cards will seamlessly stack vertically without strict row alignments.
+
+## Proposed Changes
+
+### 1. `CardsPage.tsx` Layout Update
+- Replace the `grid` and `grid-template-columns` container with CSS Columns (`column-width: 280px` or responsive column counts like `columns-2 sm:columns-3 md:columns-4 lg:columns-5`).
+- Ensure cards use `break-inside: avoid` so they don't split across columns.
+- *Note on Resizing:* In a pure Pinterest layout, all cards share the same width (one column) and their height is 100% dynamic based on content. We will remove the "Card Size (Wide/Tall)" menu, as Pinterest relies on a unified column width.
+
+### 2. `CardsPage.tsx` (CardItem component)
+- Remove the strict flex `h-full` and fixed image heights.
+- Update the image renderer to `<img className="w-full h-auto block" />`. This ensures the image fully dictates the height of the card without any cropping (`object-cover` forced cropping will be removed).
+- The text content (title, description) will sit naturally below the full image.
+
+## Open Questions for You
+> [!IMPORTANT]
+> A true Pinterest layout means all cards are the same width, but vary in height depending on their image. Are you comfortable removing the "Wide/Large" card size options in favor of this automated, natural-flowing masonry design?

@@ -14,7 +14,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 const TaskWeek: React.FC = () => {
-    const { tasks, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const { tasks: tasksObj, categories, selectedCategories, setActiveDayDate, setEditingTaskId } = useTaskStore();
+    const tasks = Object.values(tasksObj || {});
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -116,8 +117,8 @@ const TaskWeek: React.FC = () => {
                                     {dayTasks.map(task => {
                                         const cat = categories.find(c => c.id === task.categoryId);
                                         const catColor = cat?.color || '#6366f1';
-                                        const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
-                                        const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+                                        const isCompleted = task.isRecurring ? (task.completedDates || []).includes(dateStr) : task.isCompleted;
+                                        const isFailed = task.isRecurring ? (task.failedDates || []).includes(dateStr) : task.isFailed;
 
                                         return (
                                             <div

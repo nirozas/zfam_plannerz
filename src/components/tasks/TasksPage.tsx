@@ -26,14 +26,13 @@ import BulkTaskUploadModal from './BulkTaskUploadModal';
 const TasksPage: React.FC = () => {
 
     const { user } = usePlannerStore();
-    const {
-        viewMode, setViewMode, setActiveDayDate, loadAll, isLoading,
+    const { viewMode, setViewMode, setActiveDayDate, loadAll, isLoading,
         statusFilter, setStatusFilter,
         startDate, endDate, setDateRange,
         sortBy, setSortBy, taskGap, setTaskGap,
-        editingTaskId, setEditingTaskId, tasks,
-        categories, selectedCategories, setSelectedCategories, toggleSelectedCategory
+        editingTaskId, setEditingTaskId, tasks: tasksObj, categories, selectedCategories, setSelectedCategories, toggleSelectedCategory
     } = useTaskStore();
+    const tasks = Object.values(tasksObj || {});
     const { viewMode: urlViewMode } = useParams<{ viewMode: string }>();
     const navigate = useNavigate();
 

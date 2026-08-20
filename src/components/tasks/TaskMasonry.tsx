@@ -25,11 +25,11 @@ const spanToPixels = (span: number | undefined, unit: number, gap: number) => {
 };
 
 const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
-    const {
-        tasks, categories, selectedCategories, toggleTaskCompletion, toggleTaskFailure, deleteTask,
+    const { tasks: tasksObj, categories, selectedCategories, toggleTaskCompletion, toggleTaskFailure, deleteTask,
         activeDayDate, setActiveDayDate, sortBy, dayViewBackgrounds,
         setDayViewBackground, setEditingTaskId, updateTask, taskGap
     } = useTaskStore();
+    const tasks = Object.values(tasksObj || {});
 
     const [isEditingBg, setIsEditingBg] = useState(false);
     const dayBg = dayViewBackgrounds[activeDayDate] || '';
@@ -75,7 +75,7 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                 return da - db;
             }
             if (sortBy === 'priority') {
-                const pMap = { high: 0, medium: 1, low: 2 };
+                const pMap: Record<string, number> = { high: 0, medium: 1, low: 2 };
                 return pMap[a.priority] - pMap[b.priority];
             }
             return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
@@ -246,10 +246,10 @@ const TaskMasonry: React.FC<TaskMasonryProps> = ({ searchTerm }) => {
                         {orderedTasks.map(task => {
                             const category = categories.find(c => c.id === task.categoryId);
                             const isCompleted = task.isRecurring
-                                ? task.completedDates.includes(activeDayDate)
+                                ? (task.completedDates || []).includes(activeDayDate)
                                 : task.isCompleted;
                             const isFailed = task.isRecurring
-                                ? task.failedDates?.includes(activeDayDate)
+                                ? (task.failedDates || []).includes(activeDayDate)
                                 : task.isFailed;
                             const catColor = category?.color || '#6366f1';
 

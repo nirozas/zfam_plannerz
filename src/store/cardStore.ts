@@ -76,6 +76,8 @@ export const useCardStore = create<CardState>()(
                         hasBody: c.has_body,
                         width: c.width,
                         height: c.height,
+                        colSpan: c.width > 4 ? (c.width >= 400 ? 2 : 1) : (c.width || 1),
+                        rowSpan: c.height > 4 ? (c.height >= 250 ? 2 : 1) : (c.height || 1),
                         rating: c.rating,
                         backgroundUrl: c.background_url,
                         backgroundType: c.background_type,
@@ -176,6 +178,8 @@ export const useCardStore = create<CardState>()(
                     if (updates.hasBody !== undefined) updatedData.has_body = updates.hasBody;
                     if (updates.width !== undefined) updatedData.width = updates.width;
                     if (updates.height !== undefined) updatedData.height = updates.height;
+                    if (updates.colSpan !== undefined) updatedData.width = updates.colSpan;
+                    if (updates.rowSpan !== undefined) updatedData.height = updates.rowSpan;
                     if (updates.rating !== undefined) updatedData.rating = updates.rating;
                     if (updates.backgroundUrl !== undefined) updatedData.background_url = updates.backgroundUrl;
                     if (updates.backgroundType !== undefined) updatedData.background_type = updates.backgroundType;

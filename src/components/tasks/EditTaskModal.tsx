@@ -12,7 +12,7 @@ interface EditTaskModalProps {
 }
 
 const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
-    const { categories, updateTask, deleteTask, duplicateTask, setEditingTaskId, toggleTaskCompletion, toggleTaskFailure, viewMode, activeDayDate } = useTaskStore();
+    const { categories, updateTask, deleteTask, duplicateTask, setEditingTaskId, toggleTaskCompletion, toggleTaskFailure, activeDayDate } = useTaskStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isEditing, setIsEditing] = useState(false);
@@ -50,10 +50,9 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose }) => {
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const baseDate = viewMode === 'day' ? activeDayDate : toDateStr(new Date());
-    const dateStr = baseDate;
-    const isCompleted = task.isRecurring ? task.completedDates.includes(dateStr) : task.isCompleted;
-    const isFailed = task.isRecurring ? task.failedDates?.includes(dateStr) : task.isFailed;
+    const dateStr = activeDayDate || toDateStr(new Date());
+    const isCompleted = task.isRecurring ? (task.completedDates || []).includes(dateStr) : task.isCompleted;
+    const isFailed = task.isRecurring ? (task.failedDates || []).includes(dateStr) : task.isFailed;
 
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();

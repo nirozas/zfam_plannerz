@@ -1,0 +1,28 @@
+# Layout & Dragging Implementation Plan
+
+You would like to restore the drag-to-resize functionality (corner and side handles) as a distinct option alongside the new layouts, and fix the drag-and-drop card rearrangement.
+
+## 1. Drag & Drop Rearrangement Fix
+**Issue identified:** The `dnd-kit` drag-and-drop sorting relies on the `SortableContext`. However, by default, the page sorts cards by "Recent". When you drag a card to a new position, the system saves the new order, but the active "Recent" filter immediately re-sorts them by date, snapping them back. Furthermore, CSS Columns (Masonry) notoriously conflicts with `dnd-kit`'s grid calculations.
+
+**Fix:**
+- I will force the `CardsPage` to automatically switch to `Sort By: Manual` whenever a card is successfully dragged and dropped, ensuring the new order sticks.
+- I will optimize the `dnd-kit` sensors and strategy to better handle the varying layouts.
+
+## 2. New "Custom Grid" Layout Mode
+I will add a 4th Layout Mode called **Custom Grid** (with a scaling icon) that restores the exact resizing behavior you had originally.
+
+### Layout Modes will be:
+1. 🔲 **Bento Grid:** Strict, clean grid. Sizes are snapped to Small, Wide, Tall, Large.
+2. 🏛️ **Masonry (Pinterest):** Flowing columns. Native image heights, no width resizing.
+3. 📏 **Custom Grid:** The original `flex-wrap` layout. Restores the dragging handles on the edges and corners to manually resize cards pixel-by-pixel.
+4. 🖱️ **Freeboard:** Unstructured absolute positioning.
+
+### Implementation Steps
+- Restore the `re-resizable` library import.
+- Update `CardItem.tsx` to conditionally wrap the card in `<Resizable>` ONLY when `layoutMode === 'custom'`.
+- Add the `Custom Grid` button to the header layout toggle menu.
+
+## User Review Required
+> [!IMPORTANT]
+> The `re-resizable` handles will be restored exactly as they were, but they will only be active in the **Custom Grid** layout mode. The Bento and Masonry modes will remain clean and strict. Does this 4-mode system align perfectly with your vision?

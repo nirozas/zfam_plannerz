@@ -148,7 +148,7 @@ const rowToCategory = (row: any): Category => ({
 
 interface TaskState {
     // Data
-    tasks: Task[];
+    tasks: Record<string, Task>;
     categories: Category[];
 
     // UI State
@@ -204,7 +204,7 @@ interface TaskState {
 import { toDateStr } from '../utils/recurringUtils';
 
 export const useTaskStore = create<TaskState>()((set, get) => ({
-    tasks: [],
+    tasks: {},
     categories: [],
     viewMode: 'list',
     selectedCategories: [],
@@ -288,7 +288,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
 
                 if (!taskRows || taskRows.length === 0) {
-                    set({ tasks: [], isLoading: false });
+                    set({ tasks: {}, isLoading: false });
                     return;
                 }
 
@@ -331,7 +331,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 const tasks = (taskRows ?? []).map((row: any) =>
                     rowToTask(row, completionMap[row.id] ?? [], attachmentMap[row.id] ?? [], completionTimeMap[row.id] ?? {})
                 );
-                set({ tasks, isLoading: false });
+                set({ tasks: tasks.reduce((acc, t) => { acc[t.id] = t; return acc; }, {} as Record<string, Task>), isLoading: false });
             } catch (taskErr: any) {
                 console.error('[taskStore] tasks fetch error:', taskErr);
                 set({ error: 'Categories loaded, but failed to fetch tasks. Please check your DB schema.', isLoading: false });
@@ -408,7 +408,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         }
 
         const task = rowToTask(newRow, [], storageUrls);
-        set(state => ({ tasks: [task, ...state.tasks] }));
+        set(state => ({ tasks: { [task.id]: task, ...state.tasks } }));
         
         // Sync notifications
         get().syncTaskNotifications(task);
@@ -419,7 +419,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const original = get().tasks.find(t => t.id === id);
+        const original = get().tasks[id];
         if (!original) return null;
 
         // Build a fresh copy, resetting completion state
@@ -431,7 +431,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             priority: original.priority ?? 'medium',
             is_recurring: original.isRecurring ?? false,
             date_added: new Date().toISOString(),
-            subtasks: (original.subtasks ?? []).map(s => ({
+            subtasks: (original.subtasks ?? []).map((s: any) => ({
                 ...s,
                 id: crypto.randomUUID(),
                 isCompleted: false,
@@ -469,7 +469,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         // Copy attachment URL rows (no re-upload needed — same URLs)
         if (original.attachments.length > 0) {
             await supabase.from('task_attachments').insert(
-                original.attachments.map((url, i) => ({
+                original.attachments.map((url: any, i: any) => ({
                     task_id: newRow.id,
                     user_id: user.id,
                     storage_url: url,
@@ -479,7 +479,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         }
 
         const dupTask = rowToTask(newRow, [], original.attachments);
-        set(state => ({ tasks: [dupTask, ...state.tasks] }));
+        set(state => ({ tasks: { [dupTask.id]: dupTask, ...state.tasks } }));
         return dupTask.id;
     },
 
@@ -535,7 +535,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             return rowToTask(row, [], original.attachments || []);
         });
 
-        set(state => ({ tasks: [...newTasks, ...state.tasks] }));
+        set(state => ({ tasks: { ...state.tasks, ...newTasks.reduce((acc, t) => { acc[t.id] = t; return acc; }, {} as Record<string, Task>) } }));
     },
 
     // ── updateTask ───────────────────────────────────────────────────────────
@@ -585,13 +585,48 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             updateRow.recurrence_end_date = rest.recurrence.endDate ?? null;
         }
 
-        if (Object.keys(updateRow).length > 0) {
-            const { error } = await supabase
-                .from('tasks')
-                .update(updateRow)
-                .eq('id', id);
-            if (error) { console.error('[taskStore] updateTask error:', error); return; }
+        
+        // OPTIMISTIC UPDATE: Apply changes to local state immediately
+        const previousTask = get().tasks[id];
+        if (!previousTask) return;
+        
+        const mergedOptimistic: Task = {
+            ...previousTask,
+            title: rest.title ?? previousTask.title,
+            description: rest.description !== undefined ? rest.description : previousTask.description,
+            categoryId: rest.categoryId !== undefined ? rest.categoryId : previousTask.categoryId,
+            priority: rest.priority ?? previousTask.priority,
+            isCompleted: rest.isCompleted ?? previousTask.isCompleted,
+            dueDate: rest.dueDate !== undefined ? rest.dueDate : previousTask.dueDate,
+            dueTime: rest.dueTime !== undefined ? rest.dueTime : previousTask.dueTime,
+            notifications: rest.notifications !== undefined ? rest.notifications : previousTask.notifications,
+            isRecurring: rest.isRecurring ?? previousTask.isRecurring,
+            recurrence: rest.recurrence !== undefined ? rest.recurrence : previousTask.recurrence,
+            subtasks: rest.subtasks ?? previousTask.subtasks,
+            deletedDates: rest.deletedDates ?? previousTask.deletedDates,
+            isFailed: rest.isFailed ?? previousTask.isFailed,
+            failedDates: rest.failedDates ?? previousTask.failedDates,
+            colSpan: rest.colSpan ?? previousTask.colSpan,
+            rowSpan: rest.rowSpan ?? previousTask.rowSpan,
+        };
+        
+        set(state => ({ tasks: { ...state.tasks, [id]: mergedOptimistic } }));
+
+        try {
+            if (Object.keys(updateRow).length > 0) {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update(updateRow)
+                    .eq('id', id);
+                if (error) throw error;
+            }
+        } catch (error) {
+            console.error('[taskStore] updateTask error:', error);
+            // ROLLBACK
+            set(state => ({ tasks: { ...state.tasks, [id]: previousTask } }));
+            return;
         }
+
 
         // Handle attachment replacements
         let finalAttachments: string[] | undefined;
@@ -618,34 +653,18 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             }
         }
 
-        set(state => ({
-            tasks: state.tasks.map(t => {
-                if (t.id !== id) return t;
-                const merged: Task = {
-                    ...t,
-                    title: rest.title ?? t.title,
-                    description: rest.description !== undefined ? rest.description : t.description,
-                    categoryId: rest.categoryId !== undefined ? rest.categoryId : t.categoryId,
-                    priority: rest.priority ?? t.priority,
-                    isCompleted: rest.isCompleted ?? t.isCompleted,
-                    dueDate: rest.dueDate !== undefined ? rest.dueDate : t.dueDate,
-                    dueTime: rest.dueTime !== undefined ? rest.dueTime : t.dueTime,
-                    notifications: rest.notifications !== undefined ? rest.notifications : t.notifications,
-                    isRecurring: rest.isRecurring ?? t.isRecurring,
-                    recurrence: rest.recurrence !== undefined ? rest.recurrence : t.recurrence,
-                    attachments: finalAttachments ?? t.attachments,
-                    subtasks: rest.subtasks ?? t.subtasks,
-                    deletedDates: rest.deletedDates ?? t.deletedDates,
-                    isFailed: rest.isFailed ?? t.isFailed,
-                    failedDates: rest.failedDates ?? t.failedDates,
-                    colSpan: rest.colSpan ?? t.colSpan,
-                    rowSpan: rest.rowSpan ?? t.rowSpan,
-                };
-                return merged;
-            })
-        }));
+        
+        // Update attachments in state if they changed
+        if (finalAttachments !== undefined) {
+             set(state => {
+                 const t = state.tasks[id];
+                 if (!t) return state;
+                 return { tasks: { ...state.tasks, [id]: { ...t, attachments: finalAttachments } } };
+             });
+        }
 
-        const updatedTask = get().tasks.find(t => t.id === id);
+
+        const updatedTask = get().tasks[id];
         if (updatedTask) get().syncTaskNotifications(updatedTask);
     },
 
@@ -664,7 +683,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
         if (error) { console.error('[taskStore] deleteTask error:', error); return; }
 
-        set(state => ({ tasks: state.tasks.filter(t => t.id !== id) }));
+        set(state => {
+            const newTasks = { ...state.tasks };
+            delete newTasks[id];
+            return { tasks: newTasks };
+        });
     },
 
     // ── toggleTaskCompletion ─────────────────────────────────────────────────
@@ -672,7 +695,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const task = get().tasks.find(t => t.id === id);
+        const task = get().tasks[id];
         if (!task) return;
 
         if (!task.isRecurring) {
@@ -681,21 +704,31 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
             const completedAt = newCompleted ? new Date().toISOString() : null;
             const newFailed = newCompleted ? false : task.isFailed; // Unfail if completing
             
-            const { error } = await supabase
-                .from('tasks')
-                .update({
-                    is_completed: newCompleted,
-                    is_failed: newFailed
-                })
-                .eq('id', id)
-                .eq('user_id', user.id);
-            if (error) { console.error('[taskStore] toggle one-time error:', error); return; }
-
+            
+            // Optimistic UI
+            const prevTask = { ...task };
             set(state => ({
-                tasks: state.tasks.map(t =>
-                    t.id === id ? { ...t, isCompleted: newCompleted, completedAt: completedAt ?? undefined, isFailed: newFailed } : t
-                )
+                tasks: {
+                    ...state.tasks,
+                    [id]: { ...state.tasks[id], isCompleted: newCompleted, completedAt: completedAt ?? undefined, isFailed: newFailed }
+                }
             }));
+            
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({
+                        is_completed: newCompleted,
+                        is_failed: newFailed
+                    })
+                    .eq('id', id)
+                    .eq('user_id', user.id);
+                if (error) throw error;
+            } catch (error) {
+                console.error('[taskStore] toggle one-time error:', error);
+                set(state => ({ tasks: { ...state.tasks, [id]: prevTask } }));
+            }
+
         } else {
             const already = task.completedDates.includes(dateStr);
             let newFailedDates = task.failedDates || [];
@@ -706,35 +739,48 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 await supabase.from('tasks').update({ failed_dates: newFailedDates }).eq('id', id).eq('user_id', user.id);
             }
 
-            const { error } = await supabase.rpc('toggle_task_completion', {
-                p_task_id: id,
-                p_completed_date: dateStr,
-            });
-            if (error) { console.error('[taskStore] toggle recurring error:', error); return; }
+            
+            // Optimistic UI
+            const prevTask = { ...task };
+            set(state => {
+                const t = state.tasks[id];
+                if (!t) return state;
+                const isAlready = t.completedDates.includes(dateStr);
+                const now = new Date().toISOString();
+                const newTimes = { ...(t.completedDateTimes || {}) };
 
-            set(state => ({
-                tasks: state.tasks.map(t => {
-                    if (t.id !== id) return t;
-                    const isAlready = t.completedDates.includes(dateStr);
-                    const now = new Date().toISOString();
-                    const newTimes = { ...(t.completedDateTimes || {}) };
+                if (isAlready) {
+                    delete newTimes[dateStr];
+                } else {
+                    newTimes[dateStr] = now;
+                }
 
-                    if (isAlready) {
-                        delete newTimes[dateStr];
-                    } else {
-                        newTimes[dateStr] = now;
+                return {
+                    tasks: {
+                        ...state.tasks,
+                        [id]: {
+                            ...t,
+                            completedDates: isAlready
+                                ? t.completedDates.filter(d => d !== dateStr)
+                                : [...t.completedDates, dateStr],
+                            completedDateTimes: newTimes,
+                            failedDates: (!isAlready) ? t.failedDates?.filter(d => d !== dateStr) : t.failedDates
+                        }
                     }
+                };
+            });
 
-                    return {
-                        ...t,
-                        completedDates: isAlready
-                            ? t.completedDates.filter(d => d !== dateStr)
-                            : [...t.completedDates, dateStr],
-                        completedDateTimes: newTimes,
-                        failedDates: (!isAlready) ? t.failedDates?.filter(d => d !== dateStr) : t.failedDates
-                    };
-                })
-            }));
+            try {
+                const { error } = await supabase.rpc('toggle_task_completion', {
+                    p_task_id: id,
+                    p_completed_date: dateStr,
+                });
+                if (error) throw error;
+            } catch(error) {
+                console.error('[taskStore] toggle recurring error:', error);
+                set(state => ({ tasks: { ...state.tasks, [id]: prevTask } }));
+            }
+
         }
     },
 
@@ -743,24 +789,32 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const task = get().tasks.find(t => t.id === id);
+        const task = get().tasks[id];
         if (!task) return;
 
         if (!task.isRecurring) {
             // One-time task: toggle is_failed in DB
             const newFailed = !task.isFailed;
-            const { error } = await supabase
-                .from('tasks')
-                .update({ is_failed: newFailed, is_completed: false })
-                .eq('id', id)
-                .eq('user_id', user.id);
-            if (error) { console.error('[taskStore] toggle failure one-time error:', error); return; }
-
+            
+            const prevTask = { ...task };
             set(state => ({
-                tasks: state.tasks.map(t =>
-                    t.id === id ? { ...t, isFailed: newFailed, isCompleted: false } : t
-                )
+                tasks: {
+                    ...state.tasks,
+                    [id]: { ...state.tasks[id], isFailed: newFailed, isCompleted: false }
+                }
             }));
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({ is_failed: newFailed, is_completed: false })
+                    .eq('id', id)
+                    .eq('user_id', user.id);
+                if (error) throw error;
+            } catch (error) {
+                console.error('[taskStore] toggle failure one-time error:', error);
+                set(state => ({ tasks: { ...state.tasks, [id]: prevTask } }));
+            }
+
         } else {
             // Recurring task
             const alreadyFailed = task.failedDates?.includes(dateStr) || false;
@@ -779,25 +833,36 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
                 await supabase.rpc('toggle_task_completion', { p_task_id: id, p_completed_date: dateStr });
             }
 
-            const { error } = await supabase
-                .from('tasks')
-                .update({ failed_dates: newFailedDates })
-                .eq('id', id)
-                .eq('user_id', user.id);
             
-            if (error) { console.error('[taskStore] toggle failure recurring error:', error); return; }
+            const prevTask = { ...task };
+            set(state => {
+                const t = state.tasks[id];
+                if (!t) return state;
+                const newCompletedDates = (!alreadyFailed && alreadyCompleted) ? t.completedDates.filter(d=>d!==dateStr) : t.completedDates;
+                return {
+                    tasks: {
+                        ...state.tasks,
+                        [id]: {
+                            ...t,
+                            failedDates: newFailedDates,
+                            completedDates: newCompletedDates
+                        }
+                    }
+                };
+            });
 
-            set(state => ({
-                tasks: state.tasks.map(t => {
-                    if (t.id !== id) return t;
-                    const newCompletedDates = (!alreadyFailed && alreadyCompleted) ? t.completedDates.filter(d=>d!==dateStr) : t.completedDates;
-                    return {
-                        ...t,
-                        failedDates: newFailedDates,
-                        completedDates: newCompletedDates
-                    };
-                })
-            }));
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({ failed_dates: newFailedDates })
+                    .eq('id', id)
+                    .eq('user_id', user.id);
+                if (error) throw error;
+            } catch(error) {
+                console.error('[taskStore] toggle failure recurring error:', error);
+                set(state => ({ tasks: { ...state.tasks, [id]: prevTask } }));
+            }
+
         }
     },
 
@@ -864,7 +929,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         // Nullify category_id on affected tasks locally
         set(state => ({
             categories: state.categories.filter(c => c.id !== id),
-            tasks: state.tasks.map(t => t.categoryId === id ? { ...t, categoryId: '' } : t),
+            tasks: Object.fromEntries(Object.entries(state.tasks).map(([k, t]) => [k, t.categoryId === id ? { ...t, categoryId: '' } : t])),
         }));
     },
 

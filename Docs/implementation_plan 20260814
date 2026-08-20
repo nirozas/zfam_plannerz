@@ -1,0 +1,38 @@
+# Cards Page UX/UI Upgrade Plan
+
+The current arrangement on the Cards page feels clumsy because it mixes `flex-wrap` with arbitrary, freeform pixel-dragging via `re-resizable`. This results in awkward gaps between cards, unpredictable heights for rows, and a resizing experience that feels unnatural for a modern board. 
+
+## Goal
+Upgrade the layout to a **Premium Bento Box Grid System**. This provides a stunning, masonry-like interlocking design that's extremely easy to organize. Instead of dragging edges pixel-by-pixel, users will select standardized "card sizes" (e.g., Small, Wide, Tall, Large), ensuring perfect alignment every time.
+
+## User Review Required
+
+> [!WARNING]
+> This upgrade will remove the arbitrary `re-resizable` pixel handles. Existing card sizes will be mapped to the closest standard grid unit (e.g., a 2x1 or 2x2 span) automatically.
+
+## Proposed Changes
+
+---
+
+### `src/types/cards.ts`
+[MODIFY] Add `colSpan` and `rowSpan` properties to the `Card` interface to support the new grid layout logic, deprecating `width` and `height`.
+
+### `src/components/dashboard/CardsPage.tsx`
+[MODIFY] `CardsPage.tsx`
+- Replace the `flex-wrap` and `re-resizable` layout with a responsive CSS Grid (`display: grid`, `grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))`, `grid-auto-flow: dense`).
+- Introduce standardized card sizing (e.g. 1x1, 2x1, 1x2, 2x2).
+- Update the Drag-and-Drop system (`DndContext`) to use a `rectSortingStrategy` compatible with varying grid spans.
+
+### `src/components/dashboard/CardItem` (inside `CardsPage.tsx`)
+[MODIFY] `CardsPage.tsx` (CardItem component)
+- Remove `re-resizable` wrapper.
+- Add micro-interactions: slight scale-up on hover, polished glassmorphism effects, and smooth transitions.
+- Instead of resize handles, add an elegant "Size" selector in the card's action menu to quickly snap the card between: Small, Wide, Tall, and Large.
+
+## Verification Plan
+
+### Manual Verification
+- Render the Cards view and test changing card sizes via the menu.
+- Verify that items densely pack into the CSS Grid layout without ugly whitespace gaps.
+- Verify that Drag and Drop reordering still works beautifully.
+- Test mobile view (where all items snap to 100% width cleanly).

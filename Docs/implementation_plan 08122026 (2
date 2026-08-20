@@ -1,0 +1,58 @@
+# Upgrade Tasks Feature
+
+This plan outlines the implementation for the three architectural and UX upgrades identified in the code review for the `tasks` feature.
+
+## Open Questions
+
+> [!WARNING]
+> **Clarification Needed**
+> Before I proceed, could you clarify what you meant by "the three different points"? 
+> 
+> Did you mean:
+> **Option A:** The 3 architectural improvements (State Management, Optimistic UI, Framer Motion) as outlined in this plan below?
+> **Option B:** The 3 *Professional Feature Upgrades* I mentioned at the end of my review (Kanban Board, Relational Subtasks, Natural Language Dates)? 
+>
+> **Please let me know which option you prefer! (If Option B, I will revise this plan).**
+
+## Proposed Changes (Assuming Option A)
+
+### 1. State Management & Rendering Performance
+Refactor `useTaskStore` to normalize the state and prevent expensive O(N) re-renders when a single task updates.
+- **Store Shape:** Change `tasks: Task[]` to `tasks: Record<string, Task>` and maintain a separate array of `taskIds: string[]` if ordering is needed at the store level (though `TaskList` handles sorting).
+- **Date Caching:** Parse and cache dates during the Supabase fetch instead of running `new Date()` continuously inside the `TaskList` filter/sort cycle.
+
+#### [MODIFY] [taskStore.ts](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/store/taskStore.ts)
+- Change state interface to use a dictionary for tasks.
+- Update `loadAll`, `addTask`, `updateTask`, `deleteTask`, and `bulkAddTasks` to work with the normalized state.
+- Update `TasksPage`, `TaskList`, and other consumers to map over `Object.values(tasks)`.
+
+### 2. Backend Sync & Data Mutations (Optimistic UI)
+Modify `toggleTaskCompletion` and `updateTask` to update the local UI state synchronously before waiting for the Supabase network response.
+- Apply state changes immediately.
+- Await the Supabase `update` call in a `try...catch` block.
+- Roll back the state if the Supabase call fails.
+
+#### [MODIFY] [taskStore.ts](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/store/taskStore.ts)
+- Rewrite mutation functions for true Optimistic UI.
+
+### 3. UI/UX Polish & Animations (Framer Motion)
+Introduce layout animations so tasks smoothly slide around when filtered, sorted, or completed.
+- Wrap the main list in `<AnimatePresence mode="popLayout">`.
+- Wrap each `TaskItem` inside `TaskList.tsx` with a `<motion.div layout>` component.
+- Disable the `<Resizable>` component on mobile devices so tasks default to a 100% width card view.
+
+#### [MODIFY] [TaskList.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/tasks/TaskList.tsx)
+- Import `motion` and `AnimatePresence` from `framer-motion`.
+- Add animations to the mapped task items.
+
+#### [MODIFY] [TaskItem.tsx](file:///c:/Users/asnir/Documents/Projects%20Website/3.Zoabi_Planner/src/components/tasks/TaskItem.tsx)
+- Improve mobile layout handling to bypass the Resizable wrapper gracefully.
+
+---
+
+## Verification Plan
+1. **Automated Verification:** The TypeScript compiler will be used to ensure the store refactoring (Array -> Record) does not break existing components.
+2. **Manual Verification:** 
+   - Check off a task and verify it updates instantly in the UI without network lag.
+   - Filter or sort the tasks and verify they smoothly animate into their new positions using Framer Motion.
+   - Verify mobile layout is a single column list.

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Bug, Settings, Wallet, Book } from 'lucide-react';
+import { Home, LayoutGrid, CheckSquare, LogOut, Plane, User, StickyNote, HardDrive, Bug, Settings, Wallet, Book, Activity } from 'lucide-react';
 import { usePlannerStore } from '../../store/plannerStore';
 import { useNotebookStore } from '../../store/notebookStore';
 import { supabase } from '../../supabase/client';
@@ -129,6 +129,14 @@ export const AppSidebar: React.FC = () => {
                     title="Vault & Finances"
                 >
                     <Wallet size={22} />
+                </NavLink>
+
+                <NavLink
+                    to="/health"
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    title="Trackers"
+                >
+                    <Activity size={22} />
                 </NavLink>
 
 

@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Plus, ChevronRight, Home, MoreVertical, Folder, FileText,
     Share2, Edit, Trash2, Info, Image as ImageIcon,
-    Link as LinkIcon, Star, MessageSquare, Palette, Search, FolderOpen, X as XIcon
+    Link as LinkIcon, Star, MessageSquare, Palette, Search, FolderOpen, X as XIcon,
+    LayoutGrid, Columns, MousePointer2, Scaling
 } from 'lucide-react';
 import { Card as CardType } from '../../types/cards';
 import { CardEntryModal } from './CardEntryModal';
@@ -33,7 +34,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const CardsPage: React.FC = () => {
-    const [layoutMode, setLayoutMode] = useState<'grid' | 'free'>(() => (localStorage.getItem('card_layout_mode') as any) || 'grid');
+    const [layoutMode, setLayoutMode] = useState<'bento' | 'masonry' | 'custom' | 'free'>(() => (localStorage.getItem('card_layout_mode') as any) || 'masonry');
     const {
         currentFolderId,
         setCurrentFolderId,
@@ -107,10 +108,9 @@ const CardsPage: React.FC = () => {
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<'name' | 'recent' | 'group' | 'manual'>('recent');
 
-    const toggleLayoutMode = () => {
-        const next = layoutMode === 'grid' ? 'free' : 'grid';
-        setLayoutMode(next);
-        localStorage.setItem('card_layout_mode', next);
+    const changeLayoutMode = (mode: 'bento' | 'masonry' | 'custom' | 'free') => {
+        setLayoutMode(mode);
+        localStorage.setItem('card_layout_mode', mode);
     };
 
     const currentCards = getCardsByParent(currentFolderId);
@@ -233,6 +233,7 @@ const CardsPage: React.FC = () => {
         if (oldIndex !== -1 && newIndex !== -1) {
             const newOrderIds = arrayMove(displayedCards, oldIndex, newIndex).map(c => c.id);
             reorderCards(newOrderIds.filter(Boolean) as string[]);
+            setSortBy('manual');
         }
     };
 
@@ -263,13 +264,36 @@ const CardsPage: React.FC = () => {
                     >
                         <Palette size={20} className="size-5" />
                     </button>
-                    <button
-                        onClick={toggleLayoutMode}
-                        className={`p-2.5 rounded-xl transition-all ${layoutMode === 'free' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                        title={layoutMode === 'grid' ? "Switch to Freeboard" : "Switch to Grid"}
-                    >
-                        {layoutMode === 'grid' ? <Plus size={20} className="size-5" /> : <Home size={20} className="size-5" />}
-                    </button>
+                    <div className="flex bg-slate-100 rounded-xl p-1">
+                        <button
+                            onClick={() => changeLayoutMode('bento')}
+                            className={`p-1.5 rounded-lg transition-all ${layoutMode === 'bento' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Bento Grid"
+                        >
+                            <LayoutGrid size={18} />
+                        </button>
+                        <button
+                            onClick={() => changeLayoutMode('masonry')}
+                            className={`p-1.5 rounded-lg transition-all ${layoutMode === 'masonry' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Pinterest Masonry"
+                        >
+                            <Columns size={18} />
+                        </button>
+                        <button
+                            onClick={() => changeLayoutMode('custom')}
+                            className={`p-1.5 rounded-lg transition-all ${layoutMode === 'custom' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Custom Grid (Resizable)"
+                        >
+                            <Scaling size={18} />
+                        </button>
+                        <button
+                            onClick={() => changeLayoutMode('free')}
+                            className={`p-1.5 rounded-lg transition-all ${layoutMode === 'free' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Freeboard"
+                        >
+                            <MousePointer2 size={18} />
+                        </button>
+                    </div>
                     {currentFolder && (
                         <button
                             onClick={() => setActiveShareCard(currentFolder)}
@@ -359,15 +383,34 @@ const CardsPage: React.FC = () => {
                         collisionDetection={closestCenter}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
-                        modifiers={layoutMode === 'grid' ? [] : []}
+                        modifiers={layoutMode !== 'free' ? [] : []}
                     >
                         <SortableContext
                             items={displayedCards.map(c => c.id)}
-                            strategy={layoutMode === 'grid' ? rectSortingStrategy : undefined}
+                            strategy={layoutMode !== 'free' ? rectSortingStrategy : undefined}
                         >
                             <div
-                                className={layoutMode === 'grid' ? "flex flex-wrap items-start" : "relative w-full h-full min-h-[500px]"}
-                                style={{ gap: layoutMode === 'grid' ? `${gridGap}px` : '0' }}
+                                className={
+                                    layoutMode === 'bento' ? "grid items-start" :
+                                    layoutMode === 'masonry' ? "w-full" : 
+                                    layoutMode === 'custom' ? "flex flex-wrap items-start" :
+                                    "relative w-full h-full min-h-[500px]"
+                                }
+                                style={
+                                    layoutMode === 'bento' ? { 
+                                        gap: `${gridGap}px`,
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                        gridAutoRows: '180px',
+                                        gridAutoFlow: 'dense'
+                                    } :
+                                    layoutMode === 'masonry' ? {
+                                        columnWidth: '280px',
+                                        columnGap: `${gridGap}px`
+                                    } : 
+                                    layoutMode === 'custom' ? {
+                                        gap: `${gridGap}px`,
+                                    } : {}
+                                }
                             >
                                 {displayedCards.map((card) => (
                                     <SortableCard
@@ -383,7 +426,7 @@ const CardsPage: React.FC = () => {
                                         }}
                                         onMetadata={() => setActiveMetadataCard(card)}
                                         onShare={() => setActiveShareCard(card)}
-                                        onResize={(w: number, h: number) => updateCard(card.id, { width: w, height: h })}
+                                        onResize={(colSpan: number, rowSpan: number) => updateCard(card.id, { colSpan, rowSpan })}
                                         onMove={(pid: string) => updateCard(card.id, { parentId: pid })}
                                         allFolders={cards.filter(c => c.type === 'folder' && c.id !== card.id).map(f => ({ id: f.id, title: f.title }))}
                                         updateCard={updateCard}
@@ -404,9 +447,22 @@ const CardsPage: React.FC = () => {
                             }),
                         }}>
                             {activeDragId && activeCard ? (
-                                <div style={{ width: activeCard.width || 280, opacity: 0.8 }}>
+                                <div style={{ 
+                                    width: layoutMode === 'bento' 
+                                        ? ((activeCard.colSpan || 1) * 280 + ((activeCard.colSpan || 1) - 1) * gridGap) 
+                                        : layoutMode === 'masonry'
+                                        ? 280
+                                        : (activeCard.width || 280), 
+                                    height: layoutMode === 'bento'
+                                        ? ((activeCard.rowSpan || 1) * 180 + ((activeCard.rowSpan || 1) - 1) * gridGap)
+                                        : layoutMode === 'masonry'
+                                        ? 'auto'
+                                        : (activeCard.height || 180),
+                                    opacity: 0.8 
+                                }}>
                                     <CardItem
                                         card={activeCard}
+                                        layoutMode={layoutMode}
                                         onClick={() => { }}
                                         onDelete={() => { }}
                                         onEdit={() => { }}
@@ -483,6 +539,9 @@ const SortableCard = ({ card, layoutMode, gridGap, updateCard, onCardClick, ...p
         isDragging
     } = useSortable({ id: card.id });
 
+    const colSpan = card.colSpan || 1;
+    const rowSpan = card.rowSpan || 1;
+
     if (layoutMode === 'free') {
         return (
             <motion.div
@@ -506,7 +565,20 @@ const SortableCard = ({ card, layoutMode, gridGap, updateCard, onCardClick, ...p
                 }}
             >
                 <div data-folder-id={card.type === 'folder' ? card.id : undefined} className="h-full">
-                    <CardItem card={card} onClick={onCardClick} {...props} />
+                    <Resizable
+                        defaultSize={{
+                            width: card.width || 280,
+                            height: card.height || 180,
+                        }}
+                        onResizeStop={(_e, _direction, ref, _d) => {
+                            props.updateCard(card.id, {
+                                width: ref.offsetWidth,
+                                height: ref.offsetHeight,
+                            });
+                        }}
+                    >
+                        <CardItem card={card} layoutMode={layoutMode} onClick={onCardClick} {...props} />
+                    </Resizable>
                 </div>
             </motion.div>
         );
@@ -516,14 +588,34 @@ const SortableCard = ({ card, layoutMode, gridGap, updateCard, onCardClick, ...p
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.3 : 1,
-        // we add touchAction: 'none' to allow mouse dragging on touch devices if needed
-        touchAction: 'none'
+        touchAction: 'none',
+        breakInside: layoutMode === 'masonry' ? 'avoid' as const : undefined,
+        marginBottom: layoutMode === 'masonry' ? `${gridGap}px` : undefined,
+        gridColumn: layoutMode === 'bento' ? `span ${colSpan}` : undefined,
+        gridRow: layoutMode === 'bento' ? `span ${rowSpan}` : undefined,
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="h-full relative">
             <div data-folder-id={card.type === 'folder' ? card.id : undefined} className="h-full">
-                <CardItem card={card} onClick={onCardClick} {...props} />
+                {layoutMode === 'custom' || layoutMode === 'free' ? (
+                    <Resizable
+                        defaultSize={{
+                            width: card.width || 280,
+                            height: card.height || 180,
+                        }}
+                        onResizeStop={(_e, _direction, ref, _d) => {
+                            props.updateCard(card.id, {
+                                width: ref.offsetWidth,
+                                height: ref.offsetHeight,
+                            });
+                        }}
+                    >
+                        <CardItem card={card} layoutMode={layoutMode} onClick={onCardClick} {...props} />
+                    </Resizable>
+                ) : (
+                    <CardItem card={card} layoutMode={layoutMode} onClick={onCardClick} {...props} />
+                )}
             </div>
         </div>
     );
@@ -621,10 +713,11 @@ const CardItem: React.FC<{
     onEdit: () => void;
     onMetadata: () => void;
     onShare: () => void;
-    onResize: (width: number, height: number) => void;
+    onResize: (colSpan: number, rowSpan: number) => void;
     onMove: (newParentId: string | null) => void;
     allFolders: { id: string; title: string }[];
-}> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize, onMove, allFolders }) => {
+    layoutMode?: 'bento' | 'masonry' | 'custom' | 'free';
+}> = ({ card, onClick, onDelete, onEdit, onMetadata, onShare, onResize, onMove, allFolders, layoutMode = 'bento' }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveModal, setShowMoveModal] = useState(false);
     const isMobile = window.innerWidth < 640;
@@ -648,14 +741,12 @@ const CardItem: React.FC<{
             />
 
             {/* Representative Image Area */}
-            <div className={`w-full ${isMobile ? 'h-32' : 'flex-1'} bg-slate-50 relative flex items-center justify-center rounded-t-xl overflow-hidden min-h-0`}>
+            <div className={`w-full ${layoutMode === 'masonry' ? '' : (isMobile ? 'h-32' : 'flex-1')} bg-slate-50 relative flex items-center justify-center rounded-t-xl overflow-hidden min-h-0`}>
                 {card.coverImage ? (
-                    <div className="w-full h-full">
-                        <img src={card.coverImage} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                    </div>
+                    <img src={card.coverImage} alt="" referrerPolicy="no-referrer" className={`w-full ${layoutMode === 'masonry' ? 'h-auto block' : 'h-full object-cover'}`} />
                 ) : (
-                    <div className={`w-full h-full flex items-center justify-center ${card.type === 'folder' ? 'bg-indigo-50/50 text-indigo-100' : card.type === 'list' ? 'bg-emerald-50/50 text-emerald-100' : 'bg-amber-50/50 text-amber-100'}`}>
-                        {card.type === 'folder' ? <Folder size={isMobile ? 32 : 48} strokeWidth={1.5} /> : card.type === 'list' ? <FileText size={isMobile ? 32 : 48} strokeWidth={1.5} /> : <ImageIcon size={isMobile ? 32 : 48} strokeWidth={1.5} />}
+                    <div className={`w-full ${layoutMode === 'masonry' ? 'aspect-video' : 'h-full'} flex items-center justify-center ${card.type === 'folder' ? 'bg-indigo-50/50 text-indigo-100' : card.type === 'list' ? 'bg-emerald-50/50 text-emerald-100' : 'bg-amber-50/50 text-amber-100'}`}>
+                        {card.type === 'folder' ? <Folder size={48} strokeWidth={1.5} /> : card.type === 'list' ? <FileText size={48} strokeWidth={1.5} /> : <ImageIcon size={48} strokeWidth={1.5} />}
                     </div>
                 )}
             </div>
@@ -741,6 +832,32 @@ const CardItem: React.FC<{
                                 >
                                     <FolderOpen size={16} /> Move to...
                                 </button>
+
+                                {layoutMode === 'bento' && (
+                                    <>
+                                        <div className="h-px bg-slate-100 my-1" />
+                                        <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">Card Size</div>
+                                        <div className="grid grid-cols-2 gap-1 px-2 pb-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onResize(1, 1); }}
+                                                className={`px-2 py-1.5 text-xs rounded-md ${card.colSpan === 1 && card.rowSpan === 1 ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >Small</button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onResize(2, 1); }}
+                                                className={`px-2 py-1.5 text-xs rounded-md ${card.colSpan === 2 && card.rowSpan === 1 ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >Wide</button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onResize(1, 2); }}
+                                                className={`px-2 py-1.5 text-xs rounded-md ${card.colSpan === 1 && card.rowSpan === 2 ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >Tall</button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onResize(2, 2); }}
+                                                className={`px-2 py-1.5 text-xs rounded-md ${card.colSpan === 2 && card.rowSpan === 2 ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >Large</button>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="h-px bg-slate-100 my-1" />
                                 <button
                                     onClick={(e) => {
@@ -795,32 +912,10 @@ const CardItem: React.FC<{
         </div>
     );
 
-    if (isMobile) {
-        return <div className="w-full group">{cardContent}</div>;
-    }
-
     return (
-        <Resizable
-            defaultSize={{
-                width: card.width || 280,
-                height: card.height || 'auto'
-            }}
-            minWidth={200}
-            minHeight={150}
-            onResizeStop={(_e, _direction, ref, _d) => {
-                onResize(ref.offsetWidth, ref.offsetHeight);
-            }}
-            enable={{
-                top: false, right: true, bottom: true, left: false,
-                topRight: false, bottomRight: true, bottomLeft: false, topLeft: false
-            }}
-            handleClasses={{
-                bottomRight: 'w-3 h-3 bg-indigo-500/20 rounded-full cursor-nwse-resize hover:bg-indigo-500 transition-colors absolute bottom-1 right-1'
-            }}
-            className="group"
-        >
+        <div className="w-full h-full group">
             {cardContent}
-        </Resizable>
+        </div>
     );
 };
 

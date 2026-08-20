@@ -14,8 +14,10 @@ export interface Card {
     // Logic fields
     itemCount?: number; // for folders
     lineCount?: number; // for lists
-    width?: number;
-    height?: number;
+    width?: number; // deprecated: use colSpan
+    height?: number; // deprecated: use rowSpan
+    colSpan?: number; // New grid spanning (e.g. 1, 2)
+    rowSpan?: number; // New grid spanning (e.g. 1, 2)
     url?: string;
     hasBody?: boolean;
     rating?: number; // 1-5

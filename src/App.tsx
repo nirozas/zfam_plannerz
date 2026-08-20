@@ -46,6 +46,7 @@ const CardsPage = lazyWithRetry(() => import('@/components/dashboard/CardsPage')
 const FinancesPage = lazyWithRetry(() => import('@/pages/FinancesPage'))
 const NotebooksPage = lazyWithRetry(() => import('@/pages/NotebooksPage'))
 const NotebookSelectorPage = lazyWithRetry(() => import('@/components/notebooks/NotebookSelectorPage').then(m => ({ default: m.NotebookSelectorPage })))
+const HealthPage = lazyWithRetry(() => import('@/pages/HealthPage'))
 
 // Loading fallback for Suspense
 const PageLoader = () => (
@@ -151,6 +152,7 @@ function App() {
                         <Route path="/finances" element={<FinancesPage />} />
                         <Route path="/notebooks" element={<NotebookSelectorPage />} />
                         <Route path="/notebooks/:notebookName" element={<NotebooksPage />} />
+                        <Route path="/health" element={<HealthPage />} />
                     </Route>
 
                     {/* Standalone Pages */}

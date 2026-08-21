@@ -12,22 +12,22 @@ interface BodyMeasurementsViewProps {
 
 
 const NODES = [
-  // Front Figure (targetX approx 40.5)
-  { id: 'neck', label: 'Neck', x: 10, y: 12, targetX: 40.5, targetY: 19 },
-  { id: 'bust', label: 'Bust', x: 5, y: 22, targetX: 40.5, targetY: 28.5 },
-  { id: 'sleeve_length', label: 'Sleeve Length', x: 16, y: 29, targetX: 38, targetY: 30 },
-  { id: 'waistcoat_length', label: 'Waistcoat', x: 4, y: 36, targetX: 43, targetY: 32 },
-  { id: 'belly', label: 'Belly', x: 16, y: 43, targetX: 40.5, targetY: 38 },
-  { id: 'pant_waist', label: 'Pant Waist', x: 4, y: 50, targetX: 40.5, targetY: 42.5 },
-  { id: 'coat_length', label: 'Coat Length', x: 16, y: 58, targetX: 39.5, targetY: 50 },
-  { id: 'pant_length', label: 'Pant Length', x: 4, y: 72, targetX: 43.5, targetY: 85 },
-  { id: 'bottom_opening', label: 'Bottom Opening', x: 16, y: 84, targetX: 38.5, targetY: 84.5 },
+  // Front Figure
+  { id: 'neck', label: 'Neck', x: 13, y: 18, targetX: 43.5, targetY: 25 },
+  { id: 'bust', label: 'Bust', x: 8, y: 28, targetX: 43.5, targetY: 34.5 },
+  { id: 'sleeve_length', label: 'Sleeve Length', x: 19, y: 35, targetX: 41, targetY: 36 },
+  { id: 'waistcoat_length', label: 'Waistcoat', x: 7, y: 42, targetX: 46, targetY: 38 },
+  { id: 'belly', label: 'Belly', x: 19, y: 49, targetX: 43.5, targetY: 44 },
+  { id: 'pant_waist', label: 'Pant Waist', x: 7, y: 56, targetX: 43.5, targetY: 48.5 },
+  { id: 'coat_length', label: 'Coat Length', x: 19, y: 64, targetX: 42.5, targetY: 56 },
+  { id: 'pant_length', label: 'Pant Length', x: 7, y: 78, targetX: 46.5, targetY: 91 },
+  { id: 'bottom_opening', label: 'Bottom Opening', x: 19, y: 90, targetX: 41.5, targetY: 90.5 },
 
-  // Back Figure (targetX approx 59.5)
-  { id: 'shoulder', label: 'Shoulder', x: 92, y: 18, targetX: 59.5, targetY: 21.5 },
-  { id: 'hip', label: 'Hip', x: 92, y: 38, targetX: 59.5, targetY: 45 },
-  { id: 'thigh', label: 'Thigh', x: 92, y: 52, targetX: 62.5, targetY: 51 },
-  { id: 'in_seam', label: 'In-seam', x: 92, y: 80, targetX: 59.5, targetY: 82 },
+  // Back Figure
+  { id: 'shoulder', label: 'Shoulder', x: 89, y: 24, targetX: 56.5, targetY: 27.5 },
+  { id: 'hip', label: 'Hip', x: 89, y: 44, targetX: 56.5, targetY: 51 },
+  { id: 'thigh', label: 'Thigh', x: 89, y: 58, targetX: 59.5, targetY: 57 },
+  { id: 'in_seam', label: 'In-seam', x: 89, y: 86, targetX: 56.5, targetY: 88 },
 ];
 
 export const BodyMeasurementsView: React.FC<BodyMeasurementsViewProps> = ({ entries, onLogEntry }) => {

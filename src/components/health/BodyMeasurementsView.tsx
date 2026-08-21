@@ -160,70 +160,69 @@ export const BodyMeasurementsView: React.FC<BodyMeasurementsViewProps> = ({ entr
           )}
         </div>
 
-        {/* Body Image */}
-        <div className="absolute inset-y-0 inset-x-0 mx-auto w-full max-w-[600px] pointer-events-none opacity-90 mix-blend-multiply flex items-center justify-center">
-          <img src="/body-mannequin-clean.jpg" alt="Mannequin" className="w-full h-full object-contain" />
-        </div>
+        <div className="relative w-full max-w-[500px] flex items-center justify-center">
+          {/* Body Image */}
+          <img src="/body-mannequin-clean.jpg" alt="Mannequin" className="w-full h-auto object-contain opacity-90 mix-blend-multiply pointer-events-none block" />
 
-        {/* Lines and Targets Overlay */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
+          {/* Lines and Targets Overlay */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
+            {NODES.map(node => (
+              <g key={`line-${node.id}`}>
+                <line 
+                  x1={`${node.x}%`} y1={`${node.y}%`} 
+                  x2={`${node.targetX}%`} y2={`${node.targetY}%`} 
+                  stroke={activeNode === node.id ? '#94a3b8' : '#cbd5e1'} 
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+                <circle 
+                  cx={`${node.targetX}%`} cy={`${node.targetY}%`} 
+                  r={activeNode === node.id ? "5" : "3"} 
+                  fill={activeNode === node.id ? '#D4B4E8' : '#94a3b8'} 
+                  stroke="white" strokeWidth="1.5"
+                />
+              </g>
+            ))}
+          </svg>
 
+          {/* Nodes Overlay */}
           {NODES.map(node => (
-            <g key={`line-${node.id}`}>
-              <line 
-                x1={`${node.x}%`} y1={`${node.y}%`} 
-                x2={`${node.targetX}%`} y2={`${node.targetY}%`} 
-                stroke={activeNode === node.id ? '#94a3b8' : '#cbd5e1'} 
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-              />
-              <circle 
-                cx={`${node.targetX}%`} cy={`${node.targetY}%`} 
-                r={activeNode === node.id ? "5" : "3"} 
-                fill={activeNode === node.id ? '#D4B4E8' : '#94a3b8'} 
-                stroke="white" strokeWidth="1.5"
-              />
-            </g>
-          ))}
-        </svg>
-
-        {/* Nodes Overlay */}
-        {NODES.map(node => (
-          <div 
-            key={node.id} 
-            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
-            style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: activeNode === node.id ? 20 : 10 }}
-          >
             <div 
-              className={`text-[10px] font-bold uppercase tracking-wider mb-1 px-2 py-0.5 rounded shadow-sm backdrop-blur-md cursor-pointer transition-all ${
-                activeNode === node.id ? 'bg-[#D4B4E8] text-slate-900 scale-110' : 'bg-white/80 text-slate-500 hover:bg-slate-100'
-              }`}
-              onClick={() => setActiveNode(node.id)}
+              key={node.id} 
+              className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+              style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: activeNode === node.id ? 20 : 10 }}
             >
-              {node.label}
-            </div>
-            
-            {isEditing ? (
-              <input
-                type="number"
-                step="0.1"
-                value={editValues[node.id] || ''}
-                onChange={e => setEditValues({ ...editValues, [node.id]: e.target.value })}
-                className="w-16 h-8 text-center text-sm font-bold bg-white border-2 border-[#D4B4E8] rounded-xl shadow-lg outline-none focus:ring-2 focus:ring-[#D4B4E8]"
-                placeholder="0.0"
-              />
-            ) : (
               <div 
-                className={`w-16 h-8 flex items-center justify-center text-sm font-black rounded-xl shadow-sm cursor-pointer transition-all ${
-                  activeNode === node.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-200'
+                className={`text-[10px] font-bold uppercase tracking-wider mb-1 px-2 py-0.5 rounded shadow-sm backdrop-blur-md cursor-pointer transition-all ${
+                  activeNode === node.id ? 'bg-[#D4B4E8] text-slate-900 scale-110' : 'bg-white/80 text-slate-500 hover:bg-slate-100'
                 }`}
                 onClick={() => setActiveNode(node.id)}
               >
-                {displayValue(node.id)} <span className={`text-[10px] ml-0.5 ${activeNode === node.id ? 'text-slate-400' : 'text-slate-400'}`}>{displayValue(node.id) !== '--' ? unit : ''}</span>
+                {node.label}
               </div>
-            )}
-          </div>
-        ))}
+              
+              {isEditing ? (
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editValues[node.id] || ''}
+                  onChange={e => setEditValues({ ...editValues, [node.id]: e.target.value })}
+                  className="w-16 h-8 text-center text-sm font-bold bg-white border-2 border-[#D4B4E8] rounded-xl shadow-lg outline-none focus:ring-2 focus:ring-[#D4B4E8]"
+                  placeholder="0.0"
+                />
+              ) : (
+                <div 
+                  className={`w-16 h-8 flex items-center justify-center text-sm font-black rounded-xl shadow-sm cursor-pointer transition-all ${
+                    activeNode === node.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-200'
+                  }`}
+                  onClick={() => setActiveNode(node.id)}
+                >
+                  {displayValue(node.id)} <span className={`text-[10px] ml-0.5 ${activeNode === node.id ? 'text-slate-400' : 'text-slate-400'}`}>{displayValue(node.id) !== '--' ? unit : ''}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Chart Column */}

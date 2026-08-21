@@ -986,7 +986,7 @@ const HealthPage: React.FC = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [logModal, setLogModal] = useState<{ tracker: Tracker; date?: string; existing?: HealthEntry } | null>(null);
-  const [filter, setFilter] = useState<'all' | 'qualitative' | 'quantitative'>('all');
+  const [filter, setFilter] = useState<'all' | 'qualitative' | 'quantitative' | 'body_measurements'>('all');
   const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -1000,6 +1000,7 @@ const HealthPage: React.FC = () => {
 
   const qualCount = trackers.filter(t => t.type === 'qualitative').length;
   const quantCount = trackers.filter(t => t.type === 'quantitative').length;
+  const bodyCount = trackers.filter(t => t.type === 'body_measurements').length;
   const todayStr = formatDate(new Date());
   const todayEntries = entries.filter(e => e.date === todayStr).length;
   const totalEntries = entries.length;
@@ -1058,11 +1059,12 @@ const HealthPage: React.FC = () => {
         </div>
 
         {/* Filter tabs */}
-        <div className="px-6 pb-3 flex items-center gap-2">
+        <div className="px-6 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: 'all', label: 'All Trackers', count: trackers.length },
             { id: 'qualitative', label: '📅 Calendar', count: qualCount },
             { id: 'quantitative', label: '📈 Stats', count: quantCount },
+            { id: 'body_measurements', label: '🧍 Body', count: bodyCount },
           ].map(tab => (
             <button
               key={tab.id}

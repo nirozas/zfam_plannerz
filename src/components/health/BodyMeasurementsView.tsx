@@ -160,7 +160,7 @@ export const BodyMeasurementsView: React.FC<BodyMeasurementsViewProps> = ({ entr
           )}
         </div>
 
-        <div className="relative w-full max-w-[500px] flex items-center justify-center">
+        <div className="relative w-full max-w-[500px] mx-auto block">
           {/* Body Image */}
           <img src="/body-mannequin-clean.jpg" alt="Mannequin" className="w-full h-auto object-contain opacity-90 mix-blend-multiply pointer-events-none block" />
 
@@ -193,7 +193,7 @@ export const BodyMeasurementsView: React.FC<BodyMeasurementsViewProps> = ({ entr
               style={{ left: `${node.x}%`, top: `${node.y}%`, zIndex: activeNode === node.id ? 20 : 10 }}
             >
               <div 
-                className={`text-[10px] font-bold uppercase tracking-wider mb-1 px-2 py-0.5 rounded shadow-sm backdrop-blur-md cursor-pointer transition-all ${
+                className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-wider mb-0.5 sm:mb-1 px-1.5 sm:px-2 py-0.5 rounded shadow-sm backdrop-blur-md cursor-pointer transition-all ${
                   activeNode === node.id ? 'bg-[#D4B4E8] text-slate-900 scale-110' : 'bg-white/80 text-slate-500 hover:bg-slate-100'
                 }`}
                 onClick={() => setActiveNode(node.id)}
@@ -207,17 +207,17 @@ export const BodyMeasurementsView: React.FC<BodyMeasurementsViewProps> = ({ entr
                   step="0.1"
                   value={editValues[node.id] || ''}
                   onChange={e => setEditValues({ ...editValues, [node.id]: e.target.value })}
-                  className="w-16 h-8 text-center text-sm font-bold bg-white border-2 border-[#D4B4E8] rounded-xl shadow-lg outline-none focus:ring-2 focus:ring-[#D4B4E8]"
+                  className="w-12 h-6 sm:w-16 sm:h-8 text-center text-xs sm:text-sm font-bold bg-white border-2 border-[#D4B4E8] rounded-lg sm:rounded-xl shadow-lg outline-none focus:ring-2 focus:ring-[#D4B4E8]"
                   placeholder="0.0"
                 />
               ) : (
                 <div 
-                  className={`w-16 h-8 flex items-center justify-center text-sm font-black rounded-xl shadow-sm cursor-pointer transition-all ${
+                  className={`w-12 h-6 sm:w-16 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-black rounded-lg sm:rounded-xl shadow-sm cursor-pointer transition-all ${
                     activeNode === node.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-200'
                   }`}
                   onClick={() => setActiveNode(node.id)}
                 >
-                  {displayValue(node.id)} <span className={`text-[10px] ml-0.5 ${activeNode === node.id ? 'text-slate-400' : 'text-slate-400'}`}>{displayValue(node.id) !== '--' ? unit : ''}</span>
+                  {displayValue(node.id)} <span className={`text-[8px] sm:text-[10px] ml-0.5 ${activeNode === node.id ? 'text-slate-400' : 'text-slate-400'}`}>{displayValue(node.id) !== '--' ? unit : ''}</span>
                 </div>
               )}
             </div>

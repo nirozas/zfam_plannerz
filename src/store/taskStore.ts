@@ -94,7 +94,7 @@ export interface Category {
     sortOrder?: number;
 }
 
-export type ViewMode = 'list' | 'month' | 'week' | 'day';
+export type ViewMode = 'list' | 'month' | 'week' | 'day' | 'annual';
 export type TaskSortBy = 'dueDate' | 'name' | 'priority' | 'dateAdded';
 
 // ─── DB Row → App Type Mappers ───────────────────────────────────────────────

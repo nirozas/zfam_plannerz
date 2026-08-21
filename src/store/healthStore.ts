@@ -274,20 +274,23 @@ export const useHealthStore = create<HealthStore>((set, get) => ({
 
 // ─── Data Migrations / Patching ───────────────
 function patchTrackerColors(t: Tracker): Tracker {
-  if (t.type === 'qualitative' && t.name) {
-    const preset = PRESET_QUALITATIVE_TRACKERS.find(p => p.name === t.name);
-    if (preset && preset.values && t.values) {
+  let modified = { ...t };
+  
+  if (modified.color === '#6366f1') {
+    modified.color = '#D4B4E8';
+  }
+
+  if (modified.type === 'qualitative' && modified.name) {
+    const preset = PRESET_QUALITATIVE_TRACKERS.find(p => p.name === modified.name);
+    if (preset && preset.values && modified.values) {
       const colorMap = new Map(preset.values.map(v => [v.label, v.color]));
-      return {
-        ...t,
-        values: t.values.map(v => ({
-          ...v,
-          color: colorMap.get(v.label) || v.color
-        }))
-      };
+      modified.values = modified.values.map(v => ({
+        ...v,
+        color: colorMap.get(v.label) || v.color
+      }));
     }
   }
-  return t;
+  return modified;
 }
 
 // ─── Row Mappers ──────────────────────────────

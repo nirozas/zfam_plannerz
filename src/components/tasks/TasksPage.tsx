@@ -7,6 +7,7 @@ import {
     ListTodo,
     Columns,
     CalendarDays,
+    Calendar,
     Loader2,
     X
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import TaskList from './TaskList';
 import TaskCalendar from './TaskCalendar';
 import TaskWeek from './TaskWeek';
 import TaskMasonry from './TaskMasonry';
+import TaskAnnual from './TaskAnnual';
 import TasksSidebar from './TasksSidebar';
 import CreateTaskModal from './CreateTaskModal';
 import { toDateStr } from '../../utils/recurringUtils';
@@ -58,7 +60,7 @@ const TasksPage: React.FC = () => {
 
     // Sync URL viewMode with store
     useEffect(() => {
-        if (urlViewMode && ['list', 'day', 'week', 'month'].includes(urlViewMode)) {
+        if (urlViewMode && ['list', 'day', 'week', 'month', 'annual'].includes(urlViewMode)) {
             setViewMode(urlViewMode as any);
         } else if (!urlViewMode) {
             // If we land on /tasks, navigate to the current store viewMode (of if not set, list)
@@ -81,6 +83,7 @@ const TasksPage: React.FC = () => {
             case 'month': return <TaskCalendar />;
             case 'week': return <TaskWeek />;
             case 'day': return <TaskMasonry searchTerm={searchTerm} />;
+            case 'annual': return <TaskAnnual />;
             default: return <TaskList searchTerm={searchTerm} />;
         }
     };
@@ -126,6 +129,13 @@ const TasksPage: React.FC = () => {
                         >
                             <CalendarDays size={14} />
                             <span className="hidden sm:inline">Month</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/tasks/annual')}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-xs font-bold ${viewMode === 'annual' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <Calendar size={14} />
+                            <span className="hidden sm:inline">Annual</span>
                         </button>
                     </div>
                 </div>

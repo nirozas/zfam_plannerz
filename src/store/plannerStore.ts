@@ -2621,7 +2621,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
 
         const currentRaw = userProfile?.hero_config || {};
-        const boxKey = `home_box_${boxId} `;
+        const boxKey = `home_box_${boxId}`;
 
         const newHeroConfig: Record<string, { imageUrl?: string; title?: string; subtitle?: string }> = {
             ...(currentRaw as any),

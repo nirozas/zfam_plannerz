@@ -123,7 +123,7 @@ export const PRESET_QUALITATIVE_TRACKERS: Omit<Tracker, 'id' | 'userId' | 'creat
 ];
 
 export const PRESET_QUANTITATIVE_TRACKERS: Omit<Tracker, 'id' | 'userId' | 'createdAt' | 'sortOrder'>[] = [
-  { name: 'Weight', emoji: '⚖️', type: 'quantitative', unit: 'kg', chartType: 'area', color: '#6366f1' },
+  { name: 'Weight', emoji: '⚖️', type: 'quantitative', unit: 'kg', chartType: 'area', color: '#D4B4E8' },
   { name: 'Calories', emoji: '🔥', type: 'quantitative', unit: 'kcal', chartType: 'bar', goalValue: 2000, color: '#f97316' },
   { name: 'Heart Rate', emoji: '❤️', type: 'quantitative', unit: 'bpm', chartType: 'line', referenceMin: 60, referenceMax: 100, color: '#ef4444' },
   { name: 'Steps', emoji: '👟', type: 'quantitative', unit: 'steps', chartType: 'bar', goalValue: 10000, color: '#22c55e' },

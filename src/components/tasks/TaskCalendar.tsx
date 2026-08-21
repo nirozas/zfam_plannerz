@@ -116,9 +116,12 @@ const TaskCalendar: React.FC = () => {
             style={tintColor ? { backgroundColor: hexToRgba(tintColor, 0.03) } : {}}
         >
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-bold text-gray-800">
-                    {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                </h2>
+                <div>
+                    <h2 className="text-lg font-bold text-gray-800">
+                        {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </h2>
+                    <p className="text-xs text-slate-500">Monthly tasks overview</p>
+                </div>
                 <div className="flex gap-2 items-center">
                     <button onClick={() => setCurrentDate(new Date())} className="text-xs font-semibold text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition-colors">Today</button>
                     <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-full"><ChevronLeft size={18} /></button>

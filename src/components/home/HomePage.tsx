@@ -15,7 +15,8 @@ import {
   StickyNote, 
   AlertTriangle,
   Wallet,
-  Book
+  Book,
+  Archive
 } from 'lucide-react';
 import './HomePage.css';
 
@@ -186,6 +187,36 @@ const HomePage: React.FC = () => {
             path: '/finances',
             active: true,
             defaultImage: '/images/home/finances.png'
+        },
+        {
+            id: 'health',
+            title: 'Health Tracker',
+            description: 'Track your physical and mental well-being over time.',
+            icon: <Sparkles size={32} />,
+            color: 'from-pink-500 to-rose-600',
+            path: '/health',
+            active: true,
+            defaultImage: '/images/home/health.jpg'
+        },
+        {
+            id: 'library',
+            title: 'Resource Library',
+            description: 'A collection of your favorite books and resources.',
+            icon: <BookOpen size={32} />,
+            color: 'from-fuchsia-500 to-pink-600',
+            path: '/library',
+            active: true,
+            defaultImage: '/images/home/library.jpg'
+        },
+        {
+            id: 'archive',
+            title: 'Archive',
+            description: 'Safely store completed projects and memories.',
+            icon: <Archive size={32} />,
+            color: 'from-slate-500 to-slate-600',
+            path: '/archive',
+            active: true,
+            defaultImage: '/images/home/archive.jpg'
         }
     ];
 

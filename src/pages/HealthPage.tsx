@@ -69,20 +69,27 @@ const AnnualCalendar: React.FC<{
       {/* Main Calendar Area */}
       <div className="flex-1 min-w-0">
         {/* Zoom controls & Header */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{year} — {Object.keys(entryMap).length} entries</span>
-          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
-            <button
-              onClick={() => setZoom(z => ZOOM_LEVELS[Math.max(0, ZOOM_LEVELS.indexOf(z) - 1)])}
-              disabled={zoom === ZOOM_LEVELS[0]}
-              className="px-2 py-1 text-slate-500 hover:text-slate-900 text-xs rounded-lg disabled:opacity-30 hover:bg-slate-200 transition-all"
-            >−</button>
-            <span className="text-xs text-slate-900 font-bold px-2 min-w-[40px] text-center">{zoom}%</span>
-            <button
-              onClick={() => setZoom(z => ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, ZOOM_LEVELS.indexOf(z) + 1)])}
-              disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              className="px-2 py-1 text-slate-500 hover:text-slate-900 text-xs rounded-lg disabled:opacity-30 hover:bg-slate-200 transition-all"
-            >+</button>
+        {/* Zoom controls & Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Activity Calendar</h3>
+            <p className="text-xs text-slate-500">Track your daily consistency and history across the year</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{year} — {Object.keys(entryMap).length} entries</span>
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+              <button
+                onClick={() => setZoom(z => ZOOM_LEVELS[Math.max(0, ZOOM_LEVELS.indexOf(z) - 1)])}
+                disabled={zoom === ZOOM_LEVELS[0]}
+                className="px-2 py-1 text-slate-500 hover:text-slate-900 text-xs rounded-lg disabled:opacity-30 hover:bg-slate-200 transition-all"
+              >−</button>
+              <span className="text-xs text-slate-900 font-bold px-2 min-w-[40px] text-center">{zoom}%</span>
+              <button
+                onClick={() => setZoom(z => ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, ZOOM_LEVELS.indexOf(z) + 1)])}
+                disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                className="px-2 py-1 text-slate-500 hover:text-slate-900 text-xs rounded-lg disabled:opacity-30 hover:bg-slate-200 transition-all"
+              >+</button>
+            </div>
           </div>
         </div>
 
@@ -132,7 +139,7 @@ const AnnualCalendar: React.FC<{
                           isFuture ? 'opacity-20 cursor-default bg-slate-50' : 'cursor-pointer hover:shadow-md'
                         } ${
                           !entry && !isFuture ? 'bg-slate-100 border border-slate-200/60 hover:bg-slate-200' : ''
-                        } ${isToday ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
+                        } ${isToday ? 'ring-2 ring-[#D4B4E8] ring-offset-1' : ''}`}
                         style={{
                           minWidth: `${minCellWidth}px`,
                           aspectRatio: '1 / 1',
@@ -267,7 +274,7 @@ const StatsChart: React.FC<{
     return { avg: Math.round(avg * 10) / 10, min, max, latest, trend: Math.round(trend * 10) / 10 };
   }, [filteredData]);
 
-  const color = tracker.color || '#6366f1';
+  const color = tracker.color || '#D4B4E8';
   const [localChartType, setLocalChartType] = useState<'area' | 'bar' | 'line'>(
     (tracker.chartType as 'area' | 'bar' | 'line') || 'area'
   );
@@ -288,6 +295,12 @@ const StatsChart: React.FC<{
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="mb-2">
+        <h3 className="text-lg font-bold text-slate-900">Statistics Overview</h3>
+        <p className="text-xs text-slate-500">View measurements and trends over time</p>
+      </div>
+
       {/* Time Range Toggle & Chart Type */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -507,7 +520,7 @@ const AddEntryModal: React.FC<{
                 <button
                   key={v.id}
                   onClick={() => setSelectedValueId(v.id)}
-                  className={`p-3 rounded-xl border-2 transition-all ${selectedValueId === v.id ? 'border-indigo-500 bg-indigo-500/20' : 'bg-slate-100 border-slate-200'}`}
+                  className={`p-3 rounded-xl border-2 transition-all ${selectedValueId === v.id ? 'border-[#D4B4E8] bg-[#D4B4E8]/20' : 'bg-slate-100 border-slate-200'}`}
                 >
                   <div className="text-2xl">{v.emoji}</div>
                   <div className="text-xs font-bold text-slate-900 mt-1">{v.label}</div>
@@ -934,7 +947,7 @@ const TrackerMiniCard: React.FC<{
   entries: HealthEntry[];
   onClick: () => void;
 }> = ({ tracker, entries, onClick }) => {
-  const color = tracker.color || '#6366f1';
+  const color = tracker.color || '#D4B4E8';
   const todayStr = formatDate(new Date());
   const todayEntry = entries.find(e => e.date === todayStr);
 
@@ -943,7 +956,7 @@ const TrackerMiniCard: React.FC<{
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white/80 border border-slate-200/40 rounded-2xl overflow-hidden backdrop-blur-sm text-left flex flex-col h-full hover:border-indigo-500/50 transition-all shadow-xl"
+      className="bg-white/80 border border-slate-200/40 rounded-2xl overflow-hidden backdrop-blur-sm text-left flex flex-col h-full hover:border-[#D4B4E8]/50 transition-all shadow-xl"
     >
       <div className="h-1.5 w-full" style={{ background: `linear-gradient(to right, ${color}, ${color}88)` }} />
       <div className="p-4 flex-1 flex flex-col">
@@ -986,7 +999,7 @@ const HealthPage: React.FC = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [logModal, setLogModal] = useState<{ tracker: Tracker; date?: string; existing?: HealthEntry } | null>(null);
-  const [filter, setFilter] = useState<'all' | 'qualitative' | 'quantitative' | 'body_measurements'>('all');
+  const [filter, setFilter] = useState<'all' | 'qualitative' | 'quantitative'>('all');
   const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -1000,7 +1013,6 @@ const HealthPage: React.FC = () => {
 
   const qualCount = trackers.filter(t => t.type === 'qualitative').length;
   const quantCount = trackers.filter(t => t.type === 'quantitative').length;
-  const bodyCount = trackers.filter(t => t.type === 'body_measurements').length;
   const todayStr = formatDate(new Date());
   const todayEntries = entries.filter(e => e.date === todayStr).length;
   const totalEntries = entries.length;
@@ -1024,7 +1036,7 @@ const HealthPage: React.FC = () => {
             {/* Summary chips */}
             <div className="hidden md:flex items-center gap-3 mr-2">
               <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl px-3 py-1.5">
-                <CalendarIcon size={13} className="text-indigo-400" />
+                <CalendarIcon size={13} className="text-[#D4B4E8]" />
                 <span className="text-xs text-slate-600">{todayEntries} today</span>
               </div>
               <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl px-3 py-1.5">
@@ -1059,12 +1071,11 @@ const HealthPage: React.FC = () => {
         </div>
 
         {/* Filter tabs */}
-        <div className="px-6 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-6 pb-3 flex items-center gap-2">
           {[
             { id: 'all', label: 'All Trackers', count: trackers.length },
             { id: 'qualitative', label: '📅 Calendar', count: qualCount },
             { id: 'quantitative', label: '📈 Stats', count: quantCount },
-            { id: 'body_measurements', label: '🧍 Body', count: bodyCount },
           ].map(tab => (
             <button
               key={tab.id}
@@ -1089,7 +1100,7 @@ const HealthPage: React.FC = () => {
         {isFetching ? (
           <div className="flex items-center justify-center h-64">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-[#D4B4E8] border-t-transparent rounded-full animate-spin" />
               <p className="text-slate-500 text-sm">Loading your health data...</p>
             </div>
           </div>

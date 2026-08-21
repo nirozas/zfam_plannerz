@@ -152,7 +152,8 @@ function App() {
                         <Route path="/finances" element={<FinancesPage />} />
                         <Route path="/notebooks" element={<NotebookSelectorPage />} />
                         <Route path="/notebooks/:notebookName" element={<NotebooksPage />} />
-                        <Route path="/health" element={<HealthPage />} />
+                        <Route path="/trackers" element={<HealthPage />} />
+                        <Route path="/trackers/:trackerId" element={<HealthPage />} />
                     </Route>
 
                     {/* Standalone Pages */}

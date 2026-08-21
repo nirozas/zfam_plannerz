@@ -131,9 +131,9 @@ export const AppSidebar: React.FC = () => {
                     <Wallet size={22} />
                 </NavLink>
 
-                <NavLink
-                    to="/health"
-                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                <NavLink 
+                    to="/trackers" 
+                    className={({ isActive }) => `flex items-center space-x-3 p-2 rounded-lg transition-colors ${isActive ? 'bg-[#D4B4E8]/20 text-slate-900 font-medium shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                     title="Trackers"
                 >
                     <Activity size={22} />

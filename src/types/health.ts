@@ -17,6 +17,7 @@ export interface Tracker {
   id: string;
   userId?: string;
   name: string;
+  subtitle?: string;
   emoji: string;
   type: TrackerType;
   displayMode?: DisplayMode;

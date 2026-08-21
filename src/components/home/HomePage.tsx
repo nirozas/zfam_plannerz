@@ -194,7 +194,7 @@ const HomePage: React.FC = () => {
             description: 'Track your physical and mental well-being over time.',
             icon: <Sparkles size={32} />,
             color: 'from-pink-500 to-rose-600',
-            path: '/health',
+            path: '/trackers',
             active: true,
             defaultImage: '/images/home/health.jpg'
         },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Activity, Calendar as CalendarIcon, TrendingUp,
@@ -577,6 +578,7 @@ const CreateTrackerModal: React.FC<{
   // Custom Quantitative State
   const [isCustomStats, setIsCustomStats] = useState(false);
   const [customName, setCustomName] = useState('');
+  const [customSubtitle, setCustomSubtitle] = useState('');
   const [customEmoji, setCustomEmoji] = useState('📊');
   const [customUnit, setCustomUnit] = useState('kg');
   const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'area'>('line');
@@ -585,12 +587,18 @@ const CreateTrackerModal: React.FC<{
   const [customRatingName, setCustomRatingName] = useState('1-10 Rating');
   const [customValues, setCustomValues] = useState<{label: string, emoji: string}[]>(Array(10).fill({label: '', emoji: ''}));
 
+  // Generic Preset State
+  const [presetSubtitle, setPresetSubtitle] = useState('');
+
   const SPECTRUM = ['#B6E9F0', '#BDF0D8', '#D8F2C9', '#EDF7CB', '#FBF6E2', '#FCEBC7', '#FFE2C2', '#FFD2CF', '#D4B4E8', '#C2CEFF'];
 
   useEffect(() => {
-    if (configPreset?.name === '1-10 Rating') {
-      setCustomRatingName('1-10 Rating');
-      setCustomValues(configPreset.values?.map(v => ({ label: v.label, emoji: v.emoji || '' })) || Array(10).fill({label: '', emoji: ''}));
+    if (configPreset) {
+      setPresetSubtitle(configPreset.subtitle || '');
+      if (configPreset.name === '1-10 Rating') {
+        setCustomRatingName('1-10 Rating');
+        setCustomValues(configPreset.values?.map(v => ({ label: v.label, emoji: v.emoji || '' })) || Array(10).fill({label: '', emoji: ''}));
+      }
     }
   }, [configPreset]);
 
@@ -599,7 +607,13 @@ const CreateTrackerModal: React.FC<{
     const newValues = configPreset.values
       ?.map((v, i) => ({ ...v, label: customValues[i].label, emoji: customValues[i].emoji }))
       .filter(v => v.label.trim() !== '') || [];
-    onSave({ ...configPreset, name: customRatingName || configPreset.name, values: newValues, sortOrder: 99 });
+    onSave({ ...configPreset, name: customRatingName || configPreset.name, subtitle: presetSubtitle, values: newValues, sortOrder: 99 });
+    onClose();
+  };
+
+  const handleSaveGenericPreset = () => {
+    if (!configPreset) return;
+    onSave({ ...configPreset, subtitle: presetSubtitle, sortOrder: 99 });
     onClose();
   };
 
@@ -607,6 +621,7 @@ const CreateTrackerModal: React.FC<{
     if (!customName.trim()) return;
     onSave({
       name: customName,
+      subtitle: customSubtitle,
       emoji: customEmoji,
       type: 'quantitative',
       unit: customUnit,
@@ -629,6 +644,10 @@ const CreateTrackerModal: React.FC<{
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Emoji</label>
               <input value={customEmoji} onChange={e => setCustomEmoji(e.target.value)} className="w-full bg-slate-100 rounded-xl p-3 text-center border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Subtitle (Optional)</label>
+            <input value={customSubtitle} onChange={e => setCustomSubtitle(e.target.value)} className="w-full bg-slate-100 rounded-xl p-3 border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" placeholder="e.g. Track daily intake" />
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Unit</label>
@@ -656,12 +675,20 @@ const CreateTrackerModal: React.FC<{
           <div className="mb-3">
             <h4 className="font-bold text-slate-900 flex items-center gap-2">{configPreset.emoji} Configure Custom Rating</h4>
             <p className="text-xs text-slate-500 mb-2">Edit the labels and optional emojis. Leave a label blank to hide it.</p>
-            <input 
-              value={customRatingName} 
-              onChange={e => setCustomRatingName(e.target.value)} 
-              className="w-full bg-slate-100 rounded-xl p-2.5 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" 
-              placeholder="Tracker Name (e.g. Productivity)" 
-            />
+            <div className="space-y-2 mb-3">
+              <input 
+                value={customRatingName} 
+                onChange={e => setCustomRatingName(e.target.value)} 
+                className="w-full bg-slate-100 rounded-xl p-2.5 text-sm font-bold border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" 
+                placeholder="Tracker Name (e.g. Productivity)" 
+              />
+              <input 
+                value={presetSubtitle} 
+                onChange={e => setPresetSubtitle(e.target.value)} 
+                className="w-full bg-slate-100 rounded-xl p-2.5 text-sm border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" 
+                placeholder="Subtitle (Optional)" 
+              />
+            </div>
           </div>
           <div className="space-y-2 overflow-y-auto pr-2 pb-2">
             {customValues.map((val, i) => (
@@ -699,6 +726,30 @@ const CreateTrackerModal: React.FC<{
         </div>
       );
     }
+
+    if (configPreset && configPreset.name !== '1-10 Rating') {
+      return (
+        <div className="flex flex-col">
+          <div className="mb-4">
+            <h4 className="font-bold text-slate-900 flex items-center gap-2">{configPreset.emoji} Configure {configPreset.name}</h4>
+          </div>
+          <div className="mb-6">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Subtitle (Optional)</label>
+            <input 
+              value={presetSubtitle} 
+              onChange={e => setPresetSubtitle(e.target.value)} 
+              className="w-full bg-slate-100 rounded-xl p-3 border-none outline-none focus:ring-2 focus:ring-[#D4B4E8]" 
+              placeholder="e.g. My daily journal" 
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <button onClick={() => setConfigPreset(null)} className="flex-1 p-3 bg-slate-100 text-slate-700 font-bold rounded-xl">Back</button>
+            <button onClick={handleSaveGenericPreset} className="flex-1 p-3 bg-[#D4B4E8] text-slate-900 font-bold rounded-xl">Create Tracker</button>
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -721,14 +772,7 @@ const CreateTrackerModal: React.FC<{
                ).map((preset, i) => (
                 <button 
                   key={i} 
-                  onClick={() => {
-                    if (preset.name === '1-10 Rating') {
-                      setConfigPreset(preset);
-                    } else {
-                      onSave({ ...preset, sortOrder: 99 });
-                      onClose();
-                    }
-                  }} 
+                  onClick={() => setConfigPreset(preset)} 
                   className="p-3 bg-slate-100 rounded-xl text-left hover:bg-[#D4B4E8]/20 transition-colors"
                 >
                   {preset.emoji} {preset.name}
@@ -830,7 +874,8 @@ const TrackerDetailView: React.FC<{
             </div>
             <div>
               <h3 className="font-bold text-slate-900">{tracker.name}</h3>
-              <p className="text-xs text-slate-500">
+              {tracker.subtitle && <p className="text-xs font-medium text-slate-400 mt-0.5">{tracker.subtitle}</p>}
+              <p className="text-xs text-slate-500 mt-1">
                 {entries.length} entries
                 {tracker.type === 'quantitative' && ` · ${tracker.unit}`}
               </p>
@@ -973,6 +1018,7 @@ const TrackerMiniCard: React.FC<{
         </div>
         
         <h3 className="font-bold text-slate-900 text-lg leading-tight mb-1">{tracker.name}</h3>
+        {tracker.subtitle && <p className="text-xs text-slate-400 mb-1 leading-snug font-medium line-clamp-2">{tracker.subtitle}</p>}
         <p className="text-xs text-slate-500 mb-4">
           {entries.length} entries {tracker.type === 'quantitative' && `· ${tracker.unit}`}
         </p>
@@ -995,14 +1041,20 @@ const TrackerMiniCard: React.FC<{
 
 // ─── Main Page ─────────────────────────────────────────────────
 const HealthPage: React.FC = () => {
+  const { trackerId } = useParams();
+  const navigate = useNavigate();
   const { trackers, entries, isFetching, fetchAll, addTracker, addEntry, updateEntry, deleteEntry, deleteTracker } = useHealthStore();
   const [year, setYear] = useState(new Date().getFullYear());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [logModal, setLogModal] = useState<{ tracker: Tracker; date?: string; existing?: HealthEntry } | null>(null);
   const [filter, setFilter] = useState<'all' | 'qualitative' | 'quantitative'>('all');
-  const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
+  const [activeTrackerId, setActiveTrackerId] = useState<string | null>(trackerId || null);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    setActiveTrackerId(trackerId || null);
+  }, [trackerId]);
 
   const activeTracker = useMemo(() => trackers.find(t => t.id === activeTrackerId), [trackers, activeTrackerId]);
 
@@ -1139,7 +1191,7 @@ const HealthPage: React.FC = () => {
                     onQuickSave={(entry) => entry.id ? updateEntry(entry.id, entry) : addEntry(entry)}
                     onDelete={() => { deleteTracker(activeTracker.id); setActiveTrackerId(null); }}
                     onDeleteEntry={deleteEntry}
-                    onBack={() => setActiveTrackerId(null)}
+                    onBack={() => navigate('/trackers')}
                   />
                 </motion.div>
               ) : (
@@ -1155,7 +1207,7 @@ const HealthPage: React.FC = () => {
                       key={tracker.id}
                       tracker={tracker}
                       entries={entries.filter(e => e.trackerId === tracker.id)}
-                      onClick={() => setActiveTrackerId(tracker.id)}
+                      onClick={() => navigate(`/trackers/${tracker.id}`)}
                     />
                   ))}
                 </motion.div>
